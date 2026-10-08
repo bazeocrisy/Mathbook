@@ -8,11 +8,12 @@
   const MB = (root.Mathbook = root.Mathbook || {});
 
   // Left-to-right order of a four-digit number.
+  // `label` has soft hyphens so long names can wrap in narrow columns instead of spilling out.
   const PLACES = [
-    { key: 'thousands', name: 'Thousands', one: 'thousand', value: 1000, block: 'cube', blockName: 'thousand cube' },
-    { key: 'hundreds', name: 'Hundreds', one: 'hundred', value: 100, block: 'flat', blockName: 'hundred flat' },
-    { key: 'tens', name: 'Tens', one: 'ten', value: 10, block: 'rod', blockName: 'ten rod' },
-    { key: 'ones', name: 'Ones', one: 'one', value: 1, block: 'unit', blockName: 'unit cube' }
+    { key: 'thousands', name: 'Thousands', label: 'Thou­sands', one: 'thousand', value: 1000, block: 'cube', blockName: 'thousand cube' },
+    { key: 'hundreds', name: 'Hundreds', label: 'Hun­dreds', one: 'hundred', value: 100, block: 'flat', blockName: 'hundred flat' },
+    { key: 'tens', name: 'Tens', label: 'Tens', one: 'ten', value: 10, block: 'rod', blockName: 'ten rod' },
+    { key: 'ones', name: 'Ones', label: 'Ones', one: 'one', value: 1, block: 'unit', blockName: 'unit cube' }
   ];
 
   // ---------- Digits and number forms ----------
@@ -233,7 +234,7 @@
       const cap = o.captions
         ? `<figcaption><b>${count}</b> ${count === 1 ? p.one : p.key} = ${fmt(count * p.value)}</figcaption>`
         : '';
-      return `<div class="blocks-col place-${p.key}${o.dim.includes(i) ? ' is-dim' : ''}"><div class="blocks-label">${p.name}</div><div class="blocks-art">${placeSVG(i, count)}</div>${cap}</div>`;
+      return `<div class="blocks-col place-${p.key}${o.dim.includes(i) ? ' is-dim' : ''}"><div class="blocks-label">${p.label}</div><div class="blocks-art">${placeSVG(i, count)}</div>${cap}</div>`;
     });
     const summary = d.map((c, i) => `${c} ${c === 1 ? PLACES[i].one : PLACES[i].key}`).join(', ');
     return `<figure class="blocks" aria-label="Base-ten blocks: ${summary}">${cols.join('')}</figure>`;
@@ -242,6 +243,22 @@
   /** A single block for vocabulary and "what does this block show?" items. */
   function singleBlockSVG(placeIndex, ariaLabel) {
     return placeSVG(placeIndex, 1, ariaLabel);
+  }
+
+  /**
+   * Ten-frame: 2 rows of 5 boxes, filled left to right on the top row first (0–10 dots).
+   * Each dot is its own <circle data-dot> so tests can count exactly what is drawn.
+   */
+  function tenFrameSVG(n, ariaLabel) {
+    const cell = 44, pad = 6;
+    let s = '';
+    for (let i = 0; i < 10; i++) {
+      const x = pad + (i % 5) * cell, y = pad + Math.floor(i / 5) * cell;
+      s += `<rect x="${x}" y="${y}" width="${cell}" height="${cell}" fill="#fff" stroke="#4b3fa8" stroke-width="2"/>`;
+      if (i < n) s += `<circle data-dot="1" cx="${x + cell / 2}" cy="${y + cell / 2}" r="15" fill="#f2b705" stroke="#8a6200" stroke-width="2"/>`;
+    }
+    const label = ariaLabel || `Ten-frame with ${n} ${n === 1 ? 'dot' : 'dots'}`;
+    return `<svg class="ten-frame" viewBox="0 0 ${cell * 5 + pad * 2} ${cell * 2 + pad * 2}" width="${cell * 5 + pad * 2}" height="${cell * 2 + pad * 2}" role="img" aria-label="${label}">${s}</svg>`;
   }
 
   /** Normalizes typed word form: case, hyphens, commas, extra spaces, and "and" do not matter. */
@@ -255,7 +272,7 @@
   }
 
   MB.pv = {
-    normalizeWords, checkWords,
+    normalizeWords, checkWords, tenFrameSVG,
     PLACES, digitsOf, fromDigits, fmt, expandedTerms, expandedForm, numberToWords,
     parseWholeNumber, checkExpanded, rng, randInt, pick, shuffle, randomFourDigit,
     placeSVG, blocksHTML, singleBlockSVG

@@ -1,167 +1,67 @@
-// End-to-end browser test for Lesson 2-1 (no dependencies).
-// Serves the repo under /Mathbook/ (like GitHub Pages), drives headless Chrome or Edge over the
-// DevTools protocol, and saves screenshots to tests/screenshots/.
+// End-to-end browser test: home page + Lesson 2-1 (no dependencies).
+// Serves the repo under /Mathbook/ (like GitHub Pages) and drives headless Chrome/Edge.
 // Run: npm run test:browser   (set CHROME_PATH if Chrome is not found automatically)
-import http from 'node:http';
-import fs from 'node:fs';
-import os from 'node:os';
 import path from 'node:path';
-import { spawn } from 'node:child_process';
-import { fileURLToPath } from 'node:url';
+import { ROOT, BASE, startServer, startBrowser, FILL_HELPERS } from './lib/harness.mjs';
 
-const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const SHOTS = path.join(ROOT, 'tests', 'screenshots');
-const BASE = '/Mathbook/';
+const LESSON = BASE + 'curriculum/chapter-2/lesson-2-1/';
 const results = [];
-const missing = [];
-
 function check(name, ok, detail) {
   results.push({ name, ok: !!ok, detail });
-  console.log(`${ok ? '✔' : '✖'} ${name}${!ok && detail !== undefined ? ' — ' + JSON.stringify(detail) : ''}`);
+  console.log(`${ok ? '✔' : '✖'} ${name}${!ok && detail !== undefined ? ' — ' + JSON.stringify(detail).slice(0, 600) : ''}`);
 }
 
-// ---------- Static server (GitHub Pages project path) ----------
-const TYPES = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css', '.png': 'image/png', '.svg': 'image/svg+xml', '.json': 'application/json' };
-const server = http.createServer((req, res) => {
-  const url = decodeURIComponent(req.url.split('?')[0]);
-  if (!url.startsWith(BASE)) { missing.push(url); res.writeHead(404).end(); return; }
-  let file = path.join(ROOT, url.slice(BASE.length));
-  if (!file.startsWith(ROOT)) { res.writeHead(403).end(); return; }
-  if (fs.existsSync(file) && fs.statSync(file).isDirectory()) file = path.join(file, 'index.html');
-  if (!fs.existsSync(file)) { if (!url.endsWith('favicon.ico')) missing.push(url); res.writeHead(404).end(); return; }
-  res.writeHead(200, { 'Content-Type': TYPES[path.extname(file)] || 'application/octet-stream' });
-  fs.createReadStream(file).pipe(res);
-});
-await new Promise((r) => server.listen(0, '127.0.0.1', r));
-const ORIGIN = `http://127.0.0.1:${server.address().port}`;
+const server = await startServer();
+const b = await startBrowser();
+const O = server.origin;
+const { js, wait, hash } = b;
 
-// ---------- Browser ----------
-const candidates = [process.env.CHROME_PATH,
-  'C:/Program Files/Google/Chrome/Application/chrome.exe', 'C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe',
-  '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome', '/usr/bin/google-chrome', '/usr/bin/chromium', '/usr/bin/chromium-browser'].filter(Boolean);
-const exe = candidates.find((p) => fs.existsSync(p));
-if (!exe) { console.error('No Chrome/Edge found. Set CHROME_PATH.'); process.exit(2); }
-const profile = fs.mkdtempSync(path.join(os.tmpdir(), 'mathbook-chrome-'));
-const chrome = spawn(exe, ['--headless=new', '--remote-debugging-port=0', `--user-data-dir=${profile}`, '--no-first-run', '--no-default-browser-check', '--hide-scrollbars', 'about:blank'], { stdio: 'ignore' });
-
-let port;
-for (let i = 0; i < 100 && !port; i++) {
-  await new Promise((r) => setTimeout(r, 100));
-  try { port = fs.readFileSync(path.join(profile, 'DevToolsActivePort'), 'utf8').split('\n')[0]; } catch { /* not ready */ }
-}
-const targets = await (await fetch(`http://127.0.0.1:${port}/json/list`)).json();
-const ws = new WebSocket(targets.find((t) => t.type === 'page').webSocketDebuggerUrl);
-await new Promise((r) => ws.addEventListener('open', r));
-let nextId = 0;
-const pending = new Map();
-const errors = [];
-ws.addEventListener('message', (ev) => {
-  const msg = JSON.parse(ev.data);
-  if (msg.id && pending.has(msg.id)) { pending.get(msg.id)(msg); pending.delete(msg.id); }
-  if (msg.method === 'Runtime.exceptionThrown') errors.push(msg.params.exceptionDetails.exception?.description || msg.params.exceptionDetails.text);
-  if (msg.method === 'Runtime.consoleAPICalled' && msg.params.type === 'error') errors.push(msg.params.args.map((a) => a.value || a.description).join(' '));
-});
-function send(method, params = {}) {
-  const id = ++nextId;
-  ws.send(JSON.stringify({ id, method, params }));
-  return new Promise((r) => pending.set(id, r));
-}
-async function js(expr) {
-  const r = await send('Runtime.evaluate', { expression: `(async () => { ${expr} })()`, awaitPromise: true, returnByValue: true });
-  if (r.result.exceptionDetails) throw new Error(r.result.exceptionDetails.exception?.description || 'evaluate failed');
-  return r.result.result.value;
-}
-const wait = (ms) => new Promise((r) => setTimeout(r, ms));
-async function load(url) {
-  await send('Page.navigate', { url: ORIGIN + url });
-  await wait(700);
-}
-async function hash(h) { await js(`location.hash = '${h}';`); await wait(250); }
-async function shot(name, full = true) {
-  const m = await js('return { w: document.documentElement.clientWidth, h: document.documentElement.scrollHeight };');
-  const r = await send('Page.captureScreenshot', { format: 'png', captureBeyondViewport: full, clip: full ? { x: 0, y: 0, width: m.w, height: Math.min(m.h, 12000), scale: 1 } : undefined });
-  fs.writeFileSync(path.join(SHOTS, name + '.png'), Buffer.from(r.result.data, 'base64'));
-}
-async function viewport(width, height, mobile) {
-  await send('Emulation.setDeviceMetricsOverride', { width, height, deviceScaleFactor: 1, mobile });
-}
 async function noHorizontalScroll(label) {
   const r = await js(`
     const doc = document.documentElement;
     const wide = Array.from(document.querySelectorAll('body *')).filter((e) => {
-      // Scrollable tables are allowed; the skip link and screen-reader text are hidden off-screen on purpose.
       if (e.closest('.table-wrap, .skip, .sr-only')) return false;
-      const b = e.getBoundingClientRect();
-      return b.width > 0 && (b.right > doc.clientWidth + 1 || b.left < -1);
-    }).slice(0, 3).map((e) => {
-      const b = e.getBoundingClientRect();
-      const p = e.parentElement.getBoundingClientRect();
-      const grid = e.closest('.q-build');
-      return (e.className || e.tagName) + ' [' + Math.round(b.left) + '–' + Math.round(b.right) + '] parent [' + Math.round(p.left) + '–' + Math.round(p.right) + ']' +
-        (grid ? ' grid=' + getComputedStyle(grid).gridTemplateColumns + ' in ' + (e.closest('.card') || {}).id : '') +
-        (grid ? ' chain=' + (() => { const out = []; for (let a = grid; a && a !== document.body; a = a.parentElement) out.push(a.tagName + '.' + a.className + ':' + Math.round(a.getBoundingClientRect().width) + ':' + getComputedStyle(a).display); return out.join(' > '); })() : '');
-    });
+      const r = e.getBoundingClientRect();
+      return r.width > 0 && (r.right > doc.clientWidth + 1 || r.left < -1);
+    }).slice(0, 3).map((e) => e.className || e.tagName);
     return { sw: doc.scrollWidth, cw: doc.clientWidth, wide };`);
   check(`no horizontal overflow: ${label}`, r.sw <= r.cw && r.wide.length === 0, r);
 }
-
-// In-page helpers: fill a question with the correct or a wrong answer, the way a student would.
-const HELPERS = `
-  const MB = window.Mathbook, Q = MB.Q, pv = MB.pv, L = MB.lessons['2-1'];
-  function wrong(q) {
-    switch (q.type) {
-      case 'mc': case 'select': return q.choices.find((c) => c !== q.answer);
-      case 'number': return String(q.answer + 1);
-      case 'expanded': return pv.fmt(q.answer);
-      case 'words': return 'zero';
-      case 'chart': return q.answer === 9999 ? ['1','1','1','1'] : ['9','9','9','9'];
-      case 'build': return q.answer === 1000 ? [2,0,0,0] : [1,0,0,0];
-    }
-  }
-  function fill(el, q, correct) {
-    const r = correct ? Q.correctResponse(q) : wrong(q);
-    const fire = (t, type) => t.dispatchEvent(new Event(type, { bubbles: true }));
-    if (q.type === 'mc') { const i = Array.from(el.querySelectorAll('input[type=radio]')).find((x) => x.value === r); i.click(); }
-    else if (q.type === 'select') { const s = el.querySelector('select'); s.value = r; fire(s, 'change'); }
-    else if (q.type === 'chart') el.querySelectorAll('.q-chart input').forEach((i, k) => { i.value = r[k]; fire(i, 'input'); });
-    else if (q.type === 'build') el.querySelectorAll('.stepper').forEach((s, k) => {
-      for (let n = 0; n < 9; n++) s.querySelector('[data-step="-1"]').click();
-      for (let n = 0; n < r[k]; n++) s.querySelector('[data-step="1"]').click();
-    });
-    else { const i = el.querySelector('.q-input'); i.value = r; fire(i, 'input'); }
-  }
-  const store = (k) => JSON.parse(localStorage.getItem(L.storageKey + ':' + k) || 'null');
-`;
 
 async function takeTest(id, correctCount) {
   await hash('#test');
   await js(`document.querySelector('[data-start="${id}"]').click();`);
   await wait(200);
-  return js(`${HELPERS}
-    const draft = store('draft-${id}');
+  return js(`${FILL_HELPERS}
+    const draft = JSON.parse(localStorage.getItem(L.storageKey + ':draft-${id}'));
     const els = document.querySelectorAll('#test-form .q[data-qkey]');
     draft.questions.forEach((q, i) => fill(els[i], q, i < ${correctCount}));
     document.querySelector('#test-form button[type=submit]').click();
     await new Promise((r) => setTimeout(r, 400));
-    const a = store('attempts');
+    const a = JSON.parse(localStorage.getItem(L.storageKey + ':attempts'));
     return { hash: location.hash, last: a[a.length - 1], text: document.querySelector('.result-detail')?.innerText || '' };`);
 }
 
 try {
-  fs.mkdirSync(SHOTS, { recursive: true });
-  await send('Page.enable');
-  await send('Runtime.enable');
-
-  // ----- Home page and paths -----
-  await viewport(1280, 900, false);
-  await load(BASE);
-  check('home page loads with lesson link', await js(`return !!document.querySelector('a[href="curriculum/chapter-2/lesson-2-1/"]');`));
-  await shot('home-desktop', false);
-  await js(`document.querySelector('.lesson-row').click();`);
+  // ----- Home page -----
+  await b.viewport(1280, 900, false);
+  await b.load(O + BASE);
+  await js('localStorage.clear()');
+  await b.load(O + BASE);
+  const home = await js(`return {
+    h1: document.querySelector('h1').textContent,
+    start: document.querySelector('.hero-actions a').getAttribute('href'),
+    lesson: !!document.querySelector('a.lesson-row[href="curriculum/chapter-2/lesson-2-1/"]'),
+    nw: !!document.querySelector('a[href="number-words/"]') && !!document.querySelector('a.lesson-row[href="number-words/phase-1/"]'),
+    locked: Array.from(document.querySelectorAll('.lesson-row.is-locked')).map((e) => e.tagName),
+    continueHidden: document.getElementById('continue').hidden };`);
+  check('Home: welcome, Start Learning → Lesson 2-1, Number Words entry', home.h1 === 'Welcome to Mathbook' && home.start === 'curriculum/chapter-2/lesson-2-1/' && home.lesson && home.nw, home);
+  check('Home: unreleased lessons are not links (not playable)', home.locked.length === 3 && home.locked.every((t) => t === 'DIV'), home.locked);
+  check('Home: no Continue Learning without saved progress (nothing fabricated)', home.continueHidden, home);
+  await js(`document.querySelector('.hero-actions a').click();`);
   await wait(700);
-  check('lesson opens from home (relative path under /Mathbook/)', await js(`return location.pathname === '/Mathbook/curriculum/chapter-2/lesson-2-1/' && !!document.querySelector('.stagebar');`));
-  await js('localStorage.clear(); location.hash = "#teach"; location.reload();');
-  await wait(700);
+  check('Start Learning opens Lesson 2-1 (relative path under /Mathbook/)', await js(`return location.pathname === '/Mathbook/curriculum/chapter-2/lesson-2-1/' && !!document.querySelector('.stagebar');`));
 
   // ----- Teach It -----
   const teach = await js(`return {
@@ -170,12 +70,25 @@ try {
     vocab: document.querySelectorAll('.vocab-card').length,
     script: document.querySelectorAll('.script-step').length,
     current: document.querySelector('[aria-current=step]').dataset.stage,
+    parts: Array.from(document.querySelectorAll('.part-tag')).map((e) => e.textContent).join(''),
+    audiences: Array.from(document.querySelectorAll('.section-head .aud')).map((e) => e.textContent),
+    bigIdea2: /Big idea 2: 10, 100, or 1,000 more or less/.test(document.body.innerText) && /4,125 \\+ 100 = 4,225/.test(document.body.innerText),
     name: /chris/i.test(document.body.innerText) };`);
-  check('Teach It: title, 6 parent-guide answers, vocabulary, script', teach.h1 === 'Represent 4-Digit Numbers' && teach.guide === 6 && teach.vocab === 6 && teach.script === 5 && teach.current === 'teach', teach);
+  // Build 2.1: the teaching script gained step 6 (10/100/1,000 more or less), so 5 → 6 steps.
+  check('Teach It: title, 6 parent-guide answers, 6 vocabulary terms, 6 script steps', teach.h1 === 'Represent 4-Digit Numbers' && teach.guide === 6 && teach.vocab === 6 && teach.script === 6 && teach.current === 'teach', teach);
+  check('Teach It: parts A–D labeled for student / together / parent', teach.parts === 'ABCD' && teach.audiences.join('|') === 'For the student|Together|For the parent|For the parent', teach);
+  check('Teach It: "10, 100, 1,000 more or less" is taught (audit B-02)', teach.bigIdea2, teach);
   check('no student name shown', !teach.name);
+  const jump = await js(`document.querySelector('[data-jump="script"]').click(); await new Promise((r) => setTimeout(r, 200));
+    const h = document.querySelector('#script h2').getBoundingClientRect(); const bar = document.querySelector('.stagebar').getBoundingClientRect();
+    return { headingTop: Math.round(h.top), barBottom: Math.round(bar.bottom), hash: location.hash };`);
+  check('Jump links land below the sticky stage bar and keep the stage (audit B-08)', jump.headingTop >= jump.barBottom && (jump.hash === '' || jump.hash === '#teach'), jump);
+  const skip = await js(`location.hash = '#see'; await new Promise((r) => setTimeout(r, 250)); document.querySelector('[data-skip]').click(); await new Promise((r) => setTimeout(r, 250));
+    return { hash: location.hash, focused: document.activeElement.id };`);
+  check('Skip link focuses content without changing the stage (B-20)', skip.hash === '#see' && skip.focused === 'stage', skip);
 
-  // ----- See It: step-through and block counts -----
-  await hash('#see');
+  // ----- See It -----
+  await hash('#teach'); await hash('#see');
   const demo = await js(`
     const body = document.querySelector('#demo-body');
     const counts = () => ['thousand','hundred','ten','one'].map((k) => body.querySelectorAll('[data-block="' + k + '"]').length);
@@ -204,29 +117,50 @@ try {
     return a;`);
   check('Builder: + / − update number, blocks, and forms (2,137 → 2,336)', builder.input === '2,336' && JSON.stringify(builder.counts) === '[2,3,3,6]' && builder.text.includes('2,000 + 300 + 30 + 6') && builder.text.includes('two thousand, three hundred thirty-six'), builder);
   check('Builder: typing 9,050 rebuilds the model', JSON.stringify(builder.typed) === '[9,0,5,0]' && builder.typedText.includes('nine thousand, fifty'), builder);
+  const change = await js(`
+    const out = document.querySelector('#change-out');
+    document.querySelector('[data-delta="100"]').click(); const a = out.innerText;
+    document.querySelector('[data-delta="-10"]').click(); const b = out.innerText;
+    document.querySelector('#change-reset').click();
+    for (let i = 0; i < 8; i++) document.querySelector('[data-delta="1000"]').click();
+    const capped = { text: out.querySelector('.change-eq').innerText, disabled: document.querySelector('[data-delta="1000"]').disabled };
+    return { a, b, capped };`);
+  check('Change one place: 4,125 + 100 = 4,225, then − 10 = 4,215; only one digit changes', /4,125 \+ 100 = 4,225/.test(change.a) && /hundreds digit changed: 1 became 2/.test(change.a) && /4,225 − 10 = 4,215/.test(change.b), change);
+  check('Change one place: buttons that would need regrouping are disabled (stops at 9,125)', /= 9,125/.test(change.capped.text) && change.capped.disabled, change.capped);
+  const challenge = await js(`return document.querySelector('#challenge').innerText;`);
+  check('Challenge: greatest 8,641 and smallest 1,468 from 4, 1, 8, 6 (audit B-11)', /Greatest number: 8,641/.test(challenge) && /Smallest number: 1,468/.test(challenge), challenge.slice(0, 200));
 
   // ----- Practice It -----
   await hash('#practice');
-  const guided = await js(`${HELPERS}
-    const box = document.querySelector('#guided-card');
+  const vocabP = await js(`${FILL_HELPERS}
+    const box = document.querySelector('#vocab-runner');
+    const el = box.querySelector('.q[data-qkey]');
+    const key = el.dataset.qkey.replace('vp-', '');
+    const all = []; let q;
+    // Read the first vocabulary item from the rendered prompt by asking the runner: answer wrong, then right.
+    return { hasHint: !!box.querySelector('[data-act=hint]'), dots: box.querySelectorAll('.dot').length };`);
+  check('Vocabulary practice: 10 items with hints before the test (audit B-03)', vocabP.hasHint && vocabP.dots === 10, vocabP);
+  const guided = await js(`${FILL_HELPERS}
+    const box = document.querySelector('#guided-runner');
     const q = L.guided[0];
     const el = box.querySelector('.q[data-qkey]');
     fill(el, q, false);
     box.querySelector('[data-act=check]').click();
     const wrongMsg = box.querySelector('.result-box').innerText;
+    box.querySelector('[data-act=hint]').click();
+    const afterHint = box.querySelector('.result-box').innerText;
     fill(el, q, true);
     box.querySelector('[data-act=check]').click();
     const rightMsg = box.querySelector('.result-box').innerText;
-    box.querySelector('[data-act=hint]').click();
-    const hint = !box.querySelector('.hint-box').hidden;
     box.querySelector('[data-act=next]').click();
-    const second = document.querySelector('#guided-card .q-prompt').innerText;
-    return { wrongMsg, rightMsg, hint, second };`);
-  check('Guided: wrong answer can be corrected; correct answer explained; hint shows', /Not yet/.test(guided.wrongMsg) && /Correct/.test(guided.rightMsg) && guided.hint && /5,072/.test(guided.second), guided);
+    const second = box.querySelector('.q-prompt').innerText;
+    return { wrongMsg, afterHint, rightMsg, hint: !box.querySelector('.hint-box').hidden, second, dots: box.querySelectorAll('.dot').length };`);
+  check('Guided: wrong answer can be corrected; correct answer explained; 7 problems', /Not yet/.test(guided.wrongMsg) && /Correct/.test(guided.rightMsg) && /3,052/.test(guided.second) && guided.dots === 7, guided);
+  check('Guided: hint is not repeated in the feedback once shown (audit B-14)', /Hint:/.test(guided.wrongMsg) && !/Hint:/.test(guided.afterHint), guided);
 
-  const indep = await js(`${HELPERS}
+  const indep = await js(`${FILL_HELPERS}
     document.querySelector('#new-set').click();
-    const set = store('practice');
+    const set = JSON.parse(localStorage.getItem(L.storageKey + ':practice'));
     document.querySelector('#check-set').click();
     const blocked = document.querySelector('#indep .error-box').innerText;
     const qs = set.ids.map((id) => L.bank.find((q) => q.id === id));
@@ -235,66 +169,78 @@ try {
     document.querySelector('#check-set').click();
     return { n: set.ids.length, blocked, score: document.querySelector('.set-score').innerText,
       wrong: document.querySelectorAll('#indep .feedback-no').length, ok: document.querySelectorAll('#indep .feedback-ok').length };`);
-  check('Independent: set of 10; must answer all; scored with explanations', indep.n === 10 && /Answer every question/.test(indep.blocked) && /9 of 10 correct/.test(indep.score) && indep.wrong === 1 && indep.ok === 9, indep);
-
-  const skillSet = await js(`${HELPERS}
+  check('Independent: set of 10 from the 50-question bank; must answer all; scored with explanations', indep.n === 10 && /Answer every question/.test(indep.blocked) && /9 of 10 correct/.test(indep.score) && indep.wrong === 1 && indep.ok === 9, indep);
+  const skillSet = await js(`${FILL_HELPERS}
     const sel = document.querySelector('#skill-filter'); sel.value = 'expanded'; document.querySelector('#new-set').click();
-    const s = store('practice');
-    return { n: s.ids.length, all: s.ids.every((id) => L.bank.find((q) => q.id === id).skill === 'expanded') };`);
-  check('Independent: skill filter builds a skill-only set', skillSet.all && skillSet.n === 5, skillSet);
+    const s = JSON.parse(localStorage.getItem(L.storageKey + ':practice'));
+    return { n: s.ids.length, all: s.ids.every((id) => L.bank.find((q) => q.id === id).skill === 'expanded'), bank: L.bank.length };`);
+  check('Independent: skill filter builds a skill-only set; bank still has 50', skillSet.all && skillSet.n === 5 && skillSet.bank === 50, skillSet);
 
-  // ----- Test It -----
+  // ----- Test It: focus mode, required answers, switching tests -----
   await hash('#test');
   await js(`document.querySelector('[data-start="math"]').click();`);
   await wait(200);
-  const blocked = await js(`${HELPERS}
+  const blocked = await js(`${FILL_HELPERS}
     const n = document.querySelectorAll('#test-form .q[data-qkey]').length;
     const hints = document.querySelectorAll('#test-form .hint-box, #test-form [data-act=hint]').length;
+    const tabsHidden = getComputedStyle(document.querySelector('.stagebar')).display === 'none';
+    const banner = getComputedStyle(document.querySelector('.test-banner')).display !== 'none';
     document.querySelector('#test-form button[type=submit]').click();
     await new Promise((r) => setTimeout(r, 200));
-    return { n, hints, err: document.querySelector('#test-form .error-box').innerText, flagged: document.querySelectorAll('.needs-answer').length,
-      saved: (store('attempts') || []).length, types: [...new Set(store('draft-math').questions.map((q) => q.type))] };`);
+    return { n, hints, tabsHidden, banner, err: document.querySelector('#test-form .error-box').innerText, flagged: document.querySelectorAll('.needs-answer').length,
+      saved: (JSON.parse(localStorage.getItem(L.storageKey + ':attempts')) || []).length, types: [...new Set(JSON.parse(localStorage.getItem(L.storageKey + ':draft-math')).questions.map((q) => q.type))] };`);
   check('Math Test: 10 questions, several types, no hints', blocked.n === 10 && blocked.hints === 0 && blocked.types.length >= 4, blocked);
+  check('Test focus mode: lesson tabs hidden, test banner shown (audit B-04)', blocked.tabsHidden && blocked.banner, blocked);
   check('Math Test: cannot submit until every question is answered', /answer every question/i.test(blocked.err) && blocked.flagged === 10 && blocked.saved === 0, blocked);
-  await viewport(390, 844, true);
-  await shot('test-math-phone');
-  await viewport(1280, 900, false);
+  await b.viewport(390, 844, true);
+  await b.shot(path.join(SHOTS, 'test-math-phone.png'));
+  await b.viewport(1280, 900, false);
 
-  // Resume: answer 3, reload, the answers are still there.
-  const resumed = await js(`${HELPERS}
-    const d = store('draft-math'); const els = document.querySelectorAll('#test-form .q[data-qkey]');
+  const resumed = await js(`${FILL_HELPERS}
+    const d = JSON.parse(localStorage.getItem(L.storageKey + ':draft-math')); const els = document.querySelectorAll('#test-form .q[data-qkey]');
     d.questions.slice(0, 3).forEach((q, i) => fill(els[i], q, true));
     return document.querySelector('#answered').textContent;`);
   await js('location.reload();');
   await wait(700);
-  await hash('#test');
+  const chooser = await js(`return { focusOff: !document.body.classList.contains('is-testing'), resumeLabel: document.querySelector('[data-start="math"]').innerText, vocabStart: !!document.querySelector('[data-start="vocab"]') };`);
+  check('Refresh mid-test returns to the chooser with Resume; the other test can be started (audit T06)', chooser.focusOff && /Resume/.test(chooser.resumeLabel) && chooser.vocabStart, chooser);
   await js(`document.querySelector('[data-start="math"]').click();`);
   await wait(200);
-  const afterReload = await js(`return { label: document.querySelector('[data-start]') ? 'chooser' : 'runner', answered: document.querySelector('#answered')?.textContent };`);
-  check('Unfinished test survives a page refresh', resumed === '3 of 10 answered' && afterReload.answered === '3 of 10 answered', { resumed, afterReload });
+  const afterReload = await js(`return document.querySelector('#answered')?.textContent;`);
+  check('Unfinished test answers survive a refresh', resumed === '3 of 10 answered' && afterReload === '3 of 10 answered', { resumed, afterReload });
+  await js(`document.querySelector('.test-banner [data-exit]').click();`);
+  await wait(200);
+  const exited = await js(`return { tabs: getComputedStyle(document.querySelector('.stagebar')).display !== 'none', chooser: !!document.querySelector('[data-start="vocab"]') };`);
+  check('"Save and finish later" leaves focus mode and returns to the chooser', exited.tabs && exited.chooser, exited);
+  await js(`history.back();`); await wait(300); await hash('#test');
+  check('Leaving Test It by any route never traps the other test (T06 regression)', await js(`return !!document.querySelector('[data-start="vocab"]') && !!document.querySelector('[data-start="math"]');`));
 
-  const perfect = await js(`${HELPERS}
-    const d = store('draft-math'); const els = document.querySelectorAll('#test-form .q[data-qkey]');
+  await js(`document.querySelector('[data-start="math"]').click();`);
+  await wait(200);
+  const perfect = await js(`${FILL_HELPERS}
+    const d = JSON.parse(localStorage.getItem(L.storageKey + ':draft-math')); const els = document.querySelectorAll('#test-form .q[data-qkey]');
     d.questions.forEach((q, i) => fill(els[i], q, true));
     document.querySelector('#test-form button[type=submit]').click();
     await new Promise((r) => setTimeout(r, 400));
-    const a = store('attempts');
-    return { hash: location.hash, last: a[a.length - 1], text: document.querySelector('.result-detail').innerText };`);
+    const a = JSON.parse(localStorage.getItem(L.storageKey + ':attempts'));
+    return { hash: location.hash, last: a[a.length - 1], text: document.querySelector('.result-detail').innerText, tabs: getComputedStyle(document.querySelector('.stagebar')).display !== 'none' };`);
   const missedQs = perfect.last.questions.filter((q, i) => !perfect.last.correct[i]).map((q) => ({ q, r: perfect.last.responses[q.id] }));
   check('Math Test: all-correct answers score 10/10 = 100% Mastered', perfect.hash === '#results' && perfect.last.score === 10 && perfect.last.pct === 100 && /Mastered/.test(perfect.text), { score: perfect.last.score, missedQs });
-  await shot('results-mastered-desktop');
+  check('Paused-and-resumed count is recorded on the attempt', perfect.last.pauses >= 1 && /paused and resumed/.test(perfect.text), perfect.last.pauses);
+  check('Focus mode ends after submitting', perfect.tabs);
+  await b.shot(path.join(SHOTS, 'results-mastered-desktop.png'));
 
   const zero = await takeTest('math', 0);
   check('Math Test retake uses new numbers', JSON.stringify(zero.last.questions) !== JSON.stringify(perfect.last.questions));
   check('Math Test: all-wrong scores 0% Reteach with 10 explained mistakes', zero.last.score === 0 && /Reteach and reassess/.test(zero.text) && /Mistakes to review \(10\)/.test(zero.text), zero.text.slice(0, 300));
-
   const vocab = await takeTest('vocab', 8);
   check('Vocabulary Test: 8 of 10 → 80% Review missed skills', vocab.last.score === 8 && vocab.last.pct === 80 && /Review missed skills/.test(vocab.text) && /Mistakes to review \(2\)/.test(vocab.text), vocab.text.slice(0, 300));
-  check('Results list skills to review with a next action', /Skills to review/.test(vocab.text) && /(Practice this skill|Review vocabulary)/.test(vocab.text), vocab.text);
-  await viewport(390, 844, true);
-  await shot('results-review-phone');
-  await viewport(1280, 900, false);
-
+  check('Results list skills to review with a next action', /Skills to review/.test(vocab.text) && /(Practice this skill|Vocabulary practice)/.test(vocab.text), vocab.text);
+  await b.viewport(390, 844, true);
+  await noHorizontalScroll('results with attempts @ 390px (audit B-01)');
+  await b.viewport(320, 568, true);
+  await noHorizontalScroll('results with attempts @ 320px (audit B-01)');
+  await b.viewport(1280, 900, false);
   const math7 = await takeTest('math', 7);
   check('Math Test: 7 of 10 → 70% Review missed skills (threshold)', math7.last.pct === 70 && /Review missed skills/.test(math7.text), math7.last.pct);
   const math9 = await takeTest('math', 9);
@@ -302,61 +248,63 @@ try {
   const math6 = await takeTest('math', 6);
   check('Math Test: 6 of 10 → 60% Reteach (threshold)', math6.last.pct === 60 && /Reteach and reassess/.test(math6.text), math6.last.pct);
 
-  // Results survive a refresh; history lists every attempt.
   await js('location.reload();');
   await wait(700);
-  const persisted = await js(`return { rows: document.querySelectorAll('.history tbody tr').length, local: /only in this browser/.test(document.body.innerText),
-    detail: document.querySelector('.result-detail h2').innerText };`);
+  const persisted = await js(`return { rows: document.querySelectorAll('.history tbody tr').length, local: /only in this browser/.test(document.body.innerText) };`);
   check('Results and history persist after refresh (6 attempts)', persisted.rows === 6 && persisted.local, persisted);
-
-  // "Practice this skill" jumps to a filtered practice set.
-  const jump = await js(`${HELPERS}
+  const jumpPractice = await js(`${FILL_HELPERS}
     const b = document.querySelector('[data-practice]');
     if (!b) return { skipped: true };
     const skill = b.dataset.practice; b.click();
     await new Promise((r) => setTimeout(r, 400));
-    const s = store('practice');
-    return { hash: location.hash, skill, ok: s.skill === skill && s.ids.every((id) => L.bank.find((q) => q.id === id).skill === skill), filter: document.querySelector('#skill-filter').value };`);
-  check('"Practice this skill" opens a set for that skill', jump.hash === '#practice' && jump.ok && jump.filter === jump.skill, jump);
+    const s = JSON.parse(localStorage.getItem(L.storageKey + ':practice'));
+    const h = document.querySelector('#independent h2').getBoundingClientRect(); const bar = document.querySelector('.stagebar').getBoundingClientRect();
+    return { hash: location.hash, skill, ok: s.skill === skill && s.ids.every((id) => L.bank.find((q) => q.id === id).skill === skill), filter: document.querySelector('#skill-filter').value, visible: h.top >= bar.bottom };`);
+  check('"Practice this skill" opens a set for that skill, heading visible', jumpPractice.hash === '#practice' && jumpPractice.ok && jumpPractice.filter === jumpPractice.skill && jumpPractice.visible, jumpPractice);
 
-  // Home page shows the latest Math Test result.
-  await load(BASE);
-  check('Home shows latest Math Test status', /Math Test: 60%/.test(await js(`return document.querySelector('#status-2-1').textContent;`)));
+  // ----- Home: Continue Learning from real progress -----
+  await hash('#test');
+  await js(`document.querySelector('[data-start="vocab"]').click();`); await wait(200);
+  await js(`${FILL_HELPERS} const d = JSON.parse(localStorage.getItem(L.storageKey + ':draft-vocab')); fill(document.querySelectorAll('#test-form .q[data-qkey]')[0], d.questions[0], true);`);
+  await b.load(O + BASE);
+  const cont = await js(`return { shown: !document.getElementById('continue').hidden, links: Array.from(document.querySelectorAll('#continue-list a')).map((a) => a.textContent + ' ' + a.getAttribute('href')), badge: document.querySelector('#status-2-1').textContent };`);
+  check('Home: Continue Learning shows the real last activity and the unfinished test', cont.shown && cont.links.some((l) => /Continue: Lesson 2-1/.test(l)) && cont.links.some((l) => /Resume unfinished Lesson 2-1 Vocabulary Test \(1 of 10 answered\)/.test(l)), cont);
+  check('Home shows latest Math Test status', /Math Test: 60%/.test(cont.badge), cont.badge);
+  await js(`document.querySelector('#continue-list a').click();`); await wait(700);
+  check('Continue Learning link opens the saved place', await js(`return location.pathname.endsWith('/lesson-2-1/') && location.hash === '#test'`));
 
-  // Clear progress (in-page confirmation, no browser dialogs).
-  await load(BASE + 'curriculum/chapter-2/lesson-2-1/#results');
+  // ----- Clear progress -----
+  await b.load(O + LESSON + '#results');
+  await js(`localStorage.setItem('mathbook:v2:number-words:phase-1:attempts', '[{"score":9}]');`);
   const cleared = await js(`
     document.querySelector('#clear').click();
     const asked = !!document.querySelector('#clear-yes');
     document.querySelector('#clear-yes').click();
-    return { asked, keys: Object.keys(localStorage).filter((k) => k.startsWith('mathbook:v2:lesson-2-1')).length, text: document.querySelector('h2').innerText };`);
-  check('Clear progress asks first, then removes all saved data', cleared.asked && cleared.keys === 0 && /No test results yet/.test(cleared.text), cleared);
+    return { asked, lessonKeys: Object.keys(localStorage).filter((k) => k.startsWith('mathbook:v2:lesson-2-1')).length, nwKept: !!localStorage.getItem('mathbook:v2:number-words:phase-1:attempts'), text: document.querySelector('h2').innerText };`);
+  check('Clear progress asks first, removes only this lesson (Number Words kept)', cleared.asked && cleared.lessonKeys === 0 && cleared.nwKept && /No test results yet/.test(cleared.text), cleared);
 
   // ----- Layout at phone, tablet, desktop -----
-  const sizes = [['phone', 390, 844, true], ['tablet', 820, 1180, true], ['desktop', 1280, 900, false]];
-  for (const [name, w, h, mobile] of sizes) {
-    await viewport(w, h, mobile);
+  for (const [name, w, h] of [['phone', 390, 844], ['tablet', 820, 1180], ['desktop', 1280, 900], ['small-phone', 320, 568], ['short', 640, 360]]) {
+    await b.viewport(w, h);
     for (const stage of ['teach', 'see', 'practice', 'test', 'results']) {
       await hash('#' + stage);
-      if (stage === 'practice') await js(`document.querySelector('#new-set').click();`);
-      await noHorizontalScroll(`${stage} @ ${name} ${w}px`);
-      if (name !== 'tablet' || stage === 'see') await shot(`${stage}-${name}`);
+      if (stage === 'practice') await js(`const s = document.querySelector('#skill-filter'); s.value = 'model'; document.querySelector('#new-set').click();`);
+      await noHorizontalScroll(`${stage} @ ${name} ${w}×${h}`);
+      if (name === 'phone' || name === 'desktop') await b.shot(path.join(SHOTS, `${stage}-${name}.png`));
     }
+    const sticky = await js(`return getComputedStyle(document.querySelector('.stagebar')).position`);
+    if (name === 'short') check('Short screens: stage bar is not sticky (audit B-09)', sticky === 'static', sticky);
   }
-  await viewport(320, 640, true);
-  for (const stage of ['teach', 'see', 'practice', 'test']) { await hash('#' + stage); await noHorizontalScroll(`${stage} @ small phone 320px`); }
+  await b.viewport(390, 844);
+  await b.load(O + BASE);
+  await noHorizontalScroll('home @ phone');
+  await b.shot(path.join(SHOTS, 'home-phone.png'));
+  await b.viewport(1280, 900, false);
+  await b.load(O + BASE);
+  await b.shot(path.join(SHOTS, 'home-desktop.png'));
 
-  // Block-building questions are the widest controls: force them onto narrow phones.
-  for (const w of [320, 390]) {
-    await viewport(w, 800, true);
-    await hash('#practice');
-    await js(`const s = document.querySelector('#skill-filter'); s.value = 'model'; document.querySelector('#new-set').click();`);
-    await noHorizontalScroll(`block-building practice set @ ${w}px`);
-    if (w === 390) await shot('practice-build-phone');
-  }
-
-  // Stress: many all-correct attempts through the real UI must all score 100%.
-  await viewport(1280, 900, false);
+  // ----- Stress: all-correct attempts must always score 100% -----
+  await b.load(O + LESSON + '#test');
   const scores = [];
   for (let i = 0; i < 20; i++) {
     for (const id of ['math', 'vocab']) {
@@ -366,21 +314,19 @@ try {
   }
   check('40 all-correct test attempts (20 Math, 20 Vocabulary) all score 100%', scores.length === 0, scores);
 
-  // Keyboard: stage links and controls are real links/buttons, reachable by Tab.
+  // ----- Accessibility basics -----
   const kb = await js(`return { links: document.querySelectorAll('.stagebar a[href]').length,
     unlabeled: Array.from(document.querySelectorAll('button, input, select')).filter((e) => !(e.innerText || e.getAttribute('aria-label') || e.getAttribute('aria-labelledby') || e.closest('label'))).length };`);
   check('Keyboard/screen reader: 5 stage links, every control labeled', kb.links === 5 && kb.unlabeled === 0, kb);
-
-  check('No missing files (404s)', missing.length === 0, missing);
-  check('No JavaScript errors', errors.length === 0, errors);
+  check('No missing files (404s)', server.missing.length === 0, server.missing);
+  check('No JavaScript errors', b.errors.length === 0, b.errors);
 } catch (e) {
   check('browser test ran to completion', false, String(e && e.stack || e));
 } finally {
-  ws.close();
-  chrome.kill();
+  b.close();
   server.close();
 }
 
 const failed = results.filter((r) => !r.ok);
-console.log(`\n${results.length - failed.length} passed, ${failed.length} failed. Screenshots: tests/screenshots/`);
+console.log(`\n${results.length - failed.length} passed, ${failed.length} failed (Lesson 2-1 + home). Screenshots: tests/screenshots/`);
 process.exit(failed.length ? 1 : 0);

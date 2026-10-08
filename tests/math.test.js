@@ -144,7 +144,10 @@ test('lesson structure is complete', () => {
   assert.equal(L.parentGuide.length, 6, 'six parent questions');
   assert.deepEqual(L.parentGuide.map((g) => g.q), ['What am I teaching?', 'What does it mean?', 'Why does it work?', 'How do I demonstrate it?', 'What questions should I ask?', 'How do I know they understand?']);
   assert.ok(L.vocabulary.length >= 6);
-  assert.equal(L.guided.length, 5);
+  // Build 2.1: guided practice grew from 5 to 7 so every assessed objective has a guided problem
+  // (block building and 10/100/1,000 more or less were assessed without one — audit B-02, matrix O3).
+  assert.equal(L.guided.length, 7);
+  ['place', 'model', 'expanded', 'standard', 'word', 'value', 'change'].forEach((s) => assert.ok(L.guided.some((g) => g.skill === s), `guided covers ${s}`));
   assert.deepEqual(L.seeIt.examples, [2137, 4628, 5072]);
   assert.ok(!/chris/i.test(JSON.stringify(L)), 'no student names in content');
 });
@@ -190,8 +193,15 @@ test('word-form distractors are always 3 different, wrong numbers', () => {
 
 test('guided practice items grade correctly', () => {
   L.guided.filter((q) => q.type !== 'explain').forEach((q) => checkQuestion(q, 'guided'));
-  assert.equal(L.guided[1].answer, 5072);
-  assert.equal(Q.grade(L.guided[1], '5,000 + 70 + 2'), true);
+  const g5072 = L.guided.find((g) => g.type === 'expanded'); // was guided[1] before Build 2.1 reordering
+  assert.equal(g5072.answer, 5072);
+  assert.equal(Q.grade(g5072, '5,000 + 70 + 2'), true);
+  const gChange = L.guided.find((g) => g.skill === 'change');
+  assert.equal(gChange.prompt, 'What is 10 less than 7,284?');
+  assert.equal(gChange.answer, 7274);
+  const gBuild = L.guided.find((g) => g.type === 'build');
+  assert.equal(Q.grade(gBuild, [3, 0, 5, 2]), true);
+  assert.equal(Q.grade(gBuild, [3, 5, 2, 0]), false);
 });
 
 test('Math Test: 10 valid questions, all objectives, new numbers each attempt, no hints', () => {
@@ -213,6 +223,15 @@ test('Math Test: 10 valid questions, all objectives, new numbers each attempt, n
   assert.ok(seen.size > 1990, 'retakes get different questions');
   // Same seed → same test (saved drafts and attempts are reproducible).
   assert.deepEqual(JSON.stringify(L.tests.math.generate(42)), JSON.stringify(L.tests.math.generate(42)));
+});
+
+test('Vocabulary practice has hints; the Vocabulary Test has none', () => {
+  for (let seed = 1; seed <= 300; seed++) {
+    const practice = L.vocabPractice(seed);
+    assert.equal(practice.length, 10);
+    practice.forEach((q) => { assert.ok(q.hint, 'practice hint'); checkQuestion(q, `vocab practice ${seed}`); });
+    L.tests.vocab.generate(seed).forEach((q) => assert.equal(q.hint, undefined, 'no hints on tests'));
+  }
 });
 
 test('Vocabulary Test: 10 valid questions with randomized versions', () => {
