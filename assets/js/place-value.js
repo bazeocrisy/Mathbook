@@ -1,0 +1,263 @@
+/*
+ * Mathbook place-value toolkit.
+ * Pure helpers (no DOM) so they can be unit-tested in Node and reused by every lesson:
+ * digits, number forms, answer parsing, seeded randomness, and SVG base-ten blocks.
+ */
+(function (root) {
+  'use strict';
+  const MB = (root.Mathbook = root.Mathbook || {});
+
+  // Left-to-right order of a four-digit number.
+  const PLACES = [
+    { key: 'thousands', name: 'Thousands', one: 'thousand', value: 1000, block: 'cube', blockName: 'thousand cube' },
+    { key: 'hundreds', name: 'Hundreds', one: 'hundred', value: 100, block: 'flat', blockName: 'hundred flat' },
+    { key: 'tens', name: 'Tens', one: 'ten', value: 10, block: 'rod', blockName: 'ten rod' },
+    { key: 'ones', name: 'Ones', one: 'one', value: 1, block: 'unit', blockName: 'unit cube' }
+  ];
+
+  // ---------- Digits and number forms ----------
+
+  function digitsOf(n) {
+    return [Math.floor(n / 1000) % 10, Math.floor(n / 100) % 10, Math.floor(n / 10) % 10, n % 10];
+  }
+
+  function fromDigits(d) {
+    return d[0] * 1000 + d[1] * 100 + d[2] * 10 + d[3];
+  }
+
+  /** 2137 -> "2,137" (independent of the browser locale). */
+  function fmt(n) {
+    return String(n).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+  }
+
+  function expandedTerms(n) {
+    return digitsOf(n).map((d, i) => d * PLACES[i].value).filter((v) => v > 0);
+  }
+
+  /** 5072 -> "5,000 + 70 + 2" (zero places are left out). */
+  function expandedForm(n) {
+    return expandedTerms(n).map(fmt).join(' + ');
+  }
+
+  const ONES = ['zero', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten',
+    'eleven', 'twelve', 'thirteen', 'fourteen', 'fifteen', 'sixteen', 'seventeen', 'eighteen', 'nineteen'];
+  const TENS = ['', '', 'twenty', 'thirty', 'forty', 'fifty', 'sixty', 'seventy', 'eighty', 'ninety'];
+
+  function under100(n) {
+    if (n < 20) return ONES[n];
+    return TENS[Math.floor(n / 10)] + (n % 10 ? '-' + ONES[n % 10] : '');
+  }
+
+  function under1000(n) {
+    const h = Math.floor(n / 100);
+    const rest = n % 100;
+    const parts = [];
+    if (h) parts.push(ONES[h] + ' hundred');
+    if (rest) parts.push(under100(rest));
+    return parts.join(' ');
+  }
+
+  /** 2137 -> "two thousand, one hundred thirty-seven" (0–9,999). */
+  function numberToWords(n) {
+    if (n === 0) return 'zero';
+    const th = Math.floor(n / 1000);
+    const rest = n % 1000;
+    if (!th) return under1000(rest);
+    return ONES[th] + ' thousand' + (rest ? ', ' + under1000(rest) : '');
+  }
+
+  // ---------- Answer parsing (generous with formatting, strict with math) ----------
+
+  /** Accepts "2137", "2,137", " 2 137 ". Returns null for anything that is not a whole number. */
+  function parseWholeNumber(text) {
+    if (text === null || text === undefined) return null;
+    const s = String(text).trim().replace(/\s+/g, '');
+    if (/^\d+$/.test(s)) return Number(s);
+    if (/^\d{1,3}(,\d{3})+$/.test(s)) return Number(s.replace(/,/g, ''));
+    return null;
+  }
+
+  /**
+   * Checks an expanded-form answer such as "5,000 + 70 + 2".
+   * Accepted: any spacing, commas optional, any order, and optional "+ 0" terms.
+   * Each non-zero term must be one digit times 1, 10, 100, or 1,000, each place used once,
+   * and the terms must add to n.
+   */
+  function checkExpanded(text, n) {
+    const parts = String(text || '').split('+');
+    const values = parts.map(parseWholeNumber);
+    if (!String(text || '').trim() || values.some((v) => v === null)) return { ok: false, reason: 'format' };
+    const seen = new Set();
+    for (const v of values) {
+      if (v === 0) continue;
+      const s = String(v);
+      if (!/^[1-9]0{0,3}$/.test(s)) return { ok: false, reason: 'term' };
+      if (seen.has(s.length)) return { ok: false, reason: 'repeat' };
+      seen.add(s.length);
+    }
+    const sum = values.reduce((a, b) => a + b, 0);
+    return sum === n ? { ok: true } : { ok: false, reason: 'sum' };
+  }
+
+  // ---------- Seeded randomness (retakes get new numbers; saved attempts stay reproducible) ----------
+
+  function rng(seed) {
+    let a = seed >>> 0;
+    return function () {
+      a = (a + 0x6d2b79f5) >>> 0;
+      let t = a;
+      t = Math.imul(t ^ (t >>> 15), t | 1);
+      t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+      return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    };
+  }
+
+  function randInt(r, min, max) {
+    return min + Math.floor(r() * (max - min + 1));
+  }
+
+  function pick(r, list) {
+    return list[Math.floor(r() * list.length)];
+  }
+
+  function shuffle(r, list) {
+    const a = list.slice();
+    for (let i = a.length - 1; i > 0; i--) {
+      const j = Math.floor(r() * (i + 1));
+      [a[i], a[j]] = [a[j], a[i]];
+    }
+    return a;
+  }
+
+  /**
+   * Random four-digit number.
+   * zeros: 'none' (no zero digits), 'one' (exactly one zero in hundreds, tens, or ones), 'maybe' (40% chance of one).
+   * distinct: every digit different, so "the 7 in 4,719" is never ambiguous.
+   */
+  function randomFourDigit(r, opts) {
+    const o = Object.assign({ zeros: 'none', distinct: false }, opts);
+    for (;;) {
+      const d = [randInt(r, 1, 9), randInt(r, 1, 9), randInt(r, 1, 9), randInt(r, 1, 9)];
+      if (o.zeros === 'one' || (o.zeros === 'maybe' && r() < 0.4)) d[randInt(r, 1, 3)] = 0;
+      if (o.distinct && new Set(d).size < 4) continue;
+      return fromDigits(d);
+    }
+  }
+
+  // ---------- SVG base-ten blocks ----------
+  // Every block is its own <g data-block="..."> so tests can count exactly what is drawn.
+
+  const COLORS = {
+    cube: { fill: '#9ccaf5', side: '#6fa9de', top: '#c4e0fa', stroke: '#1d5c96' },
+    flat: { fill: '#a8e6c0', stroke: '#1c7a45' },
+    rod: { fill: '#ffde85', stroke: '#9a7000' },
+    unit: { fill: '#ffb8c2', stroke: '#b3304a' }
+  };
+
+  function gridLines(x, y, w, h, cols, rows, stroke) {
+    let s = '';
+    for (let i = 1; i < cols; i++) {
+      const xi = (x + (w * i) / cols).toFixed(1);
+      s += `<line x1="${xi}" y1="${y}" x2="${xi}" y2="${y + h}"/>`;
+    }
+    for (let j = 1; j < rows; j++) {
+      const yj = (y + (h * j) / rows).toFixed(1);
+      s += `<line x1="${x}" y1="${yj}" x2="${x + w}" y2="${yj}"/>`;
+    }
+    return `<g stroke="${stroke}" stroke-width="0.6" opacity="0.55">${s}</g>`;
+  }
+
+  function cube(x, y) {
+    const s = 44, d = 12, c = COLORS.cube;
+    return `<g data-block="thousand">` +
+      `<polygon points="${x},${y + d} ${x + d},${y} ${x + s + d},${y} ${x + s},${y + d}" fill="${c.top}" stroke="${c.stroke}" stroke-width="1.5" stroke-linejoin="round"/>` +
+      `<polygon points="${x + s},${y + d} ${x + s + d},${y} ${x + s + d},${y + s} ${x + s},${y + s + d}" fill="${c.side}" stroke="${c.stroke}" stroke-width="1.5" stroke-linejoin="round"/>` +
+      `<rect x="${x}" y="${y + d}" width="${s}" height="${s}" fill="${c.fill}" stroke="${c.stroke}" stroke-width="1.5"/>` +
+      gridLines(x, y + d, s, s, 10, 10, c.stroke) + `</g>`;
+  }
+
+  function flat(x, y) {
+    const s = 50, c = COLORS.flat;
+    return `<g data-block="hundred"><rect x="${x}" y="${y}" width="${s}" height="${s}" rx="2" fill="${c.fill}" stroke="${c.stroke}" stroke-width="1.5"/>` +
+      gridLines(x, y, s, s, 10, 10, c.stroke) + `</g>`;
+  }
+
+  function rod(x, y) {
+    const w = 12, h = 120, c = COLORS.rod;
+    return `<g data-block="ten"><rect x="${x}" y="${y}" width="${w}" height="${h}" rx="2" fill="${c.fill}" stroke="${c.stroke}" stroke-width="1.5"/>` +
+      gridLines(x, y, w, h, 1, 10, c.stroke) + `</g>`;
+  }
+
+  function unit(x, y) {
+    const c = COLORS.unit;
+    return `<g data-block="one"><rect x="${x}" y="${y}" width="12" height="12" rx="2" fill="${c.fill}" stroke="${c.stroke}" stroke-width="1.5"/></g>`;
+  }
+
+  // Layout per place: blocks per row, cell size, and fixed drawing width (so scale never changes with count).
+  const LAYOUT = {
+    cube: { draw: cube, perRow: 3, cw: 66, ch: 66, pad: 4 },
+    flat: { draw: flat, perRow: 3, cw: 62, ch: 62, pad: 4 },
+    rod: { draw: rod, perRow: 9, cw: 20, ch: 128, pad: 4 },
+    unit: { draw: unit, perRow: 5, cw: 20, ch: 20, pad: 4 }
+  };
+
+  /** SVG for `count` blocks of one place (0–9). `ariaLabel` overrides the spoken description. */
+  function placeSVG(placeIndex, count, ariaLabel) {
+    const p = PLACES[placeIndex];
+    const L = LAYOUT[p.block];
+    const rows = Math.max(1, Math.ceil(count / L.perRow));
+    const w = L.perRow * L.cw + L.pad;
+    const h = rows * L.ch + L.pad;
+    let body = '';
+    for (let i = 0; i < count; i++) {
+      body += L.draw(L.pad + (i % L.perRow) * L.cw, L.pad + Math.floor(i / L.perRow) * L.ch);
+    }
+    if (!count) {
+      body = `<rect x="2" y="2" width="${w - 4}" height="${h - 4}" rx="8" fill="none" stroke="#9fb1c5" stroke-width="2" stroke-dasharray="6 5"/>`;
+    }
+    const label = ariaLabel || (count === 1 ? `1 ${p.blockName}` : `${count} ${p.blockName}s`);
+    return `<svg class="blocks-svg blocks-${p.block}" viewBox="0 0 ${w} ${h}" width="${w}" height="${h}" role="img" aria-label="${label}">${body}</svg>`;
+  }
+
+  /**
+   * Base-ten model of a number, one column per place.
+   * opts.captions: show "3 tens = 30" under each column (turn off when the student must work it out).
+   * opts.dim: array of place indexes to fade (step-by-step demonstrations).
+   * opts.digits: draw these counts instead of digitsOf(n) (used by the Build tool).
+   */
+  function blocksHTML(n, opts) {
+    const o = Object.assign({ captions: true, dim: [] }, opts);
+    const d = o.digits || digitsOf(n);
+    const cols = d.map((count, i) => {
+      const p = PLACES[i];
+      const cap = o.captions
+        ? `<figcaption><b>${count}</b> ${count === 1 ? p.one : p.key} = ${fmt(count * p.value)}</figcaption>`
+        : '';
+      return `<div class="blocks-col place-${p.key}${o.dim.includes(i) ? ' is-dim' : ''}"><div class="blocks-label">${p.name}</div><div class="blocks-art">${placeSVG(i, count)}</div>${cap}</div>`;
+    });
+    const summary = d.map((c, i) => `${c} ${c === 1 ? PLACES[i].one : PLACES[i].key}`).join(', ');
+    return `<figure class="blocks" aria-label="Base-ten blocks: ${summary}">${cols.join('')}</figure>`;
+  }
+
+  /** A single block for vocabulary and "what does this block show?" items. */
+  function singleBlockSVG(placeIndex, ariaLabel) {
+    return placeSVG(placeIndex, 1, ariaLabel);
+  }
+
+  /** Normalizes typed word form: case, hyphens, commas, extra spaces, and "and" do not matter. */
+  function normalizeWords(text) {
+    return String(text || '').toLowerCase().replace(/[-‐–—]/g, ' ').replace(/[,.]/g, ' ')
+      .split(/\s+/).filter((w) => w && w !== 'and').join(' ');
+  }
+
+  function checkWords(text, n) {
+    return normalizeWords(text) === normalizeWords(numberToWords(n));
+  }
+
+  MB.pv = {
+    normalizeWords, checkWords,
+    PLACES, digitsOf, fromDigits, fmt, expandedTerms, expandedForm, numberToWords,
+    parseWholeNumber, checkExpanded, rng, randInt, pick, shuffle, randomFourDigit,
+    placeSVG, blocksHTML, singleBlockSVG
+  };
+})(typeof window !== 'undefined' ? window : globalThis);

@@ -1,28 +1,28 @@
 # Mathbook — Chapter 2, Lesson 2-1
 
 ## Lesson
-**Represent 4-Digit Numbers** (textbook pages 33–36)
+**Represent 4-Digit Numbers**. Open it at `curriculum/chapter-2/lesson-2-1/` (linked from the home page).
 
-## Original textbook photographs
-Upload these four images to this folder in GitHub:
-- `IMG_2585.jpeg`
-- `IMG_2586.jpeg`
-- `IMG_2587.jpeg`
-- `IMG_2588.jpeg`
-
-The source photographs are not yet included in this repository. Do not assume they have been uploaded.
+## Files
+- `index.html`: the lesson page.
+- `lesson.js`: all teaching content for this lesson: learning target, vocabulary, parent guide, teaching script, worked examples, 5 guided-practice problems, the 50-question practice bank, and the Vocabulary Test and Math Test generators.
+- `01_lesson_introduction.png`, `02_see_it_examples.png`, `03_guided_practice.png`, `04_independent_practice.png`: original Mathbook reference pages used to plan the interactive lesson. The lesson app does not load them.
 
 ## Instructional objective
-Teach place value of thousands, hundreds, tens, and ones, including:
-- Visual representation of four-digit numbers with base-ten models
-- Standard form (2,138)
-- Expanded form (2,000 + 100 + 30 + 8)
-- Word form (two thousand, one hundred thirty-eight)
-- Explaining the value of each digit
+Teach the place value of thousands, hundreds, tens, and ones, including:
+- Visual representation of four-digit numbers with base-ten blocks and place-value charts
+- Standard form (2,137)
+- Expanded form (2,000 + 100 + 30 + 7)
+- Word form (two thousand, one hundred thirty-seven)
+- Explaining the value of each digit, including zero as a placeholder (5,072)
 
-## Claude Code instructions
-1. Review the four original textbook photographs once uploaded.
-2. Preserve the five-stage app sequence: Teach → See It → Practice → Test → Results.
-3. Use original instructional content and mathematically accurate interactive diagrams rather than reproducing textbook pages verbatim.
-4. Make explanations concise and parent-led, with accessible layouts on desktop and mobile.
-5. Do not add another chapter until this lesson is reviewed.
+## Assessment
+- **Vocabulary Test** (10 questions): math words, forms of a number, base-ten blocks, place names.
+- **Math Test** (10 questions): digit value, place names, reading a block model, building with blocks, expanded form, standard form, word form (both directions), place-value chart, and 10/100/1,000 more or less.
+- Question types include multiple choice, fill-in-the-blank, typed numbers, typed expanded form, place-value chart entry, and building with blocks.
+- Every attempt generates new numbers. Answers and explanations are computed from the number itself, and the tests in `tests/` verify them.
+
+## Accepted answer formats
+- Numbers: with or without commas (`2137`, `2,137`).
+- Expanded form: any spacing, commas optional, any order, `+ 0` allowed (`5,000 + 70 + 2`, `5000+70+2`).
+- Word form (practice only): capital letters, hyphens, commas, and "and" are ignored.
