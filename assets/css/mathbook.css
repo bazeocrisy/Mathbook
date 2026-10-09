@@ -579,3 +579,53 @@ a.btn.is-disabled { background: #eceef5; color: #545a75; pointer-events: none; }
   .home-link { white-space: nowrap; padding: 0.4rem 0.75rem; }
   .topbar-in .lesson-pill { display: none; }
 }
+
+/* ---------- Learn: compact, wider layout with Example / Your Turn phases (scoped to the Learn screen) ---------- */
+.stage.stage-learn { max-width: 1100px; }
+.stage-learn .act-hero { padding: 0.9rem 0 0.5rem; }
+.stage-learn .act-title { display: flex; align-items: baseline; justify-content: space-between; gap: 0.4rem 1rem; flex-wrap: wrap; }
+.stage-learn .act-title h1 { font-size: 1.65rem; margin: 0.1rem 0 0; }
+.stage-learn .wiz-count { color: var(--star); font-size: 0.89rem; letter-spacing: 0.06em; margin: 0; }
+.stage-learn .wiz-card { margin: 0.5rem 0 0; padding: 1.25rem; }
+.wiz-h { display: flex; align-items: center; flex-wrap: wrap; gap: 0.3rem 0.7rem; font-size: 1.45rem; margin: 0 0 0.7rem; }
+.phase-tag { font-size: 0.89rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.06em; padding: 0.2rem 0.7rem; border-radius: 999px; }
+.phase-example { background: var(--primary-soft); color: var(--primary); }
+.phase-try { background: #fff3c9; color: #5f4500; }
+.stage-learn .wiz-explain { font-size: 1rem; font-weight: 400; color: var(--ink); margin: 0 0 0.8rem; max-width: 52rem; }
+.stage-learn .wiz-demo { margin: 0; }
+.stage-learn .demo-note { margin-top: 0.75rem; padding: 0.7rem 0.9rem; }
+.stage-learn .demo-say { font-size: 1rem; font-weight: 400; color: var(--ink); }
+.stage-learn .ex-count, .stage-learn .step-count, .stage-learn .q-help, .stage-learn .forms dt { font-size: 0.89rem; }
+.stage-learn .demo-controls { margin-top: 0.75rem; }
+.stage-learn .pv-chart, .stage-learn .blocks { margin: 0.75rem 0; }
+.stage-learn .forms { margin-top: 0.75rem; }
+.stage-learn .big-number { font-size: 2.1rem; margin: 0.5rem 0 0; }
+.stage-learn .change-eq { font-size: clamp(1.5rem, 5vw, 2.1rem); }
+.stage-learn .demo-left > :first-child { margin-top: 0; }
+.idea-pair { display: grid; gap: 0.75rem; }
+.wiz-check { border-width: 2px; padding: 1rem; }
+.stage-learn .wiz-check .q-prompt { font-size: 1rem; font-weight: 400; color: var(--ink); }
+.wiz-check-actions { margin-top: 0.75rem; }
+.wiz-actions { display: flex; justify-content: space-between; align-items: center; gap: 0.75rem; flex-wrap: wrap; margin-top: 1rem; padding-top: 1rem; border-top: 1px solid var(--line); }
+.stage-learn .wiz-locked-note { color: var(--muted); text-align: right; font-size: 0.89rem; margin: 0.5rem 0 0; }
+.stage-learn .wiz-menu { margin-top: 0.75rem; }
+/* Wide screens: related representations side by side, controls next to what they change. */
+@media (min-width: 900px) {
+  .demo-split { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 1.1rem; align-items: start; }
+  .demo-split .blocks { margin-top: 0.75rem; }
+  .idea-pair { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .idea-pair .idea { margin-top: 0; }
+  .stage-learn .pv-digit { font-size: 2.1rem; }
+}
+@media (max-width: 700px) {
+  .stage.stage-learn { padding-left: 0.75rem; padding-right: 0.75rem; }
+  .stage-learn .wiz-card { padding: 0.9rem; border-radius: 18px; }
+  .stage-learn .act-title h1 { font-size: 1.6rem; }
+  .wiz-h { font-size: 1.3rem; }
+  .wiz-check { padding: 0.8rem; }
+  .wiz-actions .btn { flex: 1 1 auto; }
+  .stage-learn .wiz-locked-note { text-align: center; }
+}
+.stage-learn .builder-top .q-build { grid-template-columns: repeat(auto-fit, minmax(min(100%, 7.5rem), 1fr)); }
+.stage-learn .builder-top { gap: 0.6rem; }
+@media (min-width: 900px) { .stage-learn .builder-top .q-build { grid-template-columns: repeat(4, minmax(0, 1fr)); } }

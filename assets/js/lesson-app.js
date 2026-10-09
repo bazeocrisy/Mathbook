@@ -113,7 +113,7 @@
     });
     const main = ctx.main;
     /** Menus and lists use the wider layout (about 960px); one-at-a-time activities use about 800px. */
-    const activity = (on) => { main.classList.toggle('stage-activity', on); main.classList.toggle('stage-menu', !on); };
+    const activity = (on, learn) => { main.classList.toggle('stage-activity', on); main.classList.toggle('stage-menu', !on); main.classList.toggle('stage-learn', !!learn); };
 
     // ---------- Navigation pieces ----------
     /** A whole-card link: icon, title, one short line. */
@@ -222,9 +222,10 @@
       if (s.values < 4) expanded += shown.length ? ' + …' : '';
       if (s.total) expanded = `${expandedForm(n)} = ${fmt(n)}`;
       return `<div class="demo-note"><p class="demo-say">${esc(s.say)}</p>${childOnly ? '' : `<p class="demo-ask">${esc(s.ask)}</p>`}</div>` +
+        `<div class="demo-split"><div class="demo-left">` +
         chartHTML(n, { highlight: s.highlight, values: [0, 1, 2, 3].map((i) => i < s.values) }) +
-        pv.blocksHTML(n, { dim: s.dim }) +
-        formsHTML(n, { expanded: esc(expanded), words: s.words ? esc(numberToWords(n)) : '<span class="muted">(last step)</span>' });
+        formsHTML(n, { expanded: esc(expanded), words: s.words ? esc(numberToWords(n)) : '<span class="muted">(last step)</span>' }) +
+        `</div><div class="demo-right">` + pv.blocksHTML(n, { dim: s.dim }) + `</div></div>`;
     }
 
     /** Which ±10/100/1,000 changes stay inside 1,000–9,999 without regrouping? */
@@ -235,16 +236,19 @@
     }
 
     // ----- See It: a guided wizard, one step at a time -----
-    // Saved as 'see-wizard': { step, done: { [stepId]: true }, checks: { [stepId]: { q, tries, retry, solved, revealed, response } }, ex, sub }
+    // Saved as 'see-wizard': { step, done: { [stepId]: true }, checks: { [stepId]: { q, tries, retry, solved, revealed, response } }, ex, sub,
+    //   phase: { [stepId]: 'example' | 'try' }, builder: [th, h, t, o], change }  (phase, builder, change are optional)
     // A step is complete when its check is answered correctly (on any try). After two misses the answer is
     // taught and a new question of the same kind is offered, so a child is never stuck and never skips the check.
     function seeView(c, arg) {
-      activity(true);
+      activity(true, true);
       const steps = L.seeIt.steps;
       const W = store.get('see-wizard', null) || { step: 0, done: {}, checks: {}, ex: 0, sub: 0 };
       const save = () => store.set('see-wizard', W);
       const reachable = (i) => i === 0 || steps.slice(0, i).every((s) => W.done[s.id]);
       if (!reachable(W.step)) W.step = 0;
+      if (Array.isArray(W.builder) && W.builder.length === 4) S.builder = W.builder.slice();
+      if (typeof W.change === 'number' && W.change >= 1000 && W.change <= 9999) S.change = W.change;
 
       function checkState(step) {
         if (!W.checks[step.id]) W.checks[step.id] = { q: step.check(pv.rng(shell.newSeed())), tries: 0, retry: false, solved: false, revealed: false };
@@ -263,16 +267,18 @@
             `<button type="button" class="btn btn-ghost" id="demo-next">Next part ▶</button></div>`;
         }
         if (step.kind === 'build') {
+          // The + / − controls on top; below them the number, chart, and forms beside the blocks they build (wide screens).
           return `<div class="builder-top">${stepperHTML(S.builder, 'bld')}` +
             `<label class="builder-type">Type a number <input id="bld-input" type="text" inputmode="numeric" autocomplete="off" maxlength="5" aria-describedby="bld-note"></label></div>` +
-            `<p class="q-help" id="bld-note">Any whole number from 0 to 9,999.</p><div id="bld-out" aria-live="polite"></div>`;
+            `<p class="q-help" id="bld-note">Any whole number from 0 to 9,999.</p><div class="demo-split"><div class="demo-left" id="bld-out" aria-live="polite"></div>` +
+            `<div class="demo-right" id="bld-blocks"></div></div>`;
         }
         if (step.kind === 'change') {
           return `<div class="change-row" role="group" aria-label="Change the number">` +
             [1000, 100, 10].map((v) => `<button type="button" class="btn btn-ghost" data-delta="${v}">+ ${fmt(v)}</button>`).join('') +
             [1000, 100, 10].map((v) => `<button type="button" class="btn btn-ghost" data-delta="${-v}">− ${fmt(v)}</button>`).join('') +
             `<button type="button" class="btn btn-small" id="change-reset">Start again at ${fmt(L.seeIt.changeStart)}</button></div>` +
-            `<p class="muted">Buttons that would need regrouping are turned off. That comes in a later lesson.</p>` +
+            `<p class="q-help">Buttons that would need regrouping are turned off. That comes in a later lesson.</p>` +
             `<div class="change-out" id="change-out" aria-live="polite"></div>`;
         }
         if (step.kind === 'ten') {
@@ -283,9 +289,9 @@
         const cd = L.seeIt.composeDigits;
         const greatest = fromDigits(cd.slice().sort((a, b) => b - a));
         const smallest = fromDigits(cd.slice().sort((a, b) => a - b));
-        return `<p>Example: use the digits <b>${cd.join(', ')}</b> once each.</p>` +
+        return `<p>Example: use the digits <b>${cd.join(', ')}</b> once each.</p><div class="idea-pair">` +
           `<div class="idea"><h3>Greatest number: ${fmt(greatest)}</h3><p>Put the <b>greatest</b> digit in the thousands place, then the next greatest in the hundreds place, and so on.</p>${chartHTML(greatest, { label: 'Greatest number' })}</div>` +
-          `<div class="idea"><h3>Smallest number: ${fmt(smallest)}</h3><p>Put the <b>smallest</b> digit in the thousands place, then the next smallest, and so on.</p>${chartHTML(smallest, { label: 'Smallest number' })}</div>`;
+          `<div class="idea"><h3>Smallest number: ${fmt(smallest)}</h3><p>Put the <b>smallest</b> digit in the thousands place, then the next smallest, and so on.</p>${chartHTML(smallest, { label: 'Smallest number' })}</div></div>`;
       }
 
       function bindDemo(step) {
@@ -314,12 +320,16 @@
         }
         if (step.kind === 'build') {
           const out = main.querySelector('#bld-out');
+          const blocks = main.querySelector('#bld-blocks');
           const input = main.querySelector('#bld-input');
           const draw = (fromInput) => {
             const n = fromDigits(S.builder);
             main.querySelectorAll('.builder-top .stepper-count').forEach((o, i) => { o.textContent = S.builder[i]; });
             if (!fromInput) input.value = fmt(n);
-            out.innerHTML = `<p class="big-number" aria-label="Number built: ${fmt(n)}">${fmt(n)}</p>` + chartHTML(n, { values: [true, true, true, true] }) + pv.blocksHTML(n) + formsHTML(n);
+            out.innerHTML = `<p class="big-number" aria-label="Number built: ${fmt(n)}">${fmt(n)}</p>` + chartHTML(n, { values: [true, true, true, true] }) + formsHTML(n);
+            blocks.innerHTML = pv.blocksHTML(n);
+            W.builder = S.builder.slice();
+            save();
           };
           main.querySelectorAll('.builder-top .stepper-btn').forEach((b) => b.addEventListener('click', () => {
             const i = Number(b.parentElement.dataset.place);
@@ -336,6 +346,8 @@
           const out = main.querySelector('#change-out');
           const draw = (before, delta) => {
             const n = S.change;
+            W.change = n;
+            save();
             main.querySelectorAll('[data-delta]').forEach((b) => { b.disabled = !changeOK(n, Number(b.dataset.delta)); });
             if (before === undefined) { out.innerHTML = `<p class="change-eq">${fmt(n)}</p>${chartHTML(n, { label: 'Current number' })}`; return; }
             const i = PLACES.findIndex((p) => p.value === Math.abs(delta));
@@ -355,6 +367,7 @@
         }
       }
 
+      /** Your Turn: the check question, Check Answer right under it, then feedback beside the answer. */
       function checkHTML(step) {
         const c = checkState(step);
         const q = c.q;
@@ -363,39 +376,51 @@
         else if (c.revealed) msg = `<div class="feedback feedback-info"><p><b>The answer is ${esc(Q.correctText(q))}.</b> ${esc(q.explanation)}</p><p>Now try a new one like it.</p></div>`;
         else if (c.retry) {
           const tip = q.type === 'expanded' ? Q.expandedTip(c.response, q.answer) + ' ' : '';
-          msg = `<div class="feedback feedback-no"><p><b>Not quite.</b> ${esc(tip + (q.hint || 'Look again at the example above.'))}</p></div>`;
+          msg = `<div class="feedback feedback-no"><p><b>Not quite.</b> ${esc(tip + (q.hint || 'See the example again if you need help.'))}</p></div>`;
         }
         let action;
         if (c.solved) action = `<button type="button" class="btn btn-ghost" data-wiz="another">Try another one</button>`;
         else if (c.revealed) action = `<button type="button" class="btn btn-primary" data-wiz="new">Try a new one</button>`;
         else if (c.retry) action = `<button type="button" class="btn btn-primary" data-wiz="again">Try Again</button>`;
         else action = `<button type="button" class="btn btn-primary" data-wiz="check">Check Answer</button>`;
-        return `<section class="wiz-check" aria-labelledby="wiz-check-title"><h3 id="wiz-check-title">Your turn</h3>` +
-          Q.render(q, 'wiz-' + step.id, { response: c.response }) +
-          `<div aria-live="polite">${msg}<p class="feedback feedback-info" data-empty hidden>Type or choose an answer first.</p></div>` +
-          `<div class="actions">${action}</div></section>`;
+        return `<div class="wiz-check">` + Q.render(q, 'wiz-' + step.id, { response: c.response }) +
+          `<div class="actions wiz-check-actions">${action}</div>` +
+          `<div aria-live="polite">${msg}<p class="feedback feedback-info" data-empty hidden>Type or choose an answer first.</p></div></div>`;
       }
+
+      // Each step has two phases, one on screen at a time: 'example' (watch and explore) and 'try' (Your Turn).
+      // Saved per step in W.phase; a step with no saved phase (including older saved progress) opens at Example.
+      const phaseOf = (step) => (W.phase && W.phase[step.id] === 'try' ? 'try' : 'example');
+      const setPhase = (step, p) => { W.phase = W.phase || {}; W.phase[step.id] = p; };
 
       function draw() {
         const i = W.step;
         const step = steps[i];
         const c = checkState(step);
+        const phase = phaseOf(step);
         save(); // keep this step's check question the same across a refresh
         const done = !!W.done[step.id];
+        const last = i === steps.length - 1;
+        const head = `<h2 tabindex="-1" class="wiz-h"><span class="phase-tag phase-${phase}">${phase === 'try' ? 'Your Turn' : 'Example'}</span>` +
+          `<span class="wiz-step-title">${esc(step.title)}</span></h2>`;
+        const body = phase === 'example'
+          ? `<p class="wiz-explain">${esc(step.explain)}</p><div class="wiz-demo">${demoHTML(step)}</div>` +
+            `<div class="wiz-actions">${i > 0 ? `<button type="button" class="btn btn-ghost" data-wiz="prev-step">← Previous Step</button>` : '<span></span>'}` +
+            `<button type="button" class="btn btn-star btn-big" data-wiz="try">Now I'll Try →</button></div>`
+          : checkHTML(step) +
+            `<div class="wiz-actions"><button type="button" class="btn btn-ghost" data-wiz="example">← See the Example Again</button>` +
+            (!last
+              ? `<button type="button" class="btn btn-primary btn-big" data-wiz="next" ${done ? '' : 'disabled'}>Next Step →</button>`
+              : `<a class="btn btn-primary btn-big${done ? '' : ' is-disabled'}" href="#see/done" ${done ? '' : 'aria-disabled="true" tabindex="-1"'} data-wiz="finish">Finish →</a>`) +
+            `</div>` + (done ? '' : `<p class="wiz-locked-note" id="wiz-locked">Answer correctly to unlock ${last ? 'Finish' : 'the next step'}.</p>`);
         main.innerHTML =
-          ctx.hero(lessonEyebrow(), 'Learn', 'One step at a time. Answer the check to unlock the next step.') +
-          `<section class="card wiz-card"><p class="wiz-count">Step ${i + 1} of ${steps.length}</p><h2 tabindex="-1">${esc(step.title)}</h2>` +
-          `<p class="wiz-explain">${esc(step.explain)}</p><div class="wiz-demo">${demoHTML(step)}</div>${checkHTML(step)}</section>` +
-          `<div class="stage-nav wiz-nav">${i > 0 ? `<button type="button" class="btn btn-ghost btn-big" data-wiz="back">← Back</button>` : '<span></span>'}` +
-          (i < steps.length - 1
-            ? `<button type="button" class="btn btn-primary btn-big" data-wiz="next" ${done ? '' : 'disabled'}>Next Step →</button>`
-            : `<a class="btn btn-primary btn-big${done ? '' : ' is-disabled'}" href="#see/done" ${done ? '' : 'aria-disabled="true" tabindex="-1"'} data-wiz="finish">Finish →</a>`) +
-          `</div>` + (done ? '' : `<p class="wiz-locked-note" id="wiz-locked">Answer the check correctly to unlock ${i < steps.length - 1 ? 'the next step' : 'Finish'}.</p>`) +
+          `<section class="hero act-hero"><p class="eyebrow">${lessonEyebrow()}</p>` +
+          `<div class="act-title"><h1 tabindex="-1">Learn</h1><p class="wiz-count">Step ${i + 1} of ${steps.length}</p></div></section>` +
+          `<section class="card wiz-card" data-phase="${phase}">${head}${body}</section>` +
           `<div class="wiz-menu"><a class="btn btn-ghost" href="#menu">Lesson Menu</a></div>`;
-        bindDemo(step);
         const qEl = main.querySelector('.wiz-check .q[data-qkey]');
-        const locked = c.solved || c.revealed || c.retry;
-        if (locked) qEl.querySelectorAll('input, select, button').forEach((x) => { x.disabled = true; });
+        if (phase === 'example') bindDemo(step);
+        else if (c.solved || c.revealed || c.retry) qEl.querySelectorAll('input, select, button').forEach((x) => { x.disabled = true; });
         else Q.bind(qEl, c.q, (r) => { c.response = r; save(); });
         main.querySelectorAll('[data-wiz]').forEach((b) => b.addEventListener('click', (e) => {
           const act = b.dataset.wiz;
@@ -409,11 +434,16 @@
           }
           if (act === 'again') c.retry = false;
           if (act === 'new' || act === 'another') W.checks[step.id] = { q: step.check(pv.rng(shell.newSeed())), tries: 0, retry: false, solved: false, revealed: false };
-          if (act === 'back') W.step = Math.max(0, i - 1);
-          if (act === 'next' && W.done[step.id]) W.step = i + 1;
+          // Before leaving Your Turn, keep whatever is typed (even unchecked).
+          if (act === 'example' && qEl && !(c.solved || c.revealed || c.retry)) c.response = Q.read(qEl, c.q);
+          if (act === 'try') setPhase(step, 'try');
+          if (act === 'example') setPhase(step, 'example');
+          if (act === 'prev-step') { W.step = Math.max(0, i - 1); setPhase(steps[W.step], 'example'); }
+          if (act === 'next' && W.done[step.id]) { W.step = i + 1; setPhase(steps[W.step], 'example'); }
           save();
           draw();
-          if (act === 'back' || act === 'next') { root.scrollTo(0, 0); main.querySelector('.wiz-card h2').focus({ preventScroll: true }); return; }
+          // A new phase or step: start at the top with focus on its heading.
+          if (['try', 'example', 'prev-step', 'next'].includes(act)) { root.scrollTo(0, 0); main.querySelector('.wiz-h').focus({ preventScroll: true }); return; }
           const focusTarget = main.querySelector('[data-wiz="next"]:not([disabled]), a[data-wiz="finish"]:not(.is-disabled), [data-wiz="again"], [data-wiz="new"], .wiz-check input:not([disabled]), .wiz-check button:not([disabled])');
           if (focusTarget) focusTarget.focus();
         }));
