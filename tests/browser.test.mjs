@@ -155,7 +155,7 @@ try {
     return { hash: location.hash, focused: document.activeElement.id };`);
   check('Skip link focuses content without changing the screen (B-20)', skip.hash === '#see' && skip.focused === 'stage', skip);
 
-  // ----- Learn: the See It wizard, one step at a time -----
+  // ----- Learn: the See It wizard, one step at a time, each step in two phases (Example, then Your Turn) -----
   const WIZ = `${FILL_HELPERS}
     const W = () => JSON.parse(localStorage.getItem(L.storageKey + ':see-wizard') || 'null');
     const wbtn = (a) => document.querySelector('[data-wiz="' + a + '"]');
@@ -163,16 +163,22 @@ try {
     const stepId = () => L.seeIt.steps[W().step].id;
     const curQ = () => { const w = W(); const c = w && w.checks[stepId()]; if (!c) throw new Error('no check for step ' + stepId()); return c.q; };
     const feedback = () => (document.querySelector('.wiz-check [aria-live] .feedback:not([hidden])') || {}).innerText || '';
-    const answer = (ok) => { fill(qel(), curQ(), ok); wbtn('check').click(); };
+    const phase = () => document.querySelector('.wiz-card').dataset.phase;
+    const toTry = () => { if (phase() !== 'try') wbtn('try').click(); };
+    const toExample = () => { if (phase() !== 'example') wbtn('example').click(); };
+    const answer = (ok) => { toTry(); fill(qel(), curQ(), ok); wbtn('check').click(); };
+    const title = () => document.querySelector('.wiz-step-title').textContent;
     const doneIds = () => Object.keys(W().done).sort().join();`;
   await hash('#teach'); await hash('#see');
   const wiz0 = await js(`${WIZ}
-    return { count: document.querySelector('.wiz-count').textContent, title: document.querySelector('.wiz-card h2').textContent, nextDisabled: wbtn('next').disabled,
+    return { count: document.querySelector('.wiz-count').textContent, title: title(), phase: phase(), tag: document.querySelector('.phase-tag').textContent,
       eyebrow: document.querySelector('.hero .eyebrow').textContent, cards: document.querySelectorAll('.wiz-card').length, numberRow: document.querySelectorAll('.wiz-steps, .wiz-step, .seg-btn, .dot').length,
-      ask: /Ask:/.test(document.querySelector('.wiz-card').innerText), menu: !!document.querySelector('.wiz-menu a[href="#menu"]'), back: !!wbtn('back'),
+      ask: /Ask:/.test(document.querySelector('.wiz-card').innerText), menu: !!document.querySelector('.wiz-menu a[href="#menu"]'), prevStep: !!wbtn('prev-step'),
+      tryLabel: wbtn('try')?.textContent, checkShown: document.querySelectorAll('.wiz-check, [data-wiz="check"]').length, next: !!wbtn('next'),
       other: L.seeIt.steps.slice(1).some((s) => document.body.innerText.includes(s.title)) };`);
-  check('Learn: only the current step is on screen ("Step 1 of 5: Worked examples"); Next Step locked', wiz0.cards === 1 && wiz0.count === 'Step 1 of 5' && wiz0.title === 'Worked examples' && wiz0.nextDisabled && !wiz0.other, wiz0);
-  check('Learn: no 1–5 step-button row and no number tabs; Lesson Menu control; no parent "Ask:" lines', wiz0.numberRow === 0 && wiz0.menu && !wiz0.back && !/Step \d of/.test(wiz0.eyebrow) && !wiz0.ask, wiz0);
+  check('Learn: only the current step is on screen ("Step 1 of 5: Worked examples"), starting at its Example phase', wiz0.cards === 1 && wiz0.count === 'Step 1 of 5' && wiz0.title === 'Worked examples' && wiz0.phase === 'example' && wiz0.tag === 'Example' && !wiz0.other, wiz0);
+  check('Example phase: explanation and model only — the check is not on screen; primary action "Now I\'ll Try"', wiz0.checkShown === 0 && wiz0.tryLabel === "Now I'll Try →" && !wiz0.next && !wiz0.prevStep, wiz0);
+  check('Learn: no 1–5 step-button row and no number tabs; Lesson Menu control; no parent "Ask:" lines', wiz0.numberRow === 0 && wiz0.menu && !/Step \d of/.test(wiz0.eyebrow) && !wiz0.ask, wiz0);
   const demo = await js(`
     const body = document.querySelector('#demo-body');
     const counts = () => ['thousand','hundred','ten','one'].map((k) => body.querySelectorAll('[data-block="' + k + '"]').length);
@@ -194,11 +200,42 @@ try {
   check('Learn step 1: final part shows expanded and word form', demo.last.text.includes('2,000 + 100 + 30 + 7 = 2,137') && demo.last.text.includes('two thousand, one hundred thirty-seven'), demo.last.text);
   check('Learn step 1: 5,072 shows 0 hundred flats and explains the zero', JSON.stringify(demo.zero.counts) === '[5,0,7,2]' && demo.zero.step === 'Part 1 of 7' && /0 is in the hundreds place/.test(demo.zero.note), demo.zero);
 
+  // Example → Your Turn → Example keeps the chosen example and part; Now I'll Try is not mastery.
+  const phases = await js(`${WIZ}
+    document.querySelector('#ex-next').click(); document.querySelector('#demo-next').click(); document.querySelector('#demo-next').click();
+    const before = document.querySelector('#ex-count').textContent + ' / ' + document.querySelector('#demo-count').textContent;
+    wbtn('try').click();
+    const t = { phase: phase(), tag: document.querySelector('.phase-tag').textContent, focus: document.activeElement === document.querySelector('.wiz-h'), demoShown: document.querySelectorAll('.wiz-demo, #ex-next, #demo-next').length,
+      checkBelow: (() => { const q = qel().getBoundingClientRect(); const c = wbtn('check').getBoundingClientRect(); return c.top >= q.bottom - 1 && c.top - q.bottom < 40; })(),
+      seeAgain: wbtn('example')?.textContent, backButtons: Array.from(document.querySelectorAll('.wiz-card button, .wiz-card a')).filter((b) => /^←?\\s*Back$/.test(b.textContent.trim())).length,
+      nextLocked: wbtn('next').disabled, done: doneIds(), savedPhase: W().phase.examples,
+      hiddenFocusable: Array.from(document.querySelectorAll('[hidden] button, [hidden] input, [hidden] a')).filter((e) => !e.closest('[data-empty]')).length };
+    fill(qel(), curQ(), false); const typed = JSON.stringify(Q.read(qel(), curQ()));
+    wbtn('example').click();
+    const e = { phase: phase(), focus: document.activeElement === document.querySelector('.wiz-h'), checkShown: document.querySelectorAll('.wiz-check').length,
+      after: document.querySelector('#ex-count').textContent + ' / ' + document.querySelector('#demo-count').textContent, done: doneIds() };
+    wbtn('try').click();
+    const kept = JSON.stringify(Q.read(qel(), curQ())) === typed && feedback() === '';
+    document.querySelector('#ex-prev') || null;
+    return { before, t, e, kept, q: JSON.stringify(curQ()) };`);
+  check('Now I\'ll Try opens Your Turn in the same step with focus on its heading; the example is not on screen', phases.t.phase === 'try' && phases.t.tag === 'Your Turn' && phases.t.focus && phases.t.demoShown === 0 && phases.t.savedPhase === 'try', phases.t);
+  check('Your Turn: Check Answer right under the answer; "See the Example Again"; no two different "Back" buttons; Next Step locked', phases.t.checkBelow && phases.t.seeAgain === '← See the Example Again' && phases.t.backButtons === 0 && phases.t.nextLocked && phases.t.hiddenFocusable === 0, phases.t);
+  check('Viewing the example or pressing Now I\'ll Try does not count as mastery', phases.t.done === '' && phases.e.done === '', phases);
+  check('Example → Your Turn → Example keeps the chosen example and part; the typed answer is kept unchecked', phases.e.phase === 'example' && phases.e.focus && phases.e.checkShown === 0 && phases.e.after === phases.before && phases.before === 'Example 2 of 3: 4,628 / Part 3 of 7' && phases.kept, phases);
+  await b.reload(); await hash('#see');
+  const refreshTry = await js(`${WIZ} return { phase: phase(), sameQ: JSON.stringify(curQ()) === ${JSON.stringify(phases.q)}, answered: Q.isAnswered(curQ(), Q.read(qel(), curQ())) };`);
+  check('Refresh restores the step, the Your Turn phase, the same question, and the typed answer', refreshTry.phase === 'try' && refreshTry.sameQ && refreshTry.answered, refreshTry);
+
   const c1 = await js(`${WIZ}
     const q1 = curQ();
+    // Clear the typed answer, then check: an empty answer is caught.
+    qel().querySelectorAll('input').forEach((i) => { i.value = ''; i.dispatchEvent(new Event('input', { bubbles: true })); });
     wbtn('check').click(); const empty = !document.querySelector('[data-empty]').hidden;
     answer(false);
-    const once = { fb: feedback(), again: !!wbtn('again'), reveals: /The answer is/.test(feedback()), next: wbtn('next').disabled, locked: Array.from(qel().querySelectorAll('input')).every((i) => i.disabled) };
+    const once = { fb: feedback(), again: !!wbtn('again'), reveals: /The answer is/.test(feedback()), next: wbtn('next').disabled, locked: Array.from(qel().querySelectorAll('input')).every((i) => i.disabled),
+      near: (() => { const a = qel().getBoundingClientRect(); const f = document.querySelector('.wiz-check .feedback:not([hidden])').getBoundingClientRect(); return f.top - a.bottom < 120; })() };
+    // Seeing the example mid-retry keeps the retry state.
+    wbtn('example').click(); wbtn('try').click(); once.keptRetry = /Not quite/.test(feedback()) && !!wbtn('again');
     wbtn('again').click(); answer(false);
     const twice = { fb: feedback(), newBtn: !!wbtn('new'), next: wbtn('next').disabled, done: !!W().done.examples };
     wbtn('new').click();
@@ -206,39 +243,45 @@ try {
     answer(true);
     return { q1: { prompt: q1.prompt, display: q1.display, type: q1.type, answer: q1.answer }, empty, once, twice, fresh, right: feedback(), next: !wbtn('next').disabled, done: doneIds() };`);
   check('Check: the step-1 check uses a new number in word form with a zero (not 2,137, 4,628, or 5,072)', c1.q1.type === 'chart' && ![2137, 4628, 5072].includes(c1.q1.answer) && pv_hasZero(c1.q1.answer), c1.q1);
-  check('Check: empty answer is caught; a wrong answer gets a clue and Try Again — the answer is not revealed; Next stays locked', c1.empty && /Not quite/.test(c1.once.fb) && c1.once.again && !c1.once.reveals && c1.once.next && c1.once.locked, c1.once);
+  check('Check: empty answer is caught; a wrong answer gets a clue near the answer and Try Again — not the answer; Next stays locked', c1.empty && /Not quite/.test(c1.once.fb) && c1.once.again && !c1.once.reveals && c1.once.next && c1.once.locked && c1.once.near, c1.once);
+  check('Check: switching to the example and back keeps the retry state', c1.once.keptRetry, c1.once);
   check('Check: second miss teaches the answer and offers a new question; the step is not complete yet', /The answer is/.test(c1.twice.fb) && c1.twice.newBtn && c1.twice.next && !c1.twice.done, c1.twice);
   check('Check: the new question is different and blank; a right answer completes the step and unlocks Next Step', c1.fresh.differs && c1.fresh.blank && c1.fresh.noFb && /Correct|You got it/.test(c1.right) && c1.next && c1.done === 'examples', c1);
 
   await js(`document.querySelector('[data-wiz="next"]').click();`);
-  const builder = await js(`
+  const builder = await js(`${WIZ}
     const st = document.querySelectorAll('.builder-top .stepper');
     st[1].querySelector('[data-step="1"]').click(); st[1].querySelector('[data-step="1"]').click();
     st[3].querySelector('[data-step="-1"]').click();
-    const out = document.querySelector('#bld-out');
-    const a = { title: document.querySelector('.wiz-card h2').textContent, count: document.querySelector('.wiz-count').textContent, text: out.innerText, input: document.querySelector('#bld-input').value,
-      counts: ['thousand','hundred','ten','one'].map((k) => out.querySelectorAll('[data-block="' + k + '"]').length), top: Math.round(scrollY), back: !!document.querySelector('[data-wiz="back"]') };
+    const out = () => document.querySelector('.wiz-demo');
+    const a = { title: title(), phase: phase(), focus: document.activeElement === document.querySelector('.wiz-h'), count: document.querySelector('.wiz-count').textContent, text: out().innerText, input: document.querySelector('#bld-input').value,
+      counts: ['thousand','hundred','ten','one'].map((k) => out().querySelectorAll('[data-block="' + k + '"]').length), top: Math.round(scrollY), prev: wbtn('prev-step')?.textContent };
     const inp = document.querySelector('#bld-input'); inp.value = '9,050'; inp.dispatchEvent(new Event('input', { bubbles: true }));
-    a.typed = ['thousand','hundred','ten','one'].map((k) => out.querySelectorAll('[data-block="' + k + '"]').length);
-    a.typedText = out.innerText;
+    a.typed = ['thousand','hundred','ten','one'].map((k) => out().querySelectorAll('[data-block="' + k + '"]').length);
+    a.typedText = out().innerText;
+    wbtn('try').click(); wbtn('example').click(); a.keptModel = document.querySelector('#bld-input').value;
     return a;`);
-  check('Next Step → "Step 2 of 5": Build your own number, starting at the top with Back available', builder.count === 'Step 2 of 5' && builder.title === 'Build your own number' && builder.top === 0 && builder.back, builder);
+  check('Next Step → "Step 2 of 5" opens at its Example, at the top, focus on the heading, with "← Previous Step"', builder.count === 'Step 2 of 5' && builder.title === 'Build your own number' && builder.phase === 'example' && builder.focus && builder.top === 0 && builder.prev === '← Previous Step', builder);
   check('Step 2: + / − update number, blocks, and forms (2,137 → 2,336)', builder.input === '2,336' && JSON.stringify(builder.counts) === '[2,3,3,6]' && builder.text.includes('2,000 + 300 + 30 + 6') && builder.text.includes('two thousand, three hundred thirty-six'), builder);
-  check('Step 2: typing 9,050 rebuilds the model', JSON.stringify(builder.typed) === '[9,0,5,0]' && builder.typedText.includes('nine thousand, fifty'), builder);
-  const c2 = await js(`${WIZ} const q = curQ(); answer(true); return { type: q.type, fb: feedback(), next: !wbtn('next').disabled };`);
+  check('Step 2: typing 9,050 rebuilds the model; the model is kept through Your Turn and back', JSON.stringify(builder.typed) === '[9,0,5,0]' && builder.typedText.includes('nine thousand, fifty') && builder.keptModel === '9,050', builder);
+  await b.reload(); await hash('#see');
+  check('Refresh keeps the built number (9,050)', await js(`return document.querySelector('#bld-input').value === '9,050'`));
+  const c2 = await js(`${WIZ} answer(true); return { type: curQ().type, fb: feedback(), next: !wbtn('next').disabled };`);
   check('Step 2 check: build a new number with blocks; right on the first try completes the step', c2.type === 'build' && /Correct/.test(c2.fb) && c2.next, c2);
 
   await b.reload(); await hash('#see');
-  const after = await js(`${WIZ} return { count: document.querySelector('.wiz-count').textContent, done: doneIds(), next: !wbtn('next').disabled, fb: feedback() };`);
-  check('Refresh: stays on step 2, both completed steps kept, Next Step still unlocked', after.count === 'Step 2 of 5' && after.done === 'build,examples' && after.next && /Correct/.test(after.fb), after);
-  const backTo = await js(`${WIZ} wbtn('back').click();
-    const s = { count: document.querySelector('.wiz-count').textContent, fb: feedback(), locked: Array.from(qel().querySelectorAll('input')).every((i) => i.disabled), another: !!wbtn('another'), next: !wbtn('next').disabled };
+  const after = await js(`${WIZ} return { count: document.querySelector('.wiz-count').textContent, phase: phase(), done: doneIds(), next: !wbtn('next').disabled, fb: feedback() };`);
+  check('Refresh: stays on step 2 Your Turn, both completed steps kept, Next Step still unlocked', after.count === 'Step 2 of 5' && after.phase === 'try' && after.done === 'build,examples' && after.next && /Correct/.test(after.fb), after);
+  const backTo = await js(`${WIZ} wbtn('example').click(); wbtn('prev-step').click();
+    const s = { count: document.querySelector('.wiz-count').textContent, phase: phase() };
+    toTry();
+    Object.assign(s, { fb: feedback(), locked: Array.from(qel().querySelectorAll('input')).every((i) => i.disabled), another: !!wbtn('another'), next: !wbtn('next').disabled });
     const before = JSON.stringify(curQ()); wbtn('another').click();
     s.newQ = JSON.stringify(curQ()) !== before; s.stillDone = W().done.examples === true && !wbtn('next').disabled; s.doneAfter = doneIds();
     return s;`);
-  check('Back: completed step 1 shows its result (locked); "Try another one" gives new practice without losing completion', backTo.count === 'Step 1 of 5' && /You got it|Correct/.test(backTo.fb) && backTo.locked && backTo.another && backTo.next && backTo.newQ && backTo.stillDone && backTo.doneAfter === 'build,examples', backTo);
+  check('Previous Step: step 1 opens at its Example; its Your Turn shows the result (locked); "Try another one" keeps completion', backTo.count === 'Step 1 of 5' && backTo.phase === 'example' && /You got it|Correct/.test(backTo.fb) && backTo.locked && backTo.another && backTo.next && backTo.newQ && backTo.stillDone && backTo.doneAfter === 'build,examples', backTo);
 
-  await js(`document.querySelector('[data-wiz="next"]').click(); document.querySelector('[data-wiz="next"]').click();`);
+  await js(`${WIZ} wbtn('next').click(); toTry(); wbtn('next').click();`);
   const change = await js(`
     const out = document.querySelector('#change-out');
     document.querySelector('[data-delta="100"]').click(); const a = out.innerText;
@@ -251,20 +294,22 @@ try {
   check('Step 3: buttons that would need regrouping are disabled (stops at 9,125)', /= 9,125/.test(change.capped.text) && change.capped.disabled, change.capped);
   const c3 = await js(`${WIZ} const q = curQ(); answer(false); const once = feedback(); wbtn('again').click(); answer(true); return { prompt: q.prompt, answer: q.answer, once, fb: feedback(), next: !wbtn('next').disabled, rec: W().checks.change };`);
   check('Step 3 check: a new "more or less" question (4-digit answer); right on the second try completes the step', /more|less/.test(c3.prompt) && c3.answer >= 1000 && c3.answer <= 9999 && /Not quite/.test(c3.once) && /You got it/.test(c3.fb) && c3.next && c3.rec.tries === 2, c3);
+  const keptChange = await js(`${WIZ} wbtn('example').click(); return document.querySelector('#change-out .change-eq').innerText;`);
+  check('Step 3: the changed number (9,125) is kept when returning to the example', keptChange === '9,125', keptChange);
 
-  await js(`document.querySelector('[data-wiz="next"]').click();`);
+  await js(`${WIZ} toTry(); wbtn('next').click();`);
   const tenBefore = await js(`${WIZ} return JSON.stringify(curQ());`);
   await b.reload(); await hash('#see');
-  check('Refresh on a new step before answering keeps the same check question', await js(`${WIZ} return JSON.stringify(curQ()) === ${JSON.stringify(tenBefore)} && document.querySelector('.wiz-count').textContent === 'Step 4 of 5'`));
-  const kept = await js(`${WIZ} fill(qel(), curQ(), true); wbtn('back').click(); wbtn('next').click();
-    return { count: document.querySelector('.wiz-count').textContent, kept: Q.isAnswered(curQ(), Q.read(qel(), curQ())), noFb: feedback() === '' };`);
-  check('Back then Next keeps an unchecked answer (nothing graded or revealed)', kept.count === 'Step 4 of 5' && kept.kept && kept.noFb, kept);
-  const ten = await js(`${WIZ} const blocks = document.querySelectorAll('.wiz-demo .chain-item').length; const q = curQ(); wbtn('check').click();
-    return { count: document.querySelector('.wiz-count').textContent, blocks, answer: q.answer, fb: feedback(), next: !wbtn('next').disabled };`);
-  check('Step 4 of 5: Groups of ten — unit, rod, flat, cube shown; its check (answer 10, 100, or 1,000) completes the step', ten.count === 'Step 4 of 5' && ten.blocks === 4 && [10, 100, 1000].includes(ten.answer) && /Correct/.test(ten.fb) && ten.next, ten);
+  check('Refresh on a new step before answering keeps the same check question (and the Example phase)', await js(`${WIZ} return JSON.stringify(curQ()) === ${JSON.stringify(tenBefore)} && document.querySelector('.wiz-count').textContent === 'Step 4 of 5' && phase() === 'example'`));
+  const ten = await js(`${WIZ} const blocks = document.querySelectorAll('.wiz-demo .chain-item').length;
+    toTry(); fill(qel(), curQ(), true); wbtn('example').click(); wbtn('try').click();
+    const kept = Q.isAnswered(curQ(), Q.read(qel(), curQ())) && feedback() === '';
+    const q = curQ(); wbtn('check').click();
+    return { count: document.querySelector('.wiz-count').textContent, blocks, kept, answer: q.answer, fb: feedback(), next: !wbtn('next').disabled };`);
+  check('Step 4 of 5: Groups of ten — unit, rod, flat, cube; an unchecked answer survives Example and back; its check completes the step', ten.count === 'Step 4 of 5' && ten.blocks === 4 && ten.kept && [10, 100, 1000].includes(ten.answer) && /Correct/.test(ten.fb) && ten.next, ten);
 
   await js(`document.querySelector('[data-wiz="next"]').click();`);
-  const c5 = await js(`${WIZ} const text = document.querySelector('.wiz-demo').innerText; const finishLocked = wbtn('finish').classList.contains('is-disabled');
+  const c5 = await js(`${WIZ} const text = document.querySelector('.wiz-demo').innerText; toTry(); const finishLocked = wbtn('finish').classList.contains('is-disabled');
     const q = curQ(); answer(true);
     return { count: document.querySelector('.wiz-count').textContent, text: text.slice(0, 300), finishLocked, prompt: q.prompt, fb: feedback(), finish: wbtn('finish').getAttribute('href'), finishOpen: !wbtn('finish').classList.contains('is-disabled'), done: Object.keys(W().done).length };`);
   check('Step 5 of 5: greatest 8,641 and smallest 1,468 from 4, 1, 8, 6 (audit B-11)', c5.count === 'Step 5 of 5' && /Greatest number: 8,641/.test(c5.text) && /Smallest number: 1,468/.test(c5.text), c5.text);
@@ -276,6 +321,29 @@ try {
   check('Refresh on the completion screen keeps it', await js(`return document.querySelector('h1').textContent === 'You finished learning!'`));
   await hash('#menu');
   check('Lesson Menu: "Start here" is shown only on the first visit', await js(`return !document.querySelector('.choice-tag') && !document.querySelector('.is-recommended')`));
+
+  // Older saved progress (before phases and saved models) still loads, at the Example phase, without losing anything.
+  const savedNow = await js(`return localStorage.getItem(Mathbook.lessons['2-1'].storageKey + ':see-wizard')`);
+  await js(`const L = Mathbook.lessons['2-1']; const w = JSON.parse(localStorage.getItem(L.storageKey + ':see-wizard'));
+    localStorage.setItem(L.storageKey + ':see-wizard', JSON.stringify({ step: 2, done: { examples: true, build: true }, checks: { examples: w.checks.examples, build: w.checks.build }, ex: 1, sub: 2 }));`);
+  await b.load(O + LESSON + '#see');
+  const legacy = await js(`${WIZ} return { count: document.querySelector('.wiz-count').textContent, phase: phase(), done: doneIds(), keptChecks: !!W().checks.examples && !!W().checks.build };`);
+  check('Older saved progress (no phase) loads at that step\'s Example and keeps completed steps and checks', legacy.count === 'Step 3 of 5' && legacy.phase === 'example' && legacy.done === 'build,examples' && legacy.keptChecks, legacy);
+  await js(`localStorage.setItem(Mathbook.lessons['2-1'].storageKey + ':see-wizard', ${JSON.stringify(savedNow)});`);
+
+  // Desktop 1366×768: a normal Your Turn shows the instruction, the answer area, and Check Answer without scrolling.
+  await b.viewport(1366, 768, false);
+  const fits = {};
+  for (let k = 0; k < 5; k++) {
+    await js(`const L = Mathbook.lessons['2-1']; const st = L.seeIt.steps; const w = JSON.parse(localStorage.getItem(L.storageKey + ':see-wizard'));
+      w.step = ${k}; w.phase = Object.assign(w.phase || {}, { [st[${k}].id]: 'try' }); w.checks[st[${k}].id] = null; delete w.checks[st[${k}].id];
+      localStorage.setItem(L.storageKey + ':see-wizard', JSON.stringify(w));`);
+    await b.load(O + LESSON + '#see'); await b.reload();
+    fits[k + 1] = await js(`const r = (s) => document.querySelector(s).getBoundingClientRect();
+      return { prompt: Math.round(r('.wiz-check .q-prompt').top), answer: Math.round(r('.wiz-check .q[data-qkey]').bottom), check: Math.round(r('[data-wiz="check"]').bottom), vh: innerHeight };`);
+  }
+  check('1366×768: every step\'s Your Turn shows instruction, answer, and Check Answer without scrolling', Object.values(fits).every((f) => f.prompt > 0 && f.check <= f.vh && f.answer <= f.vh), fits);
+  await b.viewport(1280, 900, false);
 
   // ----- Practice: a choice first, then one activity -----
   await hash('#practice');
@@ -562,6 +630,31 @@ try {
     }
     await b.load(O + LESSON + '#menu');
   }
+
+  // ----- Learn at the target devices: Example and Your Turn, the largest block model (9,999), long word form -----
+  const setLearn = (k, phase, extra) => js(`const L = Mathbook.lessons['2-1']; const st = L.seeIt.steps; const done = {}; st.slice(0, ${k}).forEach((x) => { done[x.id] = true; });
+    const w = JSON.parse(localStorage.getItem(L.storageKey + ':see-wizard') || '{"checks":{},"ex":0,"sub":0}');
+    Object.assign(w, { step: ${k}, done, phase: { [st[${k}].id]: '${phase}' } }, ${extra || '{}'}); localStorage.setItem(L.storageKey + ':see-wizard', JSON.stringify(w));`);
+  const learnLayout = {};
+  for (const [name, w, h] of [['phone', 390, 844], ['tablet-portrait', 768, 1024], ['tablet-landscape', 1024, 768], ['laptop', 1366, 768], ['large', 1920, 1080], ['small-phone', 320, 568], ['zoom-200', 683, 384]]) {
+    await b.viewport(w, h);
+    for (const [k, phase, extra, label] of [[0, 'example', '{ ex: 0, sub: 6 }', 'example'], [0, 'try', '', 'your-turn'], [1, 'example', '{ builder: [9, 9, 9, 9] }', 'blocks-9999']]) {
+      await setLearn(k, phase, extra);
+      await b.load(O + LESSON + '#see'); await b.reload();
+      await noHorizontalScroll(`Learn ${label} @ ${name} ${w}×${h}`);
+      const r = await js(`const cols = Array.from(document.querySelectorAll('.wiz-demo .blocks-col, .wiz-demo .pv-row:first-child > *')).slice(0, 4).map((e) => Math.round(e.getBoundingClientRect().left));
+        const counts = ['thousand','hundred','ten','one'].map((t) => document.querySelectorAll('.wiz-demo [data-block="' + t + '"]').length);
+        const words = document.querySelector('.wiz-demo .forms div:last-child dd');
+        return { cols, counts, wordsWrap: words ? words.scrollWidth <= words.clientWidth + 1 : true, focusables: Array.from(document.querySelectorAll('main button, main input, main a')).filter((e) => !e.offsetParent && !e.closest('[hidden]')).length };`);
+      learnLayout[`${label}@${name}`] = r;
+      if (['phone', 'tablet-portrait', 'tablet-landscape', 'laptop', 'large'].includes(name)) await b.shot(path.join(SHOTS, `learn-${label}-${name}.png`), name !== 'laptop');
+    }
+  }
+  const lv = Object.entries(learnLayout);
+  check('Learn layouts: places stay in Thousands → Ones order; 9,999 shows 9 of each block; long word form wraps', lv.every(([, r]) => r.wordsWrap && r.focusables === 0) &&
+    lv.filter(([k]) => k.startsWith('blocks-9999')).every(([, r]) => JSON.stringify(r.counts) === '[9,9,9,9]') &&
+    lv.filter(([k]) => k.startsWith('example@')).every(([, r]) => r.cols.length === 4 && r.cols.every((x, i) => i === 0 || x > r.cols[i - 1])), learnLayout);
+
   await b.viewport(390, 844);
   await b.load(O + BASE); await bigTargets('home @ phone');
   const cols = {};
@@ -571,9 +664,10 @@ try {
     cols[w] = await js(`const r = Array.from(document.querySelectorAll('.choice-card')).map((c) => Math.round(c.getBoundingClientRect().left)); return new Set(r).size;`);
   }
   const widths = await js(`location.hash = '#menu'; await new Promise((r) => setTimeout(r, 150)); const m = parseFloat(getComputedStyle(document.querySelector('#stage')).maxWidth);
-    location.hash = '#see'; await new Promise((r) => setTimeout(r, 150)); const a = parseFloat(getComputedStyle(document.querySelector('#stage')).maxWidth);
-    return { menu: m, activity: a, body: parseFloat(getComputedStyle(document.documentElement).fontSize) };`);
-  check('Menus are two columns on desktop and one on phones; menus ~960px, activities ~800px, 18px text', cols[1280] === 2 && cols[390] === 1 && widths.menu === 960 && widths.activity === 800 && widths.body === 18, { cols, widths });
+    location.hash = '#see'; await new Promise((r) => setTimeout(r, 150)); const l = parseFloat(getComputedStyle(document.querySelector('#stage')).maxWidth);
+    location.hash = '#practice/s2'; await new Promise((r) => setTimeout(r, 150)); const a = parseFloat(getComputedStyle(document.querySelector('#stage')).maxWidth);
+    return { menu: m, learn: l, activity: a, body: parseFloat(getComputedStyle(document.documentElement).fontSize) };`);
+  check('Menus are two columns on desktop and one on phones; menus ~960px, Learn ~1,100px, one-question activities ~800px, 18px text', cols[1280] === 2 && cols[390] === 1 && widths.menu === 960 && widths.learn === 1100 && widths.activity === 800 && widths.body === 18, { cols, widths });
   await b.viewport(1280, 900, false);
 
   // ----- Stress: all-correct attempts must always score 100% -----
