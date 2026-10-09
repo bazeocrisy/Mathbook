@@ -124,6 +124,14 @@ test('Coverage rotation: the left-out word is never left out twice in a row, so 
   }
 });
 
+test('Explanations name the word once and spell it out exactly once', () => {
+  P1.words.forEach((w) => {
+    const e = NW.item.fromNumeral(w).explanation;
+    assert.ok(e.startsWith(`${w.n} is spelled ${w.word}.`), e);
+    assert.equal(e.split(NW.letters(w.word)).length - 1, 1, `spelled once: ${e}`);
+  });
+});
+
 test('Letter comparison for feedback', () => {
   assert.deepEqual(NW.compareLetters('sevin', 'seven').map((c) => c.ok), [true, true, true, false, true]);
   assert.deepEqual(NW.compareLetters('SEV', 'seven').map((c) => c.ch), ['s', 'e', 'v', '_', '_']);

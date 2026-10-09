@@ -8,7 +8,8 @@
   const pv = MB.pv;
 
   const letters = (w) => w.split('').join('-');
-  const explain = (w) => `${w.n} is spelled ${w.word}: ${letters(w.word)}. ${w.tip}`;
+  // Most tips already spell the word letter by letter, so only add the letters when the tip doesn't.
+  const explain = (w) => `${w.n} is spelled ${w.word}. ${w.tip.includes(letters(w.word)) ? w.tip : `${letters(w.word)}. ${w.tip}`}`;
 
   // ---------- Item builders ----------
   const item = {

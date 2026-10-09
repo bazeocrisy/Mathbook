@@ -16,7 +16,7 @@ const VIEWPORTS = [
   ['zoom-200%', 640, 360]
 ];
 const LESSON = BASE + 'curriculum/chapter-2/lesson-2-1/';
-const NW = BASE + 'number-words/';
+const NW = BASE + 'number-words/phase-1/';
 
 const server = await startServer();
 const b = await startBrowser();
@@ -37,7 +37,8 @@ const MEASURE = `
     return hasText && e.scrollWidth > e.clientWidth + 2 && getComputedStyle(e).display !== 'inline';
   }).slice(0, 6).map((e) => desc(e) + ' "' + e.textContent.trim().slice(0, 24) + '"');
   const targets = Array.from(document.querySelectorAll('a[href], button, input:not([type=hidden]), select, textarea, summary, label.choice')).filter(vis)
-    .filter((e) => !(e.tagName === 'INPUT' && e.closest('label.choice')))
+    // A checkbox/radio inside a clickable label: the label is the touch target, so measure the label instead.
+    .filter((e) => { if (e.tagName !== 'INPUT' || !['checkbox', 'radio'].includes(e.type)) return true; const l = e.closest('label'); if (!l) return true; const r = l.getBoundingClientRect(); return r.width < 44 || r.height < 44; })
     .filter((e) => !(e.tagName === 'A' && getComputedStyle(e).display === 'inline' && e.closest('p, li')));
   const small = (min) => targets.filter((e) => { const r = e.getBoundingClientRect(); return r.width < min || r.height < min; });
   const s44 = small(44), s24 = small(24);
@@ -94,7 +95,7 @@ const STATES = [
   ['see-final-step', async () => { await fresh(LESSON + '#see'); await b.js(`for (let i = 0; i < 10; i++) document.querySelector('#demo-next').click();`); }],
   ['guided-wrong+hint', async () => {
     await fresh(LESSON + '#practice');
-    await b.js(`${FILL_HELPERS} const box = document.querySelector('#guided-card'); fill(box.querySelector('.q[data-qkey]'), L.guided[0], false);
+    await b.js(`${FILL_HELPERS} const box = document.querySelector('#guided-runner') || document.querySelector('#guided-card'); fill(box.querySelector('.q[data-qkey]'), L.guided[0], false);
       box.querySelector('[data-act=check]').click(); box.querySelector('[data-act=hint]').click(); document.querySelector('#guided').scrollIntoView();`);
   }],
   ['independent-set', async () => {
@@ -216,7 +217,7 @@ t('T02', 'Forward with Next, browser Back returns', fwd === '#see' && (back === 
 await b.hash('#results'); await b.hash('#see');
 t('T03', 'Switch stages directly via tabs', await b.js(`return document.querySelector('[aria-current=step]').dataset.stage === 'see' && !!document.querySelector('#demo-body')`), null);
 await b.hash('#practice');
-const guided = await b.js(`${FILL_HELPERS} const box = document.querySelector('#guided-card'); const el = box.querySelector('.q[data-qkey]'); const q = L.guided[0];
+const guided = await b.js(`${FILL_HELPERS} const box = document.querySelector('#guided-runner') || document.querySelector('#guided-card'); const el = box.querySelector('.q[data-qkey]'); const q = L.guided[0];
   fill(el, q, false); box.querySelector('[data-act=check]').click(); const w = box.querySelector('.result-box').innerText;
   box.querySelector('[data-act=hint]').click(); const hint = !box.querySelector('.hint-box').hidden;
   fill(el, q, true); box.querySelector('[data-act=check]').click(); return { w, hint, r: box.querySelector('.result-box').innerText };`);
@@ -233,7 +234,7 @@ t('L03', 'Answer key is stored in plain localStorage during a test (readable in 
 // Leave the vocab test incomplete via a stage tab, come back, try to start the other test.
 await b.js(`${FILL_HELPERS} const d = JSON.parse(localStorage.getItem(L.storageKey + ':draft-vocab')); const els = document.querySelectorAll('#test-form .q[data-qkey]'); d.questions.slice(0, 2).forEach((q, i) => fill(els[i], q, true));`);
 const navDuringTest = await b.js(`return { stagebarVisible: !!document.querySelector('.stagebar') && getComputedStyle(document.querySelector('.stagebar')).display !== 'none' && !document.querySelector('.stagebar').closest('[hidden]') }`);
-t('T05', 'During a test the stage tabs remain clickable (can open See It/Teach It mid-test)', null, navDuringTest);
+t('T05', 'During a test the stage tabs are hidden (lesson content not one click away mid-test)', !navDuringTest.stagebarVisible, navDuringTest);
 await b.hash('#see'); await b.hash('#test');
 const back2 = await b.js(`return { showsRunner: !!document.querySelector('#test-form'), title: document.querySelector('h1').innerText, canStartMath: !!document.querySelector('[data-start="math"]') }`);
 t('T06', 'Return to Test It after leaving mid-test: can choose either test', back2.canStartMath, back2);
@@ -254,7 +255,23 @@ t('T10', 'Clear progress confirms, then clears only this lesson', clear.asked &&
 await b.load(O + BASE); await b.js('localStorage.clear()'); await b.load(O + LESSON + '#results');
 t('T11', 'Fresh session shows no results and no fabricated progress', await b.js(`return /No test results yet/.test(document.body.innerText)`), null);
 await b.load(O + BASE);
-t('T12', 'Home page shows a Continue Learning action when progress exists', null, await b.js(`return /continue/i.test(document.body.innerText)`));
+t('T12', 'Home page shows a Continue Learning action when progress exists', await b.js(`return !!document.getElementById('continue') && !document.getElementById('continue').hidden && /Continue: Lesson 2-1/.test(document.body.innerText)`), null);
+if (hasNW) {
+  // Number Words: covered word and test never disclose answers; programs don't interfere.
+  await b.load(O + NW + '#write');
+  const cover = await b.js(`document.querySelector('[data-wi="3"]').click(); document.querySelector('[data-act=cover]').click(); return /\\bthree\\b/i.test(document.querySelector('#stage').innerText);`);
+  t('N01', 'Look-Cover-Write: covered word is not on the page', !cover, cover);
+  await b.load(O + NW + '#test');
+  const nwLeak = await b.js(`document.querySelector('[data-start]').click(); await new Promise((r) => setTimeout(r, 200));
+    const d = JSON.parse(localStorage.getItem(Mathbook.numberWords.current.storageKey + ':draft')); const text = document.querySelector('#stage').innerText.toLowerCase();
+    return { leaked: d.questions.filter((q) => new RegExp('\\\\b' + q.answer + '\\\\b').test(text)).map((q) => q.answer), hints: document.querySelectorAll('#stage [data-act=hint]').length };`);
+  t('N02', 'Spelling test shows no hints and none of the tested words', nwLeak.leaked.length === 0 && nwLeak.hints === 0, nwLeak);
+  await b.load(O + LESSON + '#test');
+  await b.js(`document.querySelector('[data-start="math"]').click();`); await b.wait(200);
+  await b.js('location.reload()'); await b.wait(700);
+  const x = await b.js(`return { lesson: /Resume/.test(document.querySelector('[data-start="math"]').innerText), nw: !!localStorage.getItem('mathbook:v2:number-words:phase-1:draft') };`);
+  t('X01', 'Unfinished Lesson 2-1 and Number Words tests coexist', x.lesson && x.nw, x);
+}
 
 // ---------- Report ----------
 const errors = b.errors.slice();
