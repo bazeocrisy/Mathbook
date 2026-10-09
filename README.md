@@ -1,75 +1,63 @@
 # Mathbook
 
-Parent-led Grade 3 math lessons. Static site for GitHub Pages: no build step, no frameworks, no backend.
+A simple, bright math book for a young learner, led by a parent. Static site for GitHub Pages: no build step, no frameworks, no backend.
 
 Live site: https://bazeocrisy.github.io/Mathbook/
 
-## What's here
+## How it is organized
 
-- **Home** (`index.html`): galaxy-themed landing page with learning destinations and a Continue Learning card that only appears from progress saved in this browser.
-- **Grade 3 · Chapter 2 · Lesson 2-1** (`curriculum/chapter-2/lesson-2-1/`): Represent 4-Digit Numbers.
-- **Number Words** (`number-words/`): Read It, Say It, Spell It, Write It. Phase 1 (0–10) is complete; Phases 2–4 are outlines only.
+- **Home** (`index.html`): two big choices, **Math Lessons** and **Number Words**, and a small **For grown-ups** link. The Mathbook logo returns home from every page.
+- **Math Lessons** (`math/`) → **Lesson 2-1** (`curriculum/chapter-2/lesson-2-1/`), with four choices:
+  - **Learn**: the big ideas and worked examples (2,137 · 4,628 · 5,072), build a number, 10/100/1,000 more or less, groups of ten, biggest and smallest, one page at a time.
+  - **Words to Know**: one word per card, then word practice.
+  - **Practice**: Practice Together (with a grown-up), then five sets of 10 (the 50-question bank).
+  - **Show What You Know**: the Vocabulary Test and the Math Test, 10 questions each.
+- **Number Words** (`number-words/`) → **Numbers 0 to 10** (`number-words/phase-1/`): Learn the Words, Say Them, Cover and Write, Practice, Spelling Test. Phases 2–4 are an outline in `number-words/program.js` only.
+- **For Grown-Ups** (`grown-ups/`): continue learning, test and practice scores (first try and after a retry), missed skills with suggested review, assessment history, the teaching guide, and Clear Progress.
 
-## Lesson structure
+### How a practice question works
 
-Every lesson follows the same five stages. Each stage is split into labeled parts (A, B, C…) marked **For the student**, **Together**, or **For the parent**.
+One question per screen. **Check Answer** → right: encouragement and the explanation, then **Next**. Wrong: a clue and **Try Again** (the answer is not shown). Wrong again: the correct answer and explanation, then **Next**. Nothing advances by itself. First-try and after-retry results are saved separately. After a set, **Practice My Misses** retries the questions missed on the first try.
 
-1. **Teach It**: mission brief (learning target and big ideas), vocabulary, parent guide (what / what it means / why it works / how to demonstrate / what to ask / how to know), and a Show–Say–Ask teaching script.
-2. **See It**: step-by-step worked examples with base-ten blocks and a place-value chart, build-a-number, change-one-place, groups of ten, biggest/smallest challenge.
-3. **Practice It**: vocabulary practice, guided practice (hints, check, correct, explain), and independent practice: the 50-question bank in five labeled sets of 10 (any order), with per-set status and scores and **Practice My Misses** to retry only the missed questions.
-4. **Test It**: Vocabulary Test and Math Test, 10 questions each. Focus mode hides the lesson tabs, no hints or feedback, every answer is required, every attempt uses new numbers, and unfinished tests survive a refresh.
-5. **Results**: score, mastery band, explained mistakes, skills to review, and attempt history.
+### How a test works
 
-Mastery bands: **90–100%** Mastered · **70–89%** Review missed skills · **below 70%** Reteach and reassess.
+One question per screen with **Previous** and **Next**; no clues and no feedback. A review screen shows any unanswered questions and grading waits until every question is answered. Unfinished tests are saved and resume where they were left. Every new test uses new numbers (Math and Vocabulary) or rotates the words (Spelling).
 
-Number Words phases follow Learn → Say → Look, Cover, Write, Check → Practice → Spelling Test → Results. The test has 10 typed words (no hints); one of the 11 words sits out each time and is always tested next time. Mastery is 9 or more out of 10.
-
-Progress is stored in the browser's `localStorage` only (`mathbook:v2:*` keys, one prefix per lesson or phase). It does not sync between devices, and no names or results are sent anywhere.
+Progress is stored in the browser's `localStorage` only (`mathbook:v2:*` keys, one prefix per lesson or program). It does not sync between devices, and no names or results are sent anywhere. Fonts (Andika, Baloo 2; SIL Open Font License) are served from this site, so no third-party requests are made.
 
 ## Files
 
 ```
-index.html                         Home page (galaxy landing)
-assets/css/mathbook.css            Shared styles (galaxy theme, panels, place colors)
-assets/js/place-value.js           Math helpers, answer parsing, SVG base-ten blocks, ten-frames (no DOM)
+index.html, math/, number-words/, grown-ups/   Pages
+assets/css/mathbook.css            Shared styles
+assets/fonts/                      Self-hosted fonts and their license
+assets/js/place-value.js           Math helpers, answer parsing, base-ten blocks, ten-frames (no DOM)
 assets/js/questions.js             Question types: render, read, grade
-assets/js/app-shell.js             Shared shell: header, stage router, guided runner, test runner, storage
-assets/js/lesson-app.js            Five-stage lesson engine (reusable for every lesson)
+assets/js/app-shell.js             Page frame, routing, practice runner, test runner, storage
+assets/js/lesson-app.js            Lesson (child view), reusable for every lesson
 assets/js/number-words.js          Number Words logic: practice rounds, spelling tests, rotation (no DOM)
-assets/js/number-words-app.js      Number Words phase engine (reusable for every phase)
-curriculum/chapter-2/lesson-2-1/
-  index.html                       Lesson page (loads the scripts above)
-  lesson.js                        Lesson content only
-number-words/
-  index.html                       Program overview (phases)
-  program.js                       Curriculum data: Phase 1 words and tips; Phases 2–4 outline
-  phase-1/index.html               Phase 1 page
-tests/                             Unit tests, browser tests, audit tooling
-docs/audit/                        Baseline and post-implementation audits with screenshots
+assets/js/number-words-app.js      Number Words (child view), reusable for every phase
+assets/js/grownups-app.js          For Grown-Ups page
+curriculum/chapter-2/lesson-2-1/   Lesson page and lesson.js (all Lesson 2-1 content)
+number-words/program.js            Number Words curriculum data
+tests/                             Unit and browser tests
+docs/audit/                        Build 2.1 audits (they describe the Build 2.1 screens)
 ```
 
 ## Adding a lesson
 
 1. Copy `curriculum/chapter-2/lesson-2-1/` to the new lesson folder.
 2. Edit `lesson.js`: register `Mathbook.lessons['<id>']` with new content and a new `storageKey`. List the practice bank's sets in `bankSets` (each set: `id`, `title`, `blurb`, and 10 question `ids`; every bank question in exactly one set).
-3. In `index.html`, change the `startLesson('<id>', { path })` call. Script paths stay the same at the same folder depth.
-4. On the home page, replace part of the "coming later" row with a link to the new lesson.
+3. In the lesson's `index.html`, change the `startLesson('<id>', …)` call.
+4. Add a button for it on `math/index.html`, and add it to the For Grown-Ups page.
 
-Question types available to any lesson: `mc`, `select`, `number`, `expanded`, `words`, `chart`, `build`, `spell`, `letter` (see `assets/js/questions.js`).
-
-## Adding a Number Words phase
-
-1. In `number-words/program.js`, give the phase `status: 'ready'`, an `href`, a `storageKey`, and `words` (each with `n`, `word`, `tip`, and three `misspellings`), plus `testSize`, `masteryScore`, `practiceSize`.
-2. Copy `number-words/phase-1/` to `phase-N/` and change `startPhase('N')`.
-
-## Tests and audit
+## Tests
 
 Requires Node 18+ (no packages to install) and Chrome or Edge for browser tests.
 
 ```
 npm test               # unit tests: every number 0–9,999, all 50 bank questions, thousands of generated tests, Number Words
 npm run test:browser   # end-to-end in headless Chrome/Edge, served under /Mathbook/ like GitHub Pages
-npm run audit -- after # device-state audit at 9 viewports → tests/audit-output/after/
 ```
 
-Browser tests write screenshots to `tests/screenshots/` (ignored by git). Set `CHROME_PATH` if Chrome is not found.
+Browser tests write screenshots to `tests/screenshots/` (ignored by git). Set `CHROME_PATH` if Chrome is not found. `tests/audit.mjs` is the Build 2.1 device-state audit and targets the Build 2.1 screens; it needs updating before it is used on this interface.

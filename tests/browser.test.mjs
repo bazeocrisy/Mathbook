@@ -1,6 +1,6 @@
-// End-to-end browser test: home page + Lesson 2-1 (no dependencies).
+// End-to-end browser test: home, Math Lessons, Lesson 2-1 (child view), and For Grown-Ups.
 // Serves the repo under /Mathbook/ (like GitHub Pages) and drives headless Chrome/Edge.
-// Run: npm run test:browser   (set CHROME_PATH if Chrome is not found automatically)
+// Run: npm run test:browser
 import path from 'node:path';
 import { ROOT, BASE, startServer, startBrowser, FILL_HELPERS } from './lib/harness.mjs';
 
@@ -9,7 +9,7 @@ const LESSON = BASE + 'curriculum/chapter-2/lesson-2-1/';
 const results = [];
 function check(name, ok, detail) {
   results.push({ name, ok: !!ok, detail });
-  console.log(`${ok ? '✔' : '✖'} ${name}${!ok && detail !== undefined ? ' — ' + JSON.stringify(detail).slice(0, 600) : ''}`);
+  console.log(`${ok ? '✔' : '✖'} ${name}${!ok && detail !== undefined ? ' — ' + JSON.stringify(detail).slice(0, 700) : ''}`);
 }
 
 const server = await startServer();
@@ -17,392 +17,268 @@ const b = await startBrowser();
 const O = server.origin;
 const { js, wait, hash } = b;
 
-async function noHorizontalScroll(label) {
-  const r = await js(`
-    const doc = document.documentElement;
-    const wide = Array.from(document.querySelectorAll('body *')).filter((e) => {
-      if (e.closest('.table-wrap, .skip, .sr-only')) return false;
-      const r = e.getBoundingClientRect();
-      return r.width > 0 && (r.right > doc.clientWidth + 1 || r.left < -1);
-    }).slice(0, 3).map((e) => e.className || e.tagName);
-    return { sw: doc.scrollWidth, cw: doc.clientWidth, wide };`);
-  check(`no horizontal overflow: ${label}`, r.sw <= r.cw && r.wide.length === 0, r);
+// In-page helpers for the one-question-at-a-time runner.
+const RUN = `${FILL_HELPERS}
+  const cur = () => { const el = document.querySelector('main .q[data-qkey]'); if (!el) return null; const [pre, id] = el.dataset.qkey.split(/-(.+)/);
+    const q = pre === 'p' ? L.bank.find((x) => x.id === id) : pre === 'g' ? L.guided.find((x) => x.id === id) : null; return { el, q, id }; };
+  const btn = (act) => document.querySelector('main [data-act="' + act + '"]');
+  const msg = () => (document.querySelector('main .msg:not([hidden])') || {}).innerText || '';
+  const answer = (correct) => { const c = cur(); fill(c.el, c.q, correct); btn('check').click(); };
+  const B = () => JSON.parse(localStorage.getItem(L.storageKey + ':bank-sets') || '{}');`;
+
+async function overflow(label) {
+  const r = await js(`const doc = document.documentElement;
+    const wide = Array.from(document.querySelectorAll('body *')).filter((e) => { if (e.closest('.table-wrap, .skip, .sr-only, .stars')) return false; const r = e.getBoundingClientRect(); return r.width > 0 && (r.right > doc.clientWidth + 1 || r.left < -1); }).slice(0, 3).map((e) => e.className || e.tagName);
+    const small = Array.from(document.querySelectorAll('main a[href], main button, main input:not([type=radio]):not([type=checkbox]), main select, .bookbar a')).filter((e) => { const r = e.getBoundingClientRect(); return r.width > 0 && !e.closest('[hidden], .sr-only, .skip, .table-wrap, .gu, p, li') && (r.width < 44 || r.height < 44); }).slice(0, 3).map((e) => e.className || e.tagName);
+    return { sw: doc.scrollWidth, cw: doc.clientWidth, wide, small };`);
+  check(`layout: no sideways scrolling, targets ≥ 44px — ${label}`, r.sw <= r.cw && r.wide.length === 0 && r.small.length === 0, r);
 }
 
-async function takeTest(id, correctCount) {
-  await hash('#test');
-  await js(`document.querySelector('[data-start="${id}"]').click();`);
-  await wait(200);
+async function finishTest(id, correctCount) {
+  await b.load(O + LESSON + '#test/' + id);
   return js(`${FILL_HELPERS}
-    const draft = JSON.parse(localStorage.getItem(L.storageKey + ':draft-${id}'));
-    const els = document.querySelectorAll('#test-form .q[data-qkey]');
-    draft.questions.forEach((q, i) => fill(els[i], q, i < ${correctCount}));
-    document.querySelector('#test-form button[type=submit]').click();
+    const d = JSON.parse(localStorage.getItem(L.storageKey + ':draft-${id}'));
+    // A resumed test opens where it was left; go back to question 1 first.
+    while (document.querySelector('[data-act="prev"]')) document.querySelector('[data-act="prev"]').click();
+    for (let i = 0; i < d.questions.length; i++) {
+      const el = document.querySelector('main .q[data-qkey]'); fill(el, d.questions[i], i < ${correctCount});
+      document.querySelector('[data-act="next"]').click();
+    }
+    document.querySelector('[data-act="submit"]').click();
     await new Promise((r) => setTimeout(r, 400));
-    const a = JSON.parse(localStorage.getItem(L.storageKey + ':attempts'));
-    return { hash: location.hash, last: a[a.length - 1], text: document.querySelector('.result-detail')?.innerText || '' };`);
+    const a = JSON.parse(localStorage.getItem(L.storageKey + ':attempts')); return { hash: location.hash, last: a[a.length - 1], text: document.querySelector('main').innerText };`);
 }
 
 try {
-  // ----- Home page -----
   await b.viewport(1280, 900, false);
   await b.load(O + BASE);
   await js('localStorage.clear()');
+
+  // ----- Home -----
   await b.load(O + BASE);
-  const home = await js(`return {
-    h1: document.querySelector('h1').textContent,
-    start: document.querySelector('.hero-actions a').getAttribute('href'),
-    lesson: !!document.querySelector('a.lesson-row[href="curriculum/chapter-2/lesson-2-1/"]'),
-    nw: !!document.querySelector('a[href="number-words/"]') && !!document.querySelector('a.lesson-row[href="number-words/phase-1/"]'),
-    locked: Array.from(document.querySelectorAll('.lesson-row.is-locked')).map((e) => e.tagName),
-    continueHidden: document.getElementById('continue').hidden };`);
-  check('Home: welcome, Start Learning → Lesson 2-1, Number Words entry', home.h1 === 'Welcome to Mathbook' && home.start === 'curriculum/chapter-2/lesson-2-1/' && home.lesson && home.nw, home);
-  check('Home: unreleased lessons are not links (not playable)', home.locked.length === 3 && home.locked.every((t) => t === 'DIV'), home.locked);
-  check('Home: no Continue Learning without saved progress (nothing fabricated)', home.continueHidden, home);
-  await b.navigate(`document.querySelector('.hero-actions a').click();`);
-  check('Start Learning opens Lesson 2-1 (relative path under /Mathbook/)', await js(`return location.pathname === '/Mathbook/curriculum/chapter-2/lesson-2-1/' && !!document.querySelector('.stagebar');`));
+  const home = await js(`return { h1: document.querySelector('h1').textContent, choices: Array.from(document.querySelectorAll('.home-choice')).map((a) => a.getAttribute('href') + ' ' + a.querySelector('b').textContent),
+    grown: document.querySelector('.grownups-link').getAttribute('href'), logo: document.querySelector('.logo').getAttribute('href'),
+    homeButton: Array.from(document.querySelectorAll('a, button')).some((e) => /^\\s*home\\s*$/i.test(e.textContent)), badges: document.querySelectorAll('.badge-m, .aud, .tag-m').length };`);
+  check('Home: one question and exactly two big choices (Math Lessons, Number Words)', home.h1 === 'What do you want to learn today?' && JSON.stringify(home.choices) === JSON.stringify(['math/ Math Lessons', 'number-words/ Number Words']), home);
+  check('Home: no Home button, no badges; logo links home; "For grown-ups" link', !home.homeButton && home.badges === 0 && home.logo === './' && home.grown === 'grown-ups/', home);
+  await b.navigate(`document.querySelector('.home-choice[href="math/"]').click();`);
+  check('Math Lessons page lists Lesson 2-1', await js(`return document.querySelector('h1').textContent === 'Math Lessons' && !!document.querySelector('a.menu-btn[href="../curriculum/chapter-2/lesson-2-1/"]') && document.querySelector('.logo').getAttribute('href') === '../'`));
+  await b.navigate(`document.querySelector('a.menu-btn').click();`);
 
-  // ----- Teach It -----
-  const teach = await js(`return {
-    h1: document.querySelector('h1').textContent,
-    guide: document.querySelectorAll('.guide-card').length,
-    vocab: document.querySelectorAll('.vocab-card').length,
-    script: document.querySelectorAll('.script-step').length,
-    current: document.querySelector('[aria-current=step]').dataset.stage,
-    parts: Array.from(document.querySelectorAll('.part-tag')).map((e) => e.textContent).join(''),
-    audiences: Array.from(document.querySelectorAll('.section-head .aud')).map((e) => e.textContent),
-    bigIdea2: /Big idea 2: 10, 100, or 1,000 more or less/.test(document.body.innerText) && /4,125 \\+ 100 = 4,225/.test(document.body.innerText),
-    name: /chris/i.test(document.body.innerText) };`);
-  // Build 2.1: the teaching script gained step 6 (10/100/1,000 more or less), so 5 → 6 steps.
-  check('Teach It: title, 6 parent-guide answers, 6 vocabulary terms, 6 script steps', teach.h1 === 'Represent 4-Digit Numbers' && teach.guide === 6 && teach.vocab === 6 && teach.script === 6 && teach.current === 'teach', teach);
-  check('Teach It: parts A–D labeled for student / together / parent', teach.parts === 'ABCD' && teach.audiences.join('|') === 'For the student|Together|For the parent|For the parent', teach);
-  check('Teach It: "10, 100, 1,000 more or less" is taught (audit B-02)', teach.bigIdea2, teach);
-  check('no student name shown', !teach.name);
-  const jump = await js(`document.querySelector('[data-jump="script"]').click(); await new Promise((r) => setTimeout(r, 200));
-    const h = document.querySelector('#script h2').getBoundingClientRect(); const bar = document.querySelector('.stagebar').getBoundingClientRect();
-    return { headingTop: Math.round(h.top), barBottom: Math.round(bar.bottom), hash: location.hash };`);
-  check('Jump links land below the sticky stage bar and keep the stage (audit B-08)', jump.headingTop >= jump.barBottom && (jump.hash === '' || jump.hash === '#teach'), jump);
-  const skip = await js(`location.hash = '#see'; await new Promise((r) => setTimeout(r, 250)); document.querySelector('[data-skip]').click(); await new Promise((r) => setTimeout(r, 250));
-    return { hash: location.hash, focused: document.activeElement.id };`);
-  check('Skip link focuses content without changing the stage (B-20)', skip.hash === '#see' && skip.focused === 'stage', skip);
+  // ----- Lesson menu -----
+  const menu = await js(`return { h1: document.querySelector('h1').textContent, items: Array.from(document.querySelectorAll('.menu-btn b')).map((x) => x.textContent), back: document.querySelector('.backlink').textContent,
+    logo: document.querySelector('.logo').getAttribute('href'), tabs: document.querySelectorAll('.stagebar, .stage-link').length, parentText: /For the parent|Parent:/i.test(document.body.innerText) };`);
+  check('Lesson menu: Learn, Words to Know, Practice, Show What You Know', JSON.stringify(menu.items) === JSON.stringify(['Learn', 'Words to Know', 'Practice', 'Show What You Know']) && menu.h1 === 'Lesson 2-1: Represent 4-Digit Numbers', menu);
+  check('Lesson menu: no tab bar, no parent text; logo goes home; back link to Math Lessons', menu.tabs === 0 && !menu.parentText && menu.logo === '../../../' && /Math Lessons/.test(menu.back), menu);
 
-  // ----- See It -----
-  await hash('#teach'); await hash('#see');
-  const demo = await js(`
-    const body = document.querySelector('#demo-body');
-    const counts = () => ['thousand','hundred','ten','one'].map((k) => body.querySelectorAll('[data-block="' + k + '"]').length);
-    const first = { counts: counts(), step: document.querySelector('#demo-count').textContent, prevDisabled: document.querySelector('#demo-prev').disabled };
-    for (let i = 0; i < 10; i++) document.querySelector('#demo-next').click();
-    const last = { step: document.querySelector('#demo-count').textContent, nextDisabled: document.querySelector('#demo-next').disabled, text: body.innerText };
-    document.querySelector('.seg-btn[data-ex="2"]').click();
-    const zero = { counts: counts(), step: document.querySelector('#demo-count').textContent };
-    for (let i = 0; i < 2; i++) document.querySelector('#demo-next').click();
-    zero.note = body.querySelector('.demo-say').textContent;
-    return { first, last, zero };`);
-  check('See It: 2,137 shows 2 thousands, 1 hundred, 3 tens, 7 ones', JSON.stringify(demo.first.counts) === '[2,1,3,7]', demo.first);
-  check('See It: steps advance one at a time and stop at the end', demo.first.step === 'Step 1 of 7' && demo.first.prevDisabled && demo.last.step === 'Step 7 of 7' && demo.last.nextDisabled, demo);
-  check('See It: final step shows expanded and word form', demo.last.text.includes('2,000 + 100 + 30 + 7 = 2,137') && demo.last.text.includes('two thousand, one hundred thirty-seven'), demo.last.text);
-  check('See It: 5,072 example shows 0 hundred flats and explains the zero', JSON.stringify(demo.zero.counts) === '[5,0,7,2]' && /0 is in the hundreds place/.test(demo.zero.note), demo.zero);
-  const builder = await js(`
-    const st = document.querySelectorAll('#builder .stepper');
-    st[1].querySelector('[data-step="1"]').click(); st[1].querySelector('[data-step="1"]').click();
-    st[3].querySelector('[data-step="-1"]').click();
-    const out = document.querySelector('#bld-out');
-    const a = { text: out.innerText, input: document.querySelector('#bld-input').value,
-      counts: ['thousand','hundred','ten','one'].map((k) => out.querySelectorAll('[data-block="' + k + '"]').length) };
-    const inp = document.querySelector('#bld-input'); inp.value = '9,050'; inp.dispatchEvent(new Event('input', { bubbles: true }));
-    a.typed = ['thousand','hundred','ten','one'].map((k) => out.querySelectorAll('[data-block="' + k + '"]').length);
-    a.typedText = out.innerText;
-    return a;`);
-  check('Builder: + / − update number, blocks, and forms (2,137 → 2,336)', builder.input === '2,336' && JSON.stringify(builder.counts) === '[2,3,3,6]' && builder.text.includes('2,000 + 300 + 30 + 6') && builder.text.includes('two thousand, three hundred thirty-six'), builder);
-  check('Builder: typing 9,050 rebuilds the model', JSON.stringify(builder.typed) === '[9,0,5,0]' && builder.typedText.includes('nine thousand, fifty'), builder);
-  const change = await js(`
-    const out = document.querySelector('#change-out');
-    document.querySelector('[data-delta="100"]').click(); const a = out.innerText;
-    document.querySelector('[data-delta="-10"]').click(); const b = out.innerText;
-    document.querySelector('#change-reset').click();
-    for (let i = 0; i < 8; i++) document.querySelector('[data-delta="1000"]').click();
-    const capped = { text: out.querySelector('.change-eq').innerText, disabled: document.querySelector('[data-delta="1000"]').disabled };
-    return { a, b, capped };`);
-  check('Change one place: 4,125 + 100 = 4,225, then − 10 = 4,215; only one digit changes', /4,125 \+ 100 = 4,225/.test(change.a) && /hundreds digit changed: 1 became 2/.test(change.a) && /4,225 − 10 = 4,215/.test(change.b), change);
-  check('Change one place: buttons that would need regrouping are disabled (stops at 9,125)', /= 9,125/.test(change.capped.text) && change.capped.disabled, change.capped);
-  const challenge = await js(`return document.querySelector('#challenge').innerText;`);
-  check('Challenge: greatest 8,641 and smallest 1,468 from 4, 1, 8, 6 (audit B-11)', /Greatest number: 8,641/.test(challenge) && /Smallest number: 1,468/.test(challenge), challenge.slice(0, 200));
+  // ----- Learn -----
+  await hash('#learn');
+  const learn = await js(`
+    const page = () => ({ title: document.querySelector('#learn-card h2').textContent, counter: document.querySelector('.progress-line, .dots').getAttribute('aria-label'),
+      blocks: ['thousand','hundred','ten','one'].map((k) => document.querySelectorAll('#learn-card [data-block="' + k + '"]').length).join(','), text: document.querySelector('#learn-card').innerText });
+    const next = () => document.querySelector('[data-act="next"]').click();
+    const p1 = page(); next(); const p2 = page();
+    for (let i = 0; i < 6; i++) next(); const p8 = page();
+    for (let i = 0; i < 10; i++) next(); const z = page();
+    return { p1, p2, p8, z, parent: /Ask:/.test(document.body.innerText) };`);
+  check('Learn: page 1 big idea; 2,137 drawn 2,1,3,7; last 2,137 step shows expanded and word form', learn.p1.title === "A digit's place tells its value" && /Page 1 of 26/.test(learn.p1.counter) && learn.p2.blocks === '2,1,3,7' && /two thousand, one hundred thirty-seven/.test(learn.p8.text) && /2,000 \+ 100 \+ 30 \+ 7 = 2,137/.test(learn.p8.text), learn);
+  check('Learn: 5,072 step explains the zero; no parent "Ask" lines on the child screen', /Let's build 5,072/.test(learn.z.title) && /The 0 is in the hundreds place/.test(learn.z.text) && learn.z.blocks === '5,0,7,2' && !learn.parent, learn.z);
+  await b.reload(); await hash('#learn');
+  check('Learn: the page is remembered after a refresh (page 18)', await js(`return document.querySelector('.progress-line, .dots').getAttribute('aria-label') === 'Page 18 of 26'`));
+  const learnEnd = await js(`
+    const next = () => document.querySelector('[data-act="next"]').click();
+    for (let i = 0; i < 5; i++) next();
+    const st = document.querySelectorAll('.stepper'); st[1].querySelector('[data-step="1"]').click();
+    const build = document.querySelector('#bld-out').innerText;
+    next(); document.querySelector('[data-delta="100"]').click(); const change = document.querySelector('#change-out').innerText;
+    next(); next(); const compose = document.querySelector('#learn-card').innerText; const last = document.querySelector('[data-act="next"]').textContent;
+    document.querySelector('[data-act="next"]').click(); await new Promise((r) => setTimeout(r, 200));
+    return { build, change, compose, last, hash: location.hash };`);
+  check('Learn: build (2,237), change one place (4,125 + 100 = 4,225), biggest/smallest (8,641 / 1,468)', /2,237/.test(learnEnd.build) && /4,125 \+ 100 = 4,225/.test(learnEnd.change) && /8,641/.test(learnEnd.compose) && /1,468/.test(learnEnd.compose), learnEnd);
+  check('Learn: last page returns to the lesson menu', /Back to the lesson/.test(learnEnd.last) && (learnEnd.hash === '' || learnEnd.hash === '#'), learnEnd);
 
-  // ----- Practice It -----
+  // ----- Words to Know -----
+  await hash('#words');
+  const words = await js(`const terms = []; for (let i = 0; i < 10; i++) { terms.push(document.querySelector('.term').textContent); const n = document.querySelector('[data-act="next"]'); if (n) n.click(); }
+    return { terms, last: document.querySelector('a.btn-main').getAttribute('href') };`);
+  check('Words to Know: 10 word cards, then "Practice the words"', words.terms.length === 10 && words.terms[0] === 'digit' && words.terms.includes('expanded form') && words.terms.includes('thousands') && words.last === '#word-practice', words);
+  await hash('#word-practice');
+  check('Word practice: 10 questions, one at a time, Check Answer', await js(`return document.querySelector('.dots').getAttribute('aria-label') === 'Question 1 of 10' && !!document.querySelector('[data-act="check"]') && document.querySelectorAll('main .q').length === 1`));
+
+  // ----- Practice: one question at a time -----
   await hash('#practice');
-  const vocabP = await js(`${FILL_HELPERS}
-    const box = document.querySelector('#vocab-runner');
-    const el = box.querySelector('.q[data-qkey]');
-    const key = el.dataset.qkey.replace('vp-', '');
-    const all = []; let q;
-    // Read the first vocabulary item from the rendered prompt by asking the runner: answer wrong, then right.
-    return { hasHint: !!box.querySelector('[data-act=hint]'), dots: box.querySelectorAll('.dot').length };`);
-  check('Vocabulary practice: 10 items with hints before the test (audit B-03)', vocabP.hasHint && vocabP.dots === 10, vocabP);
-  const guided = await js(`${FILL_HELPERS}
-    const box = document.querySelector('#guided-runner');
-    const q = L.guided[0];
-    const el = box.querySelector('.q[data-qkey]');
-    fill(el, q, false);
-    box.querySelector('[data-act=check]').click();
-    const wrongMsg = box.querySelector('.result-box').innerText;
-    box.querySelector('[data-act=hint]').click();
-    const afterHint = box.querySelector('.result-box').innerText;
-    fill(el, q, true);
-    box.querySelector('[data-act=check]').click();
-    const rightMsg = box.querySelector('.result-box').innerText;
-    box.querySelector('[data-act=next]').click();
-    const second = box.querySelector('.q-prompt').innerText;
-    return { wrongMsg, afterHint, rightMsg, hint: !box.querySelector('.hint-box').hidden, second, dots: box.querySelectorAll('.dot').length };`);
-  check('Guided: wrong answer can be corrected; correct answer explained; 7 problems', /Not yet/.test(guided.wrongMsg) && /Correct/.test(guided.rightMsg) && /3,052/.test(guided.second) && guided.dots === 7, guided);
-  check('Guided: hint is not repeated in the feedback once shown (audit B-14)', /Hint:/.test(guided.wrongMsg) && !/Hint:/.test(guided.afterHint), guided);
+  const pmenu = await js(`return Array.from(document.querySelectorAll('.menu-btn b')).map((x) => x.textContent);`);
+  check('Practice menu: Practice Together + 5 sets', JSON.stringify(pmenu) === JSON.stringify(['Practice Together', 'Set 1: Place and Digit Value', 'Set 2: Base-Ten Models', 'Set 3: Standard Form', 'Set 4: Expanded and Word Form', 'Set 5: Mixed Review and Reasoning']), pmenu);
+  await hash('#set/s1');
+  const s1 = await js(`${RUN}
+    const order = B().s1.active.order;
+    btn('check').click(); const empty = msg();
+    answer(true); const right = { msg: msg(), next: !!btn('next'), first: B().s1.active.run.items[order[0]] };
+    await new Promise((r) => setTimeout(r, 1500)); const stillHere = document.querySelector('.dots').getAttribute('aria-label');
+    btn('next').click();
+    const q2 = cur().q; answer(false);
+    const wrongState = { msg: msg(), again: !!btn('again'), next: !!btn('next'), reveals: /The answer is/.test(msg()) || msg().includes(q2.explanation), locked: Array.from(cur().el.querySelectorAll('input, select, button')).every((x) => x.disabled) };
+    btn('again').click(); const unlocked = Array.from(cur().el.querySelectorAll('input, select, button')).some((x) => !x.disabled);
+    answer(true); const retryRight = { msg: msg(), rec: B().s1.active.run.items[q2.id] };
+    btn('next').click();
+    const q3 = cur().q; answer(false); btn('again').click(); answer(false);
+    const twice = { msg: msg(), rec: B().s1.active.run.items[q3.id], shows: msg().includes(Q.correctText(q3)) && msg().includes(q3.explanation) };
+    btn('prev').click(); const backTo = { msg: msg(), locked: Array.from(cur().el.querySelectorAll('input, select, button')).every((x) => x.disabled) };
+    btn('next').click(); btn('next').click();
+    return { n: order.length, unique: new Set(order).size, sameSet: order.slice().sort().join() === L.bankSets[0].ids.slice().sort().join(), empty, right, stillHere, wrong: wrongState, unlocked, retryRight, twice, backTo };`);
+  check('Set 1: 10 different questions from Set 1; Check Answer asks for an answer first', s1.n === 10 && s1.unique === 10 && s1.sameSet && /answer first/.test(s1.empty), s1);
+  check('Right on the first try: encouragement + explanation, Next appears, recorded as first try', /Great job|You got it|Super|Nice work|Well done/.test(s1.right.msg) && s1.right.next && s1.right.first.first === true && s1.right.first.final === true, s1.right);
+  check('Never advances by itself (still question 1 after 1.5 s)', s1.stillHere === 'Question 1 of 10', s1.stillHere);
+  check('Wrong once: "Not quite" + clue + Try Again; answer NOT revealed; inputs locked until Try Again', /Not quite/.test(s1.wrong.msg) && s1.wrong.again && !s1.wrong.next && !s1.wrong.reveals && s1.wrong.locked && s1.unlocked, s1.wrong);
+  check('Right on the retry: "You got it this time!"; first try false, final true', /You got it this time/.test(s1.retryRight.msg) && s1.retryRight.rec.first === false && s1.retryRight.rec.final === true, s1.retryRight);
+  check('Wrong twice: shows the correct answer and explanation; first and final both false', /The answer is/.test(s1.twice.msg) && s1.twice.shows && s1.twice.rec.first === false && s1.twice.rec.final === false, s1.twice);
+  check('Previous shows an answered question locked with its feedback', s1.backTo.locked && /You got it this time/.test(s1.backTo.msg), s1.backTo);
 
-  // ----- Practice bank: five sets of 10 + Practice My Misses -----
-  const BANK = `const B = () => JSON.parse(localStorage.getItem(L.storageKey + ':bank-sets') || '{}');
-    const qEls = () => Array.from(document.querySelectorAll('#indep .q[data-qkey]'));
-    const shownIds = () => qEls().map((e) => e.dataset.qkey.replace('p-', ''));`;
-  const grid = await js(`${FILL_HELPERS} ${BANK}
-    return { cards: Array.from(document.querySelectorAll('.set-card h3')).map((h) => h.textContent), status: Array.from(document.querySelectorAll('.set-status')).map((s) => s.innerText.trim()),
-      empty: /Choose a set/.test(document.querySelector('#indep').innerText), bank: L.bank.length };`);
-  check('Practice bank: 5 labeled sets, all "Not started"; bank has 50', JSON.stringify(grid.cards) === JSON.stringify(['Place and Digit Value', 'Base-Ten Models', 'Standard Form', 'Expanded and Word Form', 'Mixed Review and Reasoning']) && grid.status.every((s) => s === 'Not started') && grid.empty && grid.bank === 50, grid);
-
-  const set2 = await js(`${FILL_HELPERS} ${BANK}
-    document.querySelector('[data-open-set="s2"]').click();
-    const ids = shownIds(); const expected = L.bankSets[1].ids;
-    document.querySelector('#check-set').click();
-    const blocked = document.querySelector('#indep .error-box').innerText;
-    // Answer: first 3 wrong, rest right.
-    qEls().forEach((el, i) => fill(el, L.bank.find((q) => q.id === ids[i]), i >= 3));
-    document.querySelector('#check-set').click();
-    const st = B().s2;
-    return { n: ids.length, unique: new Set(ids).size, sameSet: ids.slice().sort().join() === expected.slice().sort().join(), hints: document.querySelectorAll('#indep [data-act=hint], #indep .hint-box').length,
-      blocked, score: document.querySelector('.set-score').innerText, wrong: document.querySelectorAll('#indep .feedback-no').length,
-      explained: Array.from(document.querySelectorAll('#indep .feedback-no')).every((f) => /Correct answer:[\\s\\S]*Why:/.test(f.innerText)),
-      missesBtn: document.querySelector('#practice-misses')?.innerText, card: document.querySelectorAll('.set-card')[1].innerText, attempts: st.attempts.length, firstOrder: ids, missed: ids.slice(0, 3) };`);
-  check('Set 2: 10 different questions, exactly the Base-Ten Models set, no hints', set2.n === 10 && set2.unique === 10 && set2.sameSet && set2.hints === 0, set2);
-  check('Set 2: must answer all 10; then 7 of 10 with explanations for each miss', /Answer every question/.test(set2.blocked) && /7 of 10 correct/.test(set2.score) && set2.wrong === 3 && set2.explained, set2);
-  check('Set card shows Completed and the score', /Completed/.test(set2.card) && /Last score 7\/10/.test(set2.card) && /Best 7\/10/.test(set2.card) && set2.attempts === 1, set2.card);
-  check('"Practice My Misses (3)" appears after checking', set2.missesBtn === 'Practice My Misses (3)', set2.missesBtn);
-
-  const retry1 = await js(`${FILL_HELPERS} ${BANK}
-    document.querySelector('#practice-misses').click();
-    const ids = shownIds(); const text = document.querySelector('#indep').innerText;
-    const qs = ids.map((id) => L.bank.find((q) => q.id === id));
-    return { ids, title: document.querySelector('.set-title').innerText, onYourOwn: /On your own/.test(text),
-      answered: qs.filter((q, i) => Q.isAnswered(q, Q.read(qEls()[i], q))).length, feedback: document.querySelectorAll('#indep .feedback').length,
-      revealsAnswer: /Correct answer:/.test(text) || qs.some((q) => text.includes(q.explanation)), hints: document.querySelectorAll('#indep [data-act=hint]').length };`);
-  check('Practice My Misses: only the 3 missed questions', retry1.ids.length === 3 && retry1.ids.slice().sort().join() === set2.missed.slice().sort().join() && /Practice My Misses \(3 questions\)/.test(retry1.title), retry1);
-  check('Practice My Misses: starts unanswered; no correct answers, explanations, or hints shown before checking', retry1.answered === 0 && retry1.feedback === 0 && !retry1.revealsAnswer && retry1.hints === 0 && retry1.onYourOwn, retry1);
-
-  await js(`${FILL_HELPERS} ${BANK} fill(qEls()[0], L.bank.find((q) => q.id === shownIds()[0]), true);`);
+  // Refresh in the middle of a set, in the "Try Again" state (question 4).
+  await js(`${RUN} answer(false);`);
   await b.reload();
-  const retryRefresh = await js(`${FILL_HELPERS} ${BANK}
-    const ids = shownIds(); const qs = ids.map((id) => L.bank.find((q) => q.id === id));
-    return { same: ids.join() === ${JSON.stringify(retry1.ids.join())}, title: document.querySelector('.set-title')?.innerText, answered: qs.filter((q, i) => Q.isAnswered(q, Q.read(qEls()[i], q))).length };`);
-  check('Refresh mid-retry: same 3 questions, the 1 answer kept', retryRefresh.same && /Practice My Misses/.test(retryRefresh.title) && retryRefresh.answered === 1, retryRefresh);
+  const mid = await js(`${RUN} return { counter: document.querySelector('.dots').getAttribute('aria-label'), again: !!btn('again'), msg: msg() };`);
+  check('Refresh mid-set: same question, still waiting for Try Again', mid.counter === 'Question 4 of 10' && mid.again && /Not quite/.test(mid.msg), mid);
+  await b.shot(path.join(SHOTS, 'set-try-again-desktop.png'), false);
+  const s1done = await js(`${RUN}
+    btn('again').click(); answer(true); btn('next').click();
+    for (let i = 4; i < 10; i++) { answer(true); btn('next').click(); }
+    await new Promise((r) => setTimeout(r, 200));
+    const st = B().s1; const a = st.attempts[0];
+    return { text: document.querySelector('main').innerText, misses: document.querySelector('#misses')?.textContent, score: a.score, finalScore: a.finalScore, first: a.first.filter(Boolean).length, final: a.final.filter(Boolean).length };`);
+  // First try right: q1 and q5–q10 = 7. Right after Try Again: q2 and q4 = 2 more. q3 missed twice.
+  check('Set summary: 7 of 10 right on the first try, 2 more on Try Again; attempt saved with both scores', /7 of 10 right on the first try, and 2 more when you tried again/.test(s1done.text) && s1done.score === 7 && s1done.finalScore === 9 && s1done.first === 7 && s1done.final === 9, s1done);
+  check('"Practice My Misses (3)" offered after the set', s1done.misses === 'Practice My Misses (3)', s1done.misses);
+  const pmm = await js(`${RUN}
+    const missed = B().s1.attempts[0].order.filter((id, k) => !B().s1.attempts[0].first[k]);
+    document.querySelector('#misses').click(); await new Promise((r) => setTimeout(r, 300));
+    const ids = B().s1.active.order; const first = cur(); const blank = !Q.isAnswered(first.q, Q.read(first.el, first.q));
+    const text = document.querySelector('main').innerText; const revealed = /The answer is|Not quite|Great job/.test(text);
+    for (let i = 0; i < ids.length; i++) { answer(true); btn('next').click(); }
+    await new Promise((r) => setTimeout(r, 200));
+    const st = B().s1;
+    return { hash: location.hash, sameIds: ids.slice().sort().join() === missed.slice().sort().join(), n: ids.length, blank, revealed, summary: document.querySelector('main').innerText,
+      retries: st.retries.length, parentOk: st.retries[0].parentId === st.attempts[0].id, original: st.attempts[0].score + '/' + st.attempts[0].finalScore };`);
+  check('Practice My Misses: only the 3 first-try misses, starts blank, nothing revealed', /misses\/s1/.test(pmm.hash) && pmm.sameIds && pmm.n === 3 && pmm.blank && !pmm.revealed, pmm);
+  check('Practice My Misses saved separately; original attempt unchanged (7 first try / 9 final)', /You practiced your misses/.test(pmm.summary) && /3 of 3 right on the first try/.test(pmm.summary) && pmm.retries === 1 && pmm.parentOk && pmm.original === '7/9', pmm);
+  await b.reload();
+  check('Refresh after finishing: summary still shown', await js(`return /You practiced your misses/.test(document.querySelector('main').innerText)`));
+  await hash('#practice');
+  check('Practice menu marks Set 1 done', await js(`return /Done/.test(document.querySelectorAll('.menu-btn')[1].innerText) && !!document.querySelectorAll('.menu-btn')[1].querySelector('.done')`));
 
-  const retry1Done = await js(`${FILL_HELPERS} ${BANK}
-    const ids = shownIds(); qEls().forEach((el, i) => fill(el, L.bank.find((q) => q.id === ids[i]), i < 2));
-    document.querySelector('#check-set').click();
-    const st = B().s2;
-    return { score: document.querySelector('.set-score').innerText, explained: document.querySelectorAll('#indep .feedback').length, wrongIds: [ids[2]],
-      original: st.attempts[0].score, originalCorrect: st.attempts[0].correct.filter(Boolean).length, retries: st.retries.length, parentOk: st.retries[0].parentId === st.attempts[0].id,
-      card: document.querySelectorAll('.set-card')[1].innerText, again: document.querySelector('#practice-misses')?.innerText };`);
-  check('Retry checked: "2 of 3 now correct", explanations for all 3', /Practice My Misses: 2 of 3 now correct/.test(retry1Done.score) && retry1Done.explained === 3, retry1Done);
-  check('Original attempt preserved (7/10) and improvement tracked separately (fixed 2 of 3)', retry1Done.original === 7 && retry1Done.originalCorrect === 7 && retry1Done.retries === 1 && retry1Done.parentOk && /original attempt stays 7\/10/.test(retry1Done.score) && /Misses fixed so far: 2 of 3/.test(retry1Done.score) && /Misses fixed 2 of 3/.test(retry1Done.card), retry1Done);
-  const retry2 = await js(`${FILL_HELPERS} ${BANK}
-    document.querySelector('#practice-misses').click();
-    const ids = shownIds(); qEls().forEach((el, i) => fill(el, L.bank.find((q) => q.id === ids[i]), true));
-    document.querySelector('#check-set').click();
-    return { ids, score: document.querySelector('.set-score').innerText, card: document.querySelectorAll('.set-card')[1].innerText, noMoreMisses: !document.querySelector('#practice-misses') };`);
-  check('Practice My Misses again: only the 1 still-missed question; then all misses fixed (3 of 3)', retry1Done.again === 'Practice My Misses (1)' && JSON.stringify(retry2.ids) === JSON.stringify(retry1Done.wrongIds) && /1 of 1 now correct/.test(retry2.score) && /Misses fixed so far: 3 of 3/.test(retry2.score) && retry2.noMoreMisses && /Last score 7\/10/.test(retry2.card), retry2);
-
-  await b.reload(); await hash('#teach'); await hash('#practice');
-  const bankPersisted = await js(`${FILL_HELPERS} ${BANK} return { title: document.querySelector('.set-title')?.innerText, score: document.querySelector('.set-score')?.innerText, card: document.querySelectorAll('.set-card')[1].innerText, locked: Array.from(document.querySelectorAll('#indep input')).every((i) => i.disabled) };`);
-  check('Refresh and navigation: checked retry, set status, and scores are kept; answers locked', /Practice My Misses/.test(bankPersisted.title) && /1 of 1 now correct/.test(bankPersisted.score) && /Completed/.test(bankPersisted.card) && /Misses fixed 3 of 3/.test(bankPersisted.card) && bankPersisted.locked, bankPersisted);
-
-  const again = await js(`${FILL_HELPERS} ${BANK}
-    const orders = [];
-    for (let k = 0; k < 3; k++) { document.querySelector('#set-again') ? document.querySelector('#set-again').click() : document.querySelector('[data-open-set="s2"]').click(); orders.push(shownIds().join());
-      if (k < 2) { const ids = shownIds(); qEls().forEach((el, i) => fill(el, L.bank.find((q) => q.id === ids[i]), true)); document.querySelector('#check-set').click(); } }
-    const ids = shownIds(); const qs = ids.map((id) => L.bank.find((q) => q.id === id));
-    return { differs: orders.some((o) => o !== ${JSON.stringify(set2.firstOrder.join())}), unique: new Set(ids).size, answered: qs.filter((q, i) => Q.isAnswered(q, Q.read(qEls()[i], q))).length,
-      attempts: B().s2.attempts.map((a) => a.score), card: document.querySelectorAll('.set-card')[1].innerText };`);
-  check('Practice this set again: new random order, 10 unique questions, unanswered; earlier attempts kept (7, 10, 10)', again.differs && again.unique === 10 && again.answered === 0 && JSON.stringify(again.attempts) === '[7,10,10]' && /In progress/.test(again.card) && /Best 10\/10/.test(again.card), again);
-
-  const switching = await js(`${FILL_HELPERS} ${BANK}
-    const ids2 = shownIds(); fill(qEls()[0], L.bank.find((q) => q.id === ids2[0]), true);
-    document.querySelector('[data-open-set="s1"]').click(); const s1 = shownIds();
-    document.querySelector('[data-open-set="s2"]').click(); const back = shownIds();
-    const q0 = L.bank.find((q) => q.id === back[0]);
-    return { s1ok: s1.slice().sort().join() === L.bankSets[0].ids.slice().sort().join(), sameOrder: back.join() === ids2.join(), kept: Q.isAnswered(q0, Q.read(qEls()[0], q0)), label: document.querySelector('[data-open-set="s2"]').innerText };`);
-  check('Switching sets: Set 1 opens its own 10; returning to Set 2 continues with the answer kept', switching.s1ok && switching.sameOrder && switching.kept && switching.label === 'Continue', switching);
-
-  const allSets = await js(`${FILL_HELPERS} ${BANK}
+  // All five sets through the UI, right on the first try → every one of the 50 questions grades correctly.
+  const all = await js(`${RUN}
     const out = {};
     for (const s of L.bankSets) {
-      document.querySelector('[data-open-set="' + s.id + '"]').click();
-      if (!document.querySelector('#check-set')) document.querySelector('#set-again').click();
-      const ids = shownIds(); qEls().forEach((el, i) => fill(el, L.bank.find((q) => q.id === ids[i]), true));
-      document.querySelector('#check-set').click();
-      out[s.id] = { score: document.querySelector('.set-score').innerText.match(/(\\d+) of (\\d+)/).slice(1).join('/'), same: ids.slice().sort().join() === s.ids.slice().sort().join() };
+      location.hash = 'set/' + s.id; await new Promise((r) => setTimeout(r, 250));
+      if (document.querySelector('#again')) { document.querySelector('#again').click(); await new Promise((r) => setTimeout(r, 150)); }
+      const ids = []; for (let i = 0; i < 10; i++) { ids.push(cur().id); answer(true); btn('next').click(); }
+      await new Promise((r) => setTimeout(r, 150));
+      const a = B()[s.id].attempts.slice(-1)[0];
+      out[s.id] = { score: a.score, final: a.finalScore, same: ids.slice().sort().join() === s.ids.slice().sort().join() };
     }
-    return { out, done: Array.from(document.querySelectorAll('.set-status')).map((s) => s.innerText.trim()) };`);
-  check('All 5 sets through the UI: every one of the 50 questions graded correct (10/10 each)', Object.values(allSets.out).every((x) => x.score === '10/10' && x.same) && allSets.done.every((d) => d === 'Completed'), allSets);
+    return out;`);
+  check('All 5 sets answered right on the first try through the UI: 10/10 each (all 50 questions)', Object.values(all).every((x) => x.score === 10 && x.final === 10 && x.same), all);
+  const again = await js(`${RUN} location.hash = 'set/s2'; await new Promise((r) => setTimeout(r, 250)); const before = B().s2.attempts.slice(-1)[0].order.join();
+    document.querySelector('#again').click(); await new Promise((r) => setTimeout(r, 150)); return { differs: B().s2.active.order.join() !== before, n: B().s2.active.order.length };`);
+  check('"Practice Set again": new attempt, new order', again.differs && again.n === 10, again);
 
-  // ----- Test It: focus mode, required answers, switching tests -----
-  await hash('#test');
-  await js(`document.querySelector('[data-start="math"]').click();`);
-  await wait(200);
-  const blocked = await js(`${FILL_HELPERS}
-    const n = document.querySelectorAll('#test-form .q[data-qkey]').length;
-    const hints = document.querySelectorAll('#test-form .hint-box, #test-form [data-act=hint]').length;
-    const tabsHidden = getComputedStyle(document.querySelector('.stagebar')).display === 'none';
-    const banner = getComputedStyle(document.querySelector('.test-banner')).display !== 'none';
-    document.querySelector('#test-form button[type=submit]').click();
-    await new Promise((r) => setTimeout(r, 200));
-    return { n, hints, tabsHidden, banner, err: document.querySelector('#test-form .error-box').innerText, flagged: document.querySelectorAll('.needs-answer').length,
-      saved: (JSON.parse(localStorage.getItem(L.storageKey + ':attempts')) || []).length, types: [...new Set(JSON.parse(localStorage.getItem(L.storageKey + ':draft-math')).questions.map((q) => q.type))] };`);
-  check('Math Test: 10 questions, several types, no hints', blocked.n === 10 && blocked.hints === 0 && blocked.types.length >= 4, blocked);
-  check('Test focus mode: lesson tabs hidden, test banner shown (audit B-04)', blocked.tabsHidden && blocked.banner, blocked);
-  check('Math Test: cannot submit until every question is answered', /answer every question/i.test(blocked.err) && blocked.flagged === 10 && blocked.saved === 0, blocked);
-  await b.viewport(390, 844, true);
-  await b.shot(path.join(SHOTS, 'test-math-phone.png'));
-  await b.viewport(1280, 900, false);
-
-  const resumed = await js(`${FILL_HELPERS}
-    const d = JSON.parse(localStorage.getItem(L.storageKey + ':draft-math')); const els = document.querySelectorAll('#test-form .q[data-qkey]');
-    d.questions.slice(0, 3).forEach((q, i) => fill(els[i], q, true));
-    return document.querySelector('#answered').textContent;`);
+  // Transition from Build 2.1 saved progress (whole-set checking) to question by question.
+  await js(`${RUN}
+    const s = B();
+    s.s3 = { attempts: [], retries: [], active: { kind: 'set', order: L.bankSets[2].ids.slice(), responses: { [L.bankSets[2].ids[0]]: Q.correctResponse(L.bank.find((q) => q.id === L.bankSets[2].ids[0])) }, checked: false } };
+    const o4 = L.bankSets[3].ids.slice(); const c4 = o4.map((id, k) => k !== 0 && k !== 5);
+    s.s4 = { attempts: [{ id: 111, date: new Date().toISOString(), order: o4, responses: {}, correct: c4, score: 8, total: 10 }], retries: [], active: { kind: 'set', order: o4, responses: {}, checked: true, attemptId: 111 } };
+    localStorage.setItem(L.storageKey + ':bank-sets', JSON.stringify(s));`);
   await b.reload();
-  const chooser = await js(`return { focusOff: !document.body.classList.contains('is-testing'), resumeLabel: document.querySelector('[data-start="math"]').innerText, vocabStart: !!document.querySelector('[data-start="vocab"]') };`);
-  check('Refresh mid-test returns to the chooser with Resume; the other test can be started (audit T06)', chooser.focusOff && /Resume/.test(chooser.resumeLabel) && chooser.vocabStart, chooser);
-  await js(`document.querySelector('[data-start="math"]').click();`);
-  await wait(200);
-  const afterReload = await js(`return document.querySelector('#answered')?.textContent;`);
-  check('Unfinished test answers survive a refresh', resumed === '3 of 10 answered' && afterReload === '3 of 10 answered', { resumed, afterReload });
-  await js(`document.querySelector('.test-banner [data-exit]').click();`);
-  await wait(200);
-  const exited = await js(`return { tabs: getComputedStyle(document.querySelector('.stagebar')).display !== 'none', chooser: !!document.querySelector('[data-start="vocab"]') };`);
-  check('"Save and finish later" leaves focus mode and returns to the chooser', exited.tabs && exited.chooser, exited);
-  await js(`history.back();`); await wait(300); await hash('#test');
-  check('Leaving Test It by any route never traps the other test (T06 regression)', await js(`return !!document.querySelector('[data-start="vocab"]') && !!document.querySelector('[data-start="math"]');`));
+  await hash('#set/s3');
+  const mig3 = await js(`${RUN} const c = cur(); return { first: c.id, prefilled: Q.isAnswered(c.q, Q.read(c.el, c.q)), check: !!btn('check') };`);
+  check('Transition: an unfinished Build 2.1 set keeps its earlier answer and continues one question at a time', mig3.prefilled && mig3.check, mig3);
+  await hash('#set/s4');
+  const mig4 = await js(`${RUN} const t = document.querySelector('main').innerText; const m = document.querySelector('#misses'); const label = m && m.textContent; if (m) m.click(); await new Promise((r) => setTimeout(r, 300));
+    return { t, misses: label, retryIds: B().s4.active.order.slice().sort().join(), expected: [L.bankSets[3].ids[0], L.bankSets[3].ids[5]].sort().join() };`);
+  check('Transition: a finished Build 2.1 set shows its result (8 of 10) and Practice My Misses works', /8 of 10 right on the first try/.test(mig4.t) && mig4.misses === 'Practice My Misses (2)' && mig4.retryIds === mig4.expected, mig4);
 
-  await js(`document.querySelector('[data-start="math"]').click();`);
-  await wait(200);
-  const perfect = await js(`${FILL_HELPERS}
-    const d = JSON.parse(localStorage.getItem(L.storageKey + ':draft-math')); const els = document.querySelectorAll('#test-form .q[data-qkey]');
-    d.questions.forEach((q, i) => fill(els[i], q, true));
-    document.querySelector('#test-form button[type=submit]').click();
-    await new Promise((r) => setTimeout(r, 400));
-    const a = JSON.parse(localStorage.getItem(L.storageKey + ':attempts'));
-    return { hash: location.hash, last: a[a.length - 1], text: document.querySelector('.result-detail').innerText, tabs: getComputedStyle(document.querySelector('.stagebar')).display !== 'none' };`);
-  const missedQs = perfect.last.questions.filter((q, i) => !perfect.last.correct[i]).map((q) => ({ q, r: perfect.last.responses[q.id] }));
-  check('Math Test: all-correct answers score 10/10 = 100% Mastered', perfect.hash === '#results' && perfect.last.score === 10 && perfect.last.pct === 100 && /Mastered/.test(perfect.text), { score: perfect.last.score, missedQs });
-  check('Paused-and-resumed count is recorded on the attempt', perfect.last.pauses >= 1 && /paused and resumed/.test(perfect.text), perfect.last.pauses);
-  check('Focus mode ends after submitting', perfect.tabs);
-  await b.shot(path.join(SHOTS, 'results-mastered-desktop.png'));
+  // ----- Practice Together -----
+  await hash('#together');
+  const together = await js(`${RUN} const n = document.querySelector('.dots').getAttribute('aria-label'); for (let i = 0; i < 5; i++) { answer(true); btn('next').click(); }
+    const explain = !!btn('explained'); const text = document.querySelector('main').innerText; return { n, explain, text: text.slice(0, 120), parent: /Parent:/.test(text) };`);
+  check('Practice Together: 7 problems; the explain problem has "I told a grown-up"; no parent text on screen', together.n === 'Question 1 of 7' && together.explain && !together.parent, together);
 
-  const zero = await takeTest('math', 0);
-  check('Math Test retake uses new numbers', JSON.stringify(zero.last.questions) !== JSON.stringify(perfect.last.questions));
-  check('Math Test: all-wrong scores 0% Reteach with 10 explained mistakes', zero.last.score === 0 && /Reteach and reassess/.test(zero.text) && /Mistakes to review \(10\)/.test(zero.text), zero.text.slice(0, 300));
-  const vocab = await takeTest('vocab', 8);
-  check('Vocabulary Test: 8 of 10 → 80% Review missed skills', vocab.last.score === 8 && vocab.last.pct === 80 && /Review missed skills/.test(vocab.text) && /Mistakes to review \(2\)/.test(vocab.text), vocab.text.slice(0, 300));
-  check('Results list skills to review with a next action', /Skills to review/.test(vocab.text) && /(Practice this skill|Vocabulary practice)/.test(vocab.text), vocab.text);
-  await b.viewport(390, 844, true);
-  await noHorizontalScroll('results with attempts @ 390px (audit B-01)');
-  await b.viewport(320, 568, true);
-  await noHorizontalScroll('results with attempts @ 320px (audit B-01)');
-  await b.viewport(1280, 900, false);
-  const math7 = await takeTest('math', 7);
-  check('Math Test: 7 of 10 → 70% Review missed skills (threshold)', math7.last.pct === 70 && /Review missed skills/.test(math7.text), math7.last.pct);
-  const math9 = await takeTest('math', 9);
-  check('Math Test: 9 of 10 → 90% Mastered (threshold)', math9.last.pct === 90 && /Mastered/.test(math9.text), math9.last.pct);
-  const math6 = await takeTest('math', 6);
-  check('Math Test: 6 of 10 → 60% Reteach (threshold)', math6.last.pct === 60 && /Reteach and reassess/.test(math6.text), math6.last.pct);
-
+  // ----- Tests -----
+  await hash('#quiz');
+  check('Show What You Know: Vocabulary Test and Math Test', await js(`return Array.from(document.querySelectorAll('.menu-btn b')).map((x) => x.textContent).join('|') === 'Vocabulary Test|Math Test'`));
+  await hash('#test/math');
+  const t = await js(`${FILL_HELPERS}
+    const d = JSON.parse(localStorage.getItem(L.storageKey + ':draft-math'));
+    const one = document.querySelectorAll('main .q').length; const first = document.querySelector('.dots').getAttribute('aria-label'); const noPrev = !document.querySelector('[data-act="prev"]');
+    fill(document.querySelector('main .q[data-qkey]'), d.questions[0], false);
+    const feedback = document.querySelectorAll('main .msg, main .feedback, main [data-act="check"], main [data-act="hint"]').length;
+    document.querySelector('[data-act="next"]').click(); document.querySelector('[data-act="prev"]').click();
+    const kept = Q.isAnswered(d.questions[0], Q.read(document.querySelector('main .q[data-qkey]'), d.questions[0]));
+    for (let i = 0; i < 10; i++) document.querySelector('[data-act="next"]').click();
+    const review = document.querySelector('main').innerText; const submitDisabled = document.querySelector('[data-act="submit"]').disabled;
+    const missing = document.querySelectorAll('.review-grid .missing').length;
+    document.querySelector('.review-grid [data-go="3"]').click(); const jumped = document.querySelector('.dots').getAttribute('aria-label');
+    return { n: d.questions.length, one, first, noPrev, feedback, kept, review: review.slice(0, 200), submitDisabled, missing, jumped, attempts: (JSON.parse(localStorage.getItem(L.storageKey + ':attempts')) || []).length };`);
+  check('Math Test: 10 questions, one at a time, Previous/Next, answers kept when moving', t.n === 10 && t.one === 1 && t.first === 'Question 1 of 10' && t.noPrev && t.kept, t);
+  check('Math Test: no hints, no Check Answer, no feedback while testing', t.feedback === 0, t);
+  check('Review screen: lists unanswered questions, grading blocked, tap a number to go back', /You answered 1 of 10/.test(t.review) && /still need answers/.test(t.review) && t.submitDisabled && t.missing === 9 && t.jumped === 'Question 4 of 10' && t.attempts === 0, t);
   await b.reload();
-  const persisted = await js(`return { rows: document.querySelectorAll('.history tbody tr').length, local: /only in this browser/.test(document.body.innerText) };`);
-  check('Results and history persist after refresh (6 attempts)', persisted.rows === 6 && persisted.local, persisted);
-  const jumpPractice = await js(`${FILL_HELPERS}
-    const b = document.querySelector('[data-practice]');
-    if (!b) return { skipped: true };
-    const skill = b.dataset.practice; const label = b.innerText; b.click();
-    await new Promise((r) => setTimeout(r, 400));
-    const open = localStorage.getItem(L.storageKey + ':bank-open') && JSON.parse(localStorage.getItem(L.storageKey + ':bank-open'));
-    const set = L.bankSets.find((x) => x.id === open);
-    const shown = Array.from(document.querySelectorAll('#indep .q[data-qkey]')).map((e) => e.dataset.qkey.replace('p-', ''));
-    const counts = L.bankSets.map((x) => x.ids.filter((id) => L.bank.find((q) => q.id === id).skill === skill).length);
-    const h = document.querySelector('#independent h2').getBoundingClientRect(); const bar = document.querySelector('.stagebar').getBoundingClientRect();
-    return { hash: location.hash, skill, label, setIndex: L.bankSets.indexOf(set), counts, shownInSet: shown.length === 10 && shown.every((id) => set.ids.includes(id)), hasSkill: shown.some((id) => L.bank.find((q) => q.id === id).skill === skill), visible: h.top >= bar.bottom };`);
-  check('"Practice this skill" opens the set with the most questions on that skill, heading visible', jumpPractice.hash === '#practice' && jumpPractice.shownInSet && jumpPractice.hasSkill && jumpPractice.counts[jumpPractice.setIndex] === Math.max(...jumpPractice.counts) && jumpPractice.label.includes(`Set ${jumpPractice.setIndex + 1}`) && jumpPractice.visible, jumpPractice);
+  check('Refresh mid-test: returns to the same question (4)', await js(`return document.querySelector('.dots').getAttribute('aria-label') === 'Question 4 of 10'`));
+  await js(`document.querySelector('[data-act="later"]').click();`); await wait(200);
+  check('"Save and finish later" → test list shows "Keep going"', await js(`return location.hash === '#quiz' && /Keep going/.test(document.querySelectorAll('.menu-btn')[1].innerText)`));
+  const done = await finishTest('math', 8);
+  check('Math Test finished: 8 out of 10, child-friendly message, attempt saved with pauses', done.hash === '#done/math' && /8 out of 10/.test(done.text) && /practice a little more/.test(done.text) && done.last.score === 8 && done.last.pct === 80 && done.last.pauses >= 1, { text: done.text.slice(0, 200), score: done.last.score, pauses: done.last.pauses });
+  const mistakes = await js(`const b = document.querySelector('#show-mistakes'); b.click(); return { label: b.textContent, n: document.querySelectorAll('#mistakes .rq').length, text: document.querySelector('#mistakes').innerText.slice(0, 200) };`);
+  check('"Look at my mistakes (2)" shows each miss with the answer and why', mistakes.n === 2 && /The answer:/.test(mistakes.text) && /Look at my mistakes \(2\)/.test(mistakes.label), mistakes);
+  await b.shot(path.join(SHOTS, 'test-done-desktop.png'));
+  const perfect = await finishTest('vocab', 10);
+  check('Vocabulary Test: 10 out of 10 → "Amazing!"', /10 out of 10/.test(perfect.text) && /Amazing/.test(perfect.text) && perfect.last.pct === 100, perfect.text.slice(0, 150));
+  const low = await finishTest('math', 6);
+  check('Math Test 6 out of 10 → "Let\'s learn this together"', low.last.pct === 60 && /learn this together/.test(low.text), low.last.pct);
+  const stress = [];
+  for (let i = 0; i < 10; i++) for (const id of ['math', 'vocab']) { const r = await finishTest(id, 10); if (r.last.score !== 10) stress.push({ id, missed: r.last.questions.filter((q, k) => !r.last.correct[k]).map((q) => ({ q, r: r.last.responses[q.id] })) }); }
+  check('20 all-correct tests through the paged UI (10 Math, 10 Vocabulary) all score 10/10', stress.length === 0, stress);
 
-  // ----- Home: Continue Learning from real progress -----
-  await hash('#test');
-  await js(`document.querySelector('[data-start="vocab"]').click();`); await wait(200);
-  await js(`${FILL_HELPERS} const d = JSON.parse(localStorage.getItem(L.storageKey + ':draft-vocab')); fill(document.querySelectorAll('#test-form .q[data-qkey]')[0], d.questions[0], true);`);
-  await b.load(O + BASE);
-  const cont = await js(`return { shown: !document.getElementById('continue').hidden, links: Array.from(document.querySelectorAll('#continue-list a')).map((a) => a.textContent + ' ' + a.getAttribute('href')), badge: document.querySelector('#status-2-1').textContent };`);
-  check('Home: Continue Learning shows the real last activity and the unfinished test', cont.shown && cont.links.some((l) => /Continue: Lesson 2-1/.test(l)) && cont.links.some((l) => /Resume unfinished Lesson 2-1 Vocabulary Test \(1 of 10 answered\)/.test(l)), cont);
-  check('Home shows latest Math Test status', /Math Test: 60%/.test(cont.badge), cont.badge);
-  await b.navigate(`document.querySelector('#continue-list a').click();`);
-  check('Continue Learning link opens the saved place', await js(`return location.pathname.endsWith('/lesson-2-1/') && location.hash === '#test'`));
+  // ----- For Grown-Ups -----
+  await b.load(O + LESSON + '#set/s5');
+  await b.load(O + BASE + 'grown-ups/');
+  const gu = await js(`const tables = Array.from(document.querySelectorAll('#lesson table'));
+    return { h1: document.querySelector('h1').textContent, sections: Array.from(document.querySelectorAll('.gu-section h2')).map((h) => h.textContent),
+    cont: Array.from(document.querySelectorAll('#continue a')).map((a) => a.textContent + ' ' + a.getAttribute('href')),
+    tests: tables[0].innerText, skills: tables.find((t) => /Suggested review/.test(t.innerText)), sets: tables.find((t) => /First try/.test(t.innerText)).innerText,
+    history: document.querySelectorAll('#lesson details').length, guide: document.querySelectorAll('#guide .guide-card').length, script: document.querySelectorAll('#guide .script > li').length };`);
+  check('For Grown-Ups: Continue, Lesson progress, Number Words, Teaching guide, Saved progress', gu.h1 === 'For Grown-Ups' && gu.sections.length === 5 && /Continue/.test(gu.sections[0]) && /Teaching guide/.test(gu.sections[3]), gu.sections);
+  check('For Grown-Ups: Continue Learning link to the last activity', gu.cont.some((c) => /Continue: Lesson 2-1/.test(c) && /#set\/s5/.test(c)), gu.cont);
+  check('For Grown-Ups: latest test scores with result bands', /Math Test/.test(gu.tests) && /Vocabulary Test/.test(gu.tests) && /(Mastered|Review|Reteach)/.test(gu.tests), gu.tests);
+  check('For Grown-Ups: practice sets show first try and after retry separately', /Set 1: Place and Digit Value/.test(gu.sets) && /First try/.test(gu.sets) && /After retry/.test(gu.sets), gu.sets);
+  // 3 tests above + 20 in the stress loop = 23.
+  check('For Grown-Ups: assessment history (23 tests) and teaching guide (6 guide cards, 6 script steps)', gu.history === 23 && gu.guide === 6 && gu.script === 6, { history: gu.history, guide: gu.guide, script: gu.script });
+  await b.shot(path.join(SHOTS, 'grownups-desktop.png'));
+  await js(`localStorage.setItem('mathbook:v2:number-words:phase-1:said', '{"two":true}');`);
+  const clear = await js(`document.querySelector('[data-clear="lesson"]').click(); const asked = !!document.querySelector('#clear-yes'); document.querySelector('#clear-yes').click();
+    return { asked, lesson: Object.keys(localStorage).filter((k) => k.startsWith('mathbook:v2:lesson-2-1')).length, nwKept: !!localStorage.getItem('mathbook:v2:number-words:phase-1:said') };`);
+  check('Clear Lesson 2-1 progress: asks first; removes only Lesson 2-1 data', clear.asked && clear.lesson === 0 && clear.nwKept, clear);
 
-  // ----- Clear progress -----
-  await b.load(O + LESSON + '#results');
-  await js(`localStorage.setItem('mathbook:v2:number-words:phase-1:attempts', '[{"score":9}]');`);
-  const cleared = await js(`
-    document.querySelector('#clear').click();
-    const asked = !!document.querySelector('#clear-yes');
-    document.querySelector('#clear-yes').click();
-    return { asked, lessonKeys: Object.keys(localStorage).filter((k) => k.startsWith('mathbook:v2:lesson-2-1')).length, nwKept: !!localStorage.getItem('mathbook:v2:number-words:phase-1:attempts'), text: document.querySelector('h2').innerText };`);
-  check('Clear progress asks first, removes only this lesson (Number Words kept)', cleared.asked && cleared.lessonKeys === 0 && cleared.nwKept && /No test results yet/.test(cleared.text), cleared);
-
-  // ----- Layout at phone, tablet, desktop -----
-  for (const [name, w, h] of [['phone', 390, 844], ['tablet', 820, 1180], ['desktop', 1280, 900], ['small-phone', 320, 568], ['short', 640, 360]]) {
+  // ----- Layout across sizes -----
+  for (const [name, w, h] of [['small phone', 320, 568], ['phone', 390, 844], ['tablet', 768, 1024], ['tablet landscape', 1024, 768], ['laptop', 1280, 720], ['large', 1920, 1080]]) {
     await b.viewport(w, h);
-    for (const stage of ['teach', 'see', 'practice', 'test', 'results']) {
-      await hash('#' + stage);
-      // Set 2 holds the widest controls (block steppers): use it for layout checks.
-      if (stage === 'practice') await js(`document.querySelector('[data-open-set="s2"]').click(); if (!document.querySelector('#check-set')) document.querySelector('#set-again').click();`);
-      await noHorizontalScroll(`${stage} @ ${name} ${w}×${h}`);
-      if (name === 'phone' || name === 'desktop') await b.shot(path.join(SHOTS, `${stage}-${name}.png`));
-    }
-    const sticky = await js(`return getComputedStyle(document.querySelector('.stagebar')).position`);
-    if (name === 'short') check('Short screens: stage bar is not sticky (audit B-09)', sticky === 'static', sticky);
-  }
-  await b.viewport(390, 844);
-  await b.load(O + BASE);
-  await noHorizontalScroll('home @ phone');
-  await b.shot(path.join(SHOTS, 'home-phone.png'));
-  await b.viewport(1280, 900, false);
-  await b.load(O + BASE);
-  await b.shot(path.join(SHOTS, 'home-desktop.png'));
-
-  // ----- Stress: all-correct attempts must always score 100% -----
-  await b.load(O + LESSON + '#test');
-  const scores = [];
-  for (let i = 0; i < 20; i++) {
-    for (const id of ['math', 'vocab']) {
-      const a = await takeTest(id, 10);
-      if (a.last.score !== 10) scores.push({ id, missed: a.last.questions.filter((q, k) => !a.last.correct[k]).map((q) => ({ q, r: a.last.responses[q.id] })) });
+    for (const p of ['', 'math/', 'curriculum/chapter-2/lesson-2-1/', 'curriculum/chapter-2/lesson-2-1/#learn', 'curriculum/chapter-2/lesson-2-1/#set/s2', 'curriculum/chapter-2/lesson-2-1/#test/math', 'grown-ups/']) {
+      await b.load(O + BASE + p);
+      await overflow(`${p || 'home'} @ ${name} ${w}×${h}`);
+      if (name === 'phone' && ['', 'curriculum/chapter-2/lesson-2-1/', 'curriculum/chapter-2/lesson-2-1/#set/s2'].includes(p)) await b.shot(path.join(SHOTS, `phone-${p.replace(/[/#]/g, '_') || 'home'}.png`));
     }
   }
-  check('40 all-correct test attempts (20 Math, 20 Vocabulary) all score 100%', scores.length === 0, scores);
-
-  // ----- Accessibility basics -----
-  const kb = await js(`return { links: document.querySelectorAll('.stagebar a[href]').length,
-    unlabeled: Array.from(document.querySelectorAll('button, input, select')).filter((e) => !(e.innerText || e.getAttribute('aria-label') || e.getAttribute('aria-labelledby') || e.closest('label'))).length };`);
-  check('Keyboard/screen reader: 5 stage links, every control labeled', kb.links === 5 && kb.unlabeled === 0, kb);
   check('No missing files (404s)', server.missing.length === 0, server.missing);
   check('No JavaScript errors', b.errors.length === 0, b.errors);
 } catch (e) {
-  check('browser test ran to completion', false, { error: String(e && e.stack || e).slice(0, 300), pageErrors: b.errors.slice(0, 3), at: await js('return location.href + " | " + (document.querySelector("h1") || {}).textContent').catch(() => '?') });
+  check('browser test ran to completion', false, { error: String(e && e.stack || e).slice(0, 400), pageErrors: b.errors.slice(0, 3) });
 } finally {
   b.close();
   server.close();
 }
 
 const failed = results.filter((r) => !r.ok);
-console.log(`\n${results.length - failed.length} passed, ${failed.length} failed (Lesson 2-1 + home). Screenshots: tests/screenshots/`);
+console.log(`\n${results.length - failed.length} passed, ${failed.length} failed (home + Lesson 2-1 + grown-ups).`);
 process.exit(failed.length ? 1 : 0);

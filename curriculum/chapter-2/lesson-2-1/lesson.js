@@ -431,7 +431,7 @@
       'In 2,137 the 2 is not just 2. It is in the thousands place, so it means 2 thousands: 2,000.'
     ],
     introNumber: 2137,
-    // Second big idea (taught in Teach It, shown in See It, guided in g7, assessed on the Math Test).
+    // Second big idea (taught and shown in Learn, guided in g7, assessed on the Math Test).
     changeIdea: {
       text: 'Adding or taking away 10, 100, or 1,000 changes only one digit — the digit in that place.',
       examples: ['4,125 + 100 = 4,225 (the hundreds digit 1 becomes 2)', '4,125 − 10 = 4,115 (the tens digit 2 becomes 1)']
@@ -453,10 +453,10 @@
         'Each place is worth 10 times the place to its right.',
         'So the farther left a digit is, the more it is worth.'] },
       { q: 'How do I demonstrate it?', a: [
-        'Open See It and step through 2,137 one place at a time.',
+        'Open Learn and step through 2,137 one place at a time.',
         'Point to each group of blocks. Say its count and its value.',
         'Build the expanded form as you go, then read the word form aloud.',
-        'Use "Change one place" in See It: press +100 and watch only the hundreds digit change.'] },
+        'On the Learn page "10, 100, or 1,000 more or less", press +100 and watch only the hundreds digit change.'] },
       { q: 'What questions should I ask?', a: [
         '"What is the 3 worth? How do you know?"',
         '"If the 1 became a 5, what number would it be?" (2,537)',
@@ -472,7 +472,7 @@
     script: [
       { show: 'Write 2,137.', say: '"This number has four digits. Each digit has a place."', ask: '"Can you read it aloud?"', listen: 'two thousand, one hundred thirty-seven' },
       { show: 'Point to 7, 3, 1, 2 — from right to left.', say: '"Ones, tens, hundreds, thousands."', ask: '"Which place is the 3 in?"', listen: 'the tens place' },
-      { show: 'Step through 2,137 on See It.', say: '"3 tens means 3 rods of ten. That is 30."', ask: '"What is the 1 worth?"', listen: '100' },
+      { show: 'Step through 2,137 in Learn.', say: '"3 tens means 3 rods of ten. That is 30."', ask: '"What is the 1 worth?"', listen: '100' },
       { show: 'Write 2,000 + 100 + 30 + 7.', say: '"This is expanded form: each digit\'s value, added together."', ask: '"Does it add back to 2,137?"', listen: 'yes' },
       { show: 'Write 5,072.', say: '"The 0 means no hundreds. It keeps the 5 in the thousands place."', ask: '"What number would 572 be?"', listen: 'five hundred seventy-two, a different number' },
       { show: 'Write 4,125, then 4,225 under it.', say: '"100 more changes only the hundreds digit: 1 becomes 2."', ask: '"What is 10 more than 4,125?"', listen: '4,135' }
