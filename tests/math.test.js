@@ -144,7 +144,10 @@ test('lesson structure is complete', () => {
   assert.equal(L.parentGuide.length, 6, 'six parent questions');
   assert.deepEqual(L.parentGuide.map((g) => g.q), ['What am I teaching?', 'What does it mean?', 'Why does it work?', 'How do I demonstrate it?', 'What questions should I ask?', 'How do I know they understand?']);
   assert.ok(L.vocabulary.length >= 6);
-  assert.equal(L.guided.length, 5);
+  // Build 2.1: guided practice grew from 5 to 7 so every assessed objective has a guided problem
+  // (block building and 10/100/1,000 more or less were assessed without one — audit B-02, matrix O3).
+  assert.equal(L.guided.length, 7);
+  ['place', 'model', 'expanded', 'standard', 'word', 'value', 'change'].forEach((s) => assert.ok(L.guided.some((g) => g.skill === s), `guided covers ${s}`));
   assert.deepEqual(L.seeIt.examples, [2137, 4628, 5072]);
   assert.ok(!/chris/i.test(JSON.stringify(L)), 'no student names in content');
 });
@@ -158,6 +161,29 @@ test('practice bank: 50 valid questions covering every skill', () => {
   const types = new Set(L.bank.map((q) => q.type));
   ['mc', 'number', 'expanded', 'words', 'chart', 'build'].forEach((t) => assert.ok(types.has(t), t));
   L.bank.forEach((q) => { checkQuestion(q, 'bank'); assert.ok(q.hint, `bank ${q.id} has a hint`); });
+});
+
+test('practice bank: five sets of 10 cover all 50 questions exactly once, in teaching order', () => {
+  assert.deepEqual(L.bankSets.map((s) => s.title), ['Place and Digit Value', 'Base-Ten Models', 'Standard Form', 'Expanded and Word Form', 'Mixed Review and Reasoning']);
+  L.bankSets.forEach((s) => {
+    assert.equal(s.ids.length, 10, s.title);
+    assert.equal(new Set(s.ids).size, 10, `${s.title}: no repeated questions`);
+    assert.ok(s.blurb.length > 10);
+  });
+  const all = L.bankSets.flatMap((s) => s.ids);
+  assert.equal(all.length, 50);
+  assert.equal(new Set(all).size, 50, 'no question in two sets');
+  assert.deepEqual(new Set(all), new Set(L.bank.map((q) => q.id)), 'every bank question is in a set');
+  // Each set holds the skills its title promises.
+  const skillsOf = (i) => new Set(L.bankSets[i].ids.map((id) => L.bank.find((q) => q.id === id).skill));
+  assert.deepEqual(skillsOf(0), new Set(['value', 'place']));
+  assert.ok(L.bankSets[1].ids.every((id) => { const q = L.bank.find((x) => x.id === id); return q.model !== undefined || ['build', 'chart'].includes(q.type) || q.prompt.includes('no hundreds'); }), 'set 2 is models and charts');
+  assert.deepEqual(skillsOf(2), new Set(['standard', 'word', 'place']));
+  assert.ok(L.bankSets[2].ids.every((id) => { const q = L.bank.find((x) => x.id === id); return q.type === 'number'; }), 'set 3 answers are standard-form numbers');
+  assert.deepEqual(skillsOf(3), new Set(['expanded', 'word']));
+  assert.ok(skillsOf(4).has('change') && skillsOf(4).has('compose'), 'set 5 has more/less and greatest/smallest');
+  // Every set's questions are graded correctly (also covered by the bank test above, per question).
+  L.bankSets.forEach((s) => s.ids.forEach((id) => { const q = L.bank.find((x) => x.id === id); assert.equal(Q.grade(q, Q.correctResponse(q)), true, id); }));
 });
 
 test('practice bank answers spot-check (hand-verified)', () => {
@@ -190,8 +216,15 @@ test('word-form distractors are always 3 different, wrong numbers', () => {
 
 test('guided practice items grade correctly', () => {
   L.guided.filter((q) => q.type !== 'explain').forEach((q) => checkQuestion(q, 'guided'));
-  assert.equal(L.guided[1].answer, 5072);
-  assert.equal(Q.grade(L.guided[1], '5,000 + 70 + 2'), true);
+  const g5072 = L.guided.find((g) => g.type === 'expanded'); // was guided[1] before Build 2.1 reordering
+  assert.equal(g5072.answer, 5072);
+  assert.equal(Q.grade(g5072, '5,000 + 70 + 2'), true);
+  const gChange = L.guided.find((g) => g.skill === 'change');
+  assert.equal(gChange.prompt, 'What is 10 less than 7,284?');
+  assert.equal(gChange.answer, 7274);
+  const gBuild = L.guided.find((g) => g.type === 'build');
+  assert.equal(Q.grade(gBuild, [3, 0, 5, 2]), true);
+  assert.equal(Q.grade(gBuild, [3, 5, 2, 0]), false);
 });
 
 test('Math Test: 10 valid questions, all objectives, new numbers each attempt, no hints', () => {
@@ -213,6 +246,15 @@ test('Math Test: 10 valid questions, all objectives, new numbers each attempt, n
   assert.ok(seen.size > 1990, 'retakes get different questions');
   // Same seed → same test (saved drafts and attempts are reproducible).
   assert.deepEqual(JSON.stringify(L.tests.math.generate(42)), JSON.stringify(L.tests.math.generate(42)));
+});
+
+test('Vocabulary practice has hints; the Vocabulary Test has none', () => {
+  for (let seed = 1; seed <= 300; seed++) {
+    const practice = L.vocabPractice(seed);
+    assert.equal(practice.length, 10);
+    practice.forEach((q) => { assert.ok(q.hint, 'practice hint'); checkQuestion(q, `vocab practice ${seed}`); });
+    L.tests.vocab.generate(seed).forEach((q) => assert.equal(q.hint, undefined, 'no hints on tests'));
+  }
 });
 
 test('Vocabulary Test: 10 valid questions with randomized versions', () => {

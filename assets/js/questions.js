@@ -11,7 +11,10 @@
  *   words    – type word form of `answer` (case, hyphens, commas, and "and" are ignored)
  *   chart    – type the digit in each place of `answer`
  *   build    – use + / – to build `answer` with base-ten blocks
- * Optional visuals: model (number drawn as blocks, no captions), block (single block place index).
+ *   spell    – type a whole word (answer = word); capitals and surrounding spaces are ignored
+ *   letter   – type the missing letter of `word` at index `missing` (answer = that letter)
+ * Optional visuals: model (number drawn as blocks, no captions), block (single block place index),
+ *   numeral (big digit card), tenFrame (0–10 dots).
  */
 (function (root) {
   'use strict';
@@ -33,8 +36,18 @@
     if (q.display) html += `<div class="q-display">${esc(q.display)}</div>`;
     if (typeof q.model === 'number') html += pv.blocksHTML(q.model, { captions: false });
     if (typeof q.block === 'number') html += `<div class="q-single-block">${pv.singleBlockSVG(q.block, 'A base-ten block')}</div>`;
+    if (q.numeral !== undefined) html += `<div class="q-visual"><span class="numeral-card">${esc(q.numeral)}</span></div>`;
+    if (typeof q.tenFrame === 'number') html += `<div class="q-visual">${pv.tenFrameSVG(q.tenFrame)}</div>`;
     return html;
   }
+
+  /** Spelling answers: capitals and surrounding spaces don't matter; every letter does. */
+  function normSpell(s) {
+    return String(s === undefined || s === null ? '' : s).trim().toLowerCase();
+  }
+
+  // Attributes that stop phones and browsers from correcting or suggesting spellings.
+  const NO_ASSIST = 'autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false"';
 
   /**
    * HTML for one question. `key` must be unique on the page.
@@ -75,16 +88,29 @@
         break;
       case 'chart':
         body = `<div class="q-chart">` + pv.PLACES.map((p, i) =>
-          `<label class="q-chart-cell place-${p.key}"><span>${p.name}</span><input type="text" inputmode="numeric" maxlength="1" autocomplete="off" aria-label="${p.name} digit" value="${esc(r[i])}"></label>`).join('') + `</div>`;
+          `<label class="q-chart-cell place-${p.key}"><span aria-hidden="true">${p.label}</span><input type="text" inputmode="numeric" maxlength="1" autocomplete="off" aria-label="${p.name} digit" value="${esc(r[i])}"></label>`).join('') + `</div>`;
         break;
       case 'build':
         body = `<div class="q-build">` + pv.PLACES.map((p, i) =>
-          `<div class="stepper place-${p.key}" data-place="${i}"><span class="stepper-name">${p.name}</span>` +
+          `<div class="stepper place-${p.key}" data-place="${i}"><span class="stepper-name">${p.label}</span>` +
           `<button type="button" class="stepper-btn" data-step="-1" aria-label="Remove one ${p.blockName}">−</button>` +
           `<output class="stepper-count" aria-live="polite" aria-label="${p.name} blocks">${r[i]}</output>` +
           `<button type="button" class="stepper-btn" data-step="1" aria-label="Add one ${p.blockName}">+</button></div>`).join('') +
           `</div><div class="q-build-preview">${pv.blocksHTML(0, { captions: false, digits: r })}</div>`;
         break;
+      case 'spell':
+        body = `<input class="q-input q-input-wide" type="text" ${NO_ASSIST} aria-labelledby="${pid}" value="${esc(r)}">` +
+          `<p class="q-help">Type the whole word.</p>`;
+        break;
+      case 'letter': {
+        const letters = q.word.split('');
+        const spoken = letters.map((ch, i) => (i === q.missing ? 'blank' : ch)).join(', ');
+        body = `<div class="letter-word" role="group" aria-label="Word with a missing letter: ${spoken}">` +
+          letters.map((ch, i) => (i === q.missing
+            ? `<input class="letter-input" type="text" maxlength="1" ${NO_ASSIST} aria-label="Missing letter" value="${esc(r)}">`
+            : `<span class="letter-tile" aria-hidden="true">${esc(ch)}</span>`)).join('') + `</div>`;
+        break;
+      }
       default:
         throw new Error('Unknown question type: ' + q.type);
     }
@@ -106,7 +132,10 @@
       case 'number':
       case 'expanded':
       case 'words':
+      case 'spell':
         return el.querySelector('.q-input').value;
+      case 'letter':
+        return el.querySelector('.letter-input').value;
       case 'chart':
         return Array.from(el.querySelectorAll('.q-chart input')).map((i) => i.value.trim());
       case 'build':
@@ -155,6 +184,9 @@
         return pv.checkExpanded(r, q.answer).ok;
       case 'words':
         return pv.checkWords(r, q.answer);
+      case 'spell':
+      case 'letter':
+        return normSpell(r) === normSpell(q.answer);
       case 'chart':
         return Array.isArray(r) && r.every((v) => /^\d$/.test(String(v).trim())) &&
           pv.fromDigits(r.map((v) => Number(String(v).trim()))) === q.answer;
@@ -193,6 +225,7 @@
   }
 
   function correctText(q) {
+    if (q.type === 'letter') return `${q.answer} (${q.word})`;
     if (q.type === 'chart') return describeChart(pv.digitsOf(q.answer));
     if (q.type === 'build') return describeBuild(pv.digitsOf(q.answer)) + ` (${pv.fmt(q.answer)})`;
     return String(correctResponse(q));
@@ -208,5 +241,5 @@
     return 'The parts should add up to ' + pv.fmt(n) + '.';
   }
 
-  MB.Q = { esc, visuals, render, read, bind, isAnswered, grade, correctResponse, describe, correctText, emptyResponse, expandedTip };
+  MB.Q = { esc, visuals, render, read, bind, isAnswered, grade, correctResponse, describe, correctText, emptyResponse, expandedTip, normSpell };
 })(typeof window !== 'undefined' ? window : globalThis);

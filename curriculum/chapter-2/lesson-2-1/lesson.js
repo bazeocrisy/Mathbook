@@ -196,7 +196,11 @@
 
   // ---------- Tests (new numbers every attempt) ----------
 
-  function vocabTest(seed) {
+  /**
+   * Vocabulary items with new numbers for each seed. Practice rounds keep the hints;
+   * the Vocabulary Test removes them (see vocabTest).
+   */
+  function vocabItems(seed, idPrefix) {
     const r = pv.rng(seed);
     const [defTerm, matchTerm] = pv.shuffle(r, VOCAB);
     const others = (v) => pv.shuffle(r, VOCAB.filter((x) => x !== v)).slice(0, 3).concat(v);
@@ -214,56 +218,75 @@
       mc({
         skill: 'vocab-words', prompt: `What does "${defTerm.term}" mean?`, answer: defTerm.meaning,
         choices: pv.shuffle(r, others(defTerm).map((v) => v.meaning)),
+        hint: `Here is an example of ${defTerm.term}: ${defTerm.example}`,
         explanation: `${defTerm.term}: ${defTerm.meaning}. Example: ${defTerm.example}`
       }),
       mc({
         skill: 'vocab-words', prompt: 'Which word matches this meaning?', display: matchTerm.meaning, answer: matchTerm.term,
         choices: pv.shuffle(r, others(matchTerm).map((v) => v.term)),
+        hint: `It is the word whose example looks like this: ${matchTerm.example}`,
         explanation: `${matchTerm.meaning} is called ${matchTerm.term}. Example: ${matchTerm.example}`
       }),
       mc({
         skill: 'vocab-forms', prompt: 'Which form is this number written in?', answer: form,
         display: form === 'standard form' ? fmt(formN) : form === 'expanded form' ? expandedForm(formN) : numberToWords(formN),
         choices: ['standard form', 'expanded form', 'word form'],
+        hint: 'Is it written with only digits, with plus signs, or with words?',
         explanation: 'Standard form uses digits (like 2,137). Expanded form adds the values of the digits. Word form uses words.'
       }),
       mc({
         skill: 'vocab-blocks', prompt: `Which base-ten block shows ${fmt(PLACES[blockI].value)}?`, answer: BLOCK_WORDS[blockI],
         choices: ['unit', 'rod', 'flat', 'cube'],
+        hint: 'From smallest to biggest: unit, rod, flat, cube. Each one is 10 of the one before.',
         explanation: 'unit = 1, rod = 10, flat = 100, cube = 1,000.'
       }),
       mc({
         skill: 'vocab-blocks', prompt: 'What is this base-ten block worth?', block: pictureI, answer: fmt(PLACES[pictureI].value),
         choices: ['1', '10', '100', '1,000'],
+        hint: 'A rod is 10 units in a row. A flat is 10 rods side by side. A cube is 10 flats stacked up.',
         explanation: `This is a ${BLOCK_WORDS[pictureI]}. A ${BLOCK_WORDS[pictureI]} is worth ${fmt(PLACES[pictureI].value)}.`
       }),
       {
         type: 'number', skill: 'vocab-blocks', answer: 10,
         prompt: `How many ${PLACES[tenI].key} make 1 ${PLACES[tenI - 1].one}?`,
+        hint: 'Think of the blocks: how many units make a rod? How many rods make a flat?',
         explanation: `10 ${PLACES[tenI].key} = 1 ${PLACES[tenI - 1].one}. Each place is worth 10 times the place to its right.`
       },
       {
         type: 'select', skill: 'vocab-places', answer: PLACES[clozeI].key, choices: PLACE_CHOICES,
         prompt: `In ${fmt(clozeN)}, the ${digitsOf(clozeN)[clozeI]} is in the ___ place.`,
+        hint: 'Start at the right and name the places: ones, tens, hundreds, thousands.',
         explanation: `From the right: ones, tens, hundreds, thousands. The ${digitsOf(clozeN)[clozeI]} is in the ${PLACES[clozeI].key} place.`
       },
       mc({
         skill: 'vocab-places', prompt: `Which place is just to the left of the ${PLACES[leftI].key} place?`, answer: PLACES[leftI - 1].key,
         choices: PLACE_CHOICES,
+        hint: 'Read the place-value chart from left to right.',
         explanation: 'Left to right the places are thousands, hundreds, tens, ones.'
       }),
       {
         type: 'select', skill: 'vocab-words', answer: 'value', choices: pv.shuffle(r, ['value', 'color', 'size', 'shape']),
         prompt: 'The ___ of a digit depends on its place in the number.',
+        hint: 'The 3 in 2,137 is worth 30, but the 3 in 3,127 is worth 3,000. What changed?',
         explanation: 'Place value: a digit\'s value depends on its place. The 3 in 2,137 is worth 30; the 3 in 3,127 is worth 3,000.'
       },
       {
         type: 'number', skill: 'vocab-words', answer: 4,
         prompt: `How many digits are in the number ${fmt(countN)}?`,
+        hint: 'Point to each digit and count. The comma is not a digit.',
         explanation: `${fmt(countN)} is written with 4 digits: ${digitsOf(countN).join(', ')}. The comma is not a digit.`
       }
     ];
-    return pv.shuffle(r, items).map((q, i) => Object.assign(q, { id: `v${i + 1}` }));
+    return pv.shuffle(r, items).map((q, i) => Object.assign(q, { id: `${idPrefix}${i + 1}` }));
+  }
+
+  function vocabTest(seed) {
+    // Tests never show hints.
+    return vocabItems(seed, 'v').map((q) => Object.assign(q, { hint: undefined }));
+  }
+
+  function vocabPractice(seed) {
+    return vocabItems(seed, 'vp');
   }
 
   function changeItem(r) {
@@ -332,34 +355,58 @@
     make.compose([2, 8, 4, 1], 'smallest'), make.compose([3, 9, 5, 7], 'greatest')
   ].map((q, i) => Object.assign(q, { id: 'b' + String(i + 1).padStart(2, '0') }));
 
+  // ---------- The bank as five sets of 10, in teaching order (ids above never change) ----------
+  // Every bank question is in exactly one set (checked by tests/math.test.js).
+  const bankSets = [
+    { id: 's1', title: 'Place and Digit Value', blurb: 'Name the place of a digit and tell how much it is worth.',
+      ids: ['b01', 'b02', 'b03', 'b04', 'b05', 'b06', 'b07', 'b08', 'b09', 'b10'] },
+    { id: 's2', title: 'Base-Ten Models', blurb: 'Read and build numbers with base-ten blocks and place-value charts, including zeros.',
+      ids: ['b39', 'b40', 'b41', 'b42', 'b43', 'b44', 'b17', 'b18', 'b19', 'b16'] },
+    { id: 's3', title: 'Standard Form', blurb: 'Write numbers with digits from expanded form and word form.',
+      ids: ['b25', 'b26', 'b27', 'b28', 'b29', 'b30', 'b31', 'b32', 'b12', 'b13'] },
+    { id: 's4', title: 'Expanded and Word Form', blurb: 'Write numbers as the sum of their digit values and in words.',
+      ids: ['b20', 'b21', 'b22', 'b23', 'b24', 'b33', 'b34', 'b35', 'b36', 'b37'] },
+    { id: 's5', title: 'Mixed Review and Reasoning', blurb: '10, 100, or 1,000 more or less, greatest and smallest numbers, and mixed place-value questions.',
+      ids: ['b45', 'b46', 'b47', 'b48', 'b49', 'b50', 'b11', 'b14', 'b15', 'b38'] }
+  ];
+
   // ---------- Guided practice (parent and student together) ----------
 
+  // One guided problem for every objective that is assessed.
   const guided = [
     Object.assign(make.chart(3406, 'standard'), {
       id: 'g1',
       parent: 'Have your student say each digit\'s value aloud as they fill the chart: "3,000 … 400 … 0 tens … 6."',
       hint: 'Start at the left: the 3 is in the thousands place. Which place has the 0?'
     }),
-    Object.assign(make.expanded(5072), {
+    Object.assign(make.build(3052), {
       id: 'g2',
+      parent: 'Ask: "How many hundred flats do we need?" (None — the hundreds digit is 0.)'
+    }),
+    Object.assign(make.expanded(5072), {
+      id: 'g3',
       parent: 'Ask: "What digit is in the hundreds place?" (0) "So do we need a hundreds part?" (No.)',
       hint: 'The hundreds digit is zero, so there are no hundreds to write.'
     }),
     Object.assign(make.standardFromExpanded(6329), {
-      id: 'g3',
+      id: 'g4',
       parent: 'Point to each value and ask: "Which place does this belong to?"'
     }),
     Object.assign(make.words(2508), {
-      id: 'g4',
+      id: 'g5',
       parent: 'Have your student say the number aloud first. Check the comma after "thousand."'
     }),
     {
-      id: 'g5', type: 'explain', skill: 'value',
+      id: 'g6', type: 'explain', skill: 'value',
       prompt: 'Explain: why is the 7 in 4,719 worth 700?',
       parent: 'Let your student explain out loud. Do not give the words first.',
       listenFor: ['"The 7 is in the hundreds place."', '"7 hundreds is 700."'],
       explanation: '4,719 has 4 thousands, 7 hundreds, 1 ten, and 9 ones. The 7 is in the hundreds place, and 7 hundreds = 700.'
-    }
+    },
+    Object.assign(make.change(7284, -10), {
+      id: 'g7',
+      parent: 'Ask: "Which place is worth 10?" (tens) "So which digit changes?" (Only the tens digit.)'
+    })
   ];
 
   MB.lessons = MB.lessons || {};
@@ -376,20 +423,27 @@
       'Name the place of each digit: thousands, hundreds, tens, ones.',
       'Tell the value of any digit.',
       'Build numbers with base-ten blocks.',
-      'Write numbers in standard, expanded, and word form.'
+      'Write numbers in standard, expanded, and word form.',
+      'Find 10, 100, or 1,000 more or less than a number.'
     ],
     intro: [
       'Numbers are made of digits. Where a digit sits — its place — tells how much it is worth.',
       'In 2,137 the 2 is not just 2. It is in the thousands place, so it means 2 thousands: 2,000.'
     ],
     introNumber: 2137,
+    // Second big idea (taught in Teach It, shown in See It, guided in g7, assessed on the Math Test).
+    changeIdea: {
+      text: 'Adding or taking away 10, 100, or 1,000 changes only one digit — the digit in that place.',
+      examples: ['4,125 + 100 = 4,225 (the hundreds digit 1 becomes 2)', '4,125 − 10 = 4,115 (the tens digit 2 becomes 1)']
+    },
     vocabulary: VOCAB,
     placeWords: PLACE_WORDS,
     parentGuide: [
       { q: 'What am I teaching?', a: [
         'Each digit in a 4-digit number has a place: thousands, hundreds, tens, or ones.',
         'The place tells how much the digit is worth.',
-        'Three ways to write a number: standard, expanded, and word form.'] },
+        'Three ways to write a number: standard, expanded, and word form.',
+        'Adding 10, 100, or 1,000 changes just one digit.'] },
       { q: 'What does it mean?', a: [
         'In 2,137 the 2 means 2 thousands (2,000), not 2.',
         'Expanded form shows each digit\'s value: 2,000 + 100 + 30 + 7.',
@@ -401,12 +455,14 @@
       { q: 'How do I demonstrate it?', a: [
         'Open See It and step through 2,137 one place at a time.',
         'Point to each group of blocks. Say its count and its value.',
-        'Build the expanded form as you go, then read the word form aloud.'] },
+        'Build the expanded form as you go, then read the word form aloud.',
+        'Use "Change one place" in See It: press +100 and watch only the hundreds digit change.'] },
       { q: 'What questions should I ask?', a: [
         '"What is the 3 worth? How do you know?"',
         '"If the 1 became a 5, what number would it be?" (2,537)',
         '"Why do we write the 0 in 5,072?"',
-        '"Which is more: 3 hundreds or 3 tens?"'] },
+        '"Which is more: 3 hundreds or 3 tens?"',
+        '"What is 100 more than 4,125? Which digit changed?" (4,225; the hundreds digit)'] },
       { q: 'How do I know they understand?', a: [
         'They name the place and value of any digit.',
         'They write 5,072 correctly, keeping the 0.',
@@ -418,14 +474,22 @@
       { show: 'Point to 7, 3, 1, 2 — from right to left.', say: '"Ones, tens, hundreds, thousands."', ask: '"Which place is the 3 in?"', listen: 'the tens place' },
       { show: 'Step through 2,137 on See It.', say: '"3 tens means 3 rods of ten. That is 30."', ask: '"What is the 1 worth?"', listen: '100' },
       { show: 'Write 2,000 + 100 + 30 + 7.', say: '"This is expanded form: each digit\'s value, added together."', ask: '"Does it add back to 2,137?"', listen: 'yes' },
-      { show: 'Write 5,072.', say: '"The 0 means no hundreds. It keeps the 5 in the thousands place."', ask: '"What number would 572 be?"', listen: 'five hundred seventy-two, a different number' }
+      { show: 'Write 5,072.', say: '"The 0 means no hundreds. It keeps the 5 in the thousands place."', ask: '"What number would 572 be?"', listen: 'five hundred seventy-two, a different number' },
+      { show: 'Write 4,125, then 4,225 under it.', say: '"100 more changes only the hundreds digit: 1 becomes 2."', ask: '"What is 10 more than 4,125?"', listen: '4,135' }
     ],
     mistakes: [
       'Dropping the zero: reading 5,072 as "five hundred seventy-two."',
       'Saying a digit\'s face value: "the 3 in 2,137 is worth 3."',
-      'Combining places: writing 2,000 + 100 + 37.'
+      'Combining places: writing 2,000 + 100 + 37.',
+      'Changing the wrong digit: saying 100 more than 4,125 is 4,135.'
     ],
-    seeIt: { examples: [2137, 4628, 5072], builderStart: 2137 },
+    seeIt: {
+      examples: [2137, 4628, 5072],
+      builderStart: 2137,
+      changeStart: 4125,
+      // Worked example for "making numbers from digits" (different digits from the practice bank).
+      composeDigits: [4, 1, 8, 6]
+    },
     skills: {
       value: 'Value of a digit',
       place: 'Places and the place-value chart',
@@ -442,6 +506,8 @@
     },
     guided,
     bank,
+    bankSets,
+    vocabPractice,
     tests: {
       vocab: { id: 'vocab', title: 'Vocabulary Test', blurb: 'Math words, number forms, base-ten blocks, and place names.', generate: vocabTest },
       math: { id: 'math', title: 'Math Test', blurb: 'Digit values, models, charts, and standard, expanded, and word form.', generate: mathTest }
