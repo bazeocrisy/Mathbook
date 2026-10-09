@@ -289,6 +289,59 @@
     return vocabItems(seed, 'vp');
   }
 
+  // ---------- See It wizard: one step at a time, each with a check for understanding ----------
+  // Each check uses new numbers (or digits) so the answer can't be copied from the demonstration.
+  const TEN_CHECKS = [
+    { prompt: 'How many units make 1 rod?', answer: 10, explanation: '10 units make 1 rod. A rod is worth 10.' },
+    { prompt: 'How many rods make 1 flat?', answer: 10, explanation: '10 rods make 1 flat. A flat is worth 100.' },
+    { prompt: 'How many flats make 1 cube?', answer: 10, explanation: '10 flats make 1 cube. A cube is worth 1,000.' },
+    { prompt: 'What are 10 units worth?', answer: 10, explanation: '10 units make 1 rod, so they are worth 10.' },
+    { prompt: 'What are 10 rods worth?', answer: 100, explanation: '10 rods make 1 flat, so they are worth 100.' },
+    { prompt: 'What are 10 flats worth?', answer: 1000, explanation: '10 flats make 1 cube, so they are worth 1,000.' }
+  ];
+  // Digits already used in teaching and the practice bank; the check uses different ones.
+  const USED_DIGIT_SETS = ['1248', '3579', '1468'];
+
+  const seeSteps = [
+    {
+      id: 'examples', kind: 'examples', title: 'Worked examples',
+      explain: 'A digit\'s place tells how much it is worth. Step through each number one place at a time.',
+      check(r) {
+        let n;
+        do { n = pv.randomFourDigit(r, { zeros: 'one' }); } while ([2137, 4628, 5072].includes(n));
+        return make.chart(n, 'word');
+      }
+    },
+    {
+      id: 'build', kind: 'build', title: 'Build your own number',
+      explain: 'Press + and − to add or take away blocks. Watch the number and the chart change.',
+      check(r) { return make.build(pv.randomFourDigit(r, { zeros: 'maybe' })); }
+    },
+    {
+      id: 'change', kind: 'change', title: 'Change one place',
+      explain: 'Adding or taking away 10, 100, or 1,000 changes only one digit. Press a button and watch which digit changes.',
+      check(r) { return changeItem(r); }
+    },
+    {
+      id: 'ten', kind: 'ten', title: 'Groups of ten',
+      explain: '10 units make 1 rod. 10 rods make 1 flat. 10 flats make 1 cube. Each place is worth 10 times the place to its right.',
+      check(r) {
+        const t = pv.pick(r, TEN_CHECKS);
+        return { type: 'number', skill: 'model', answer: t.answer, prompt: t.prompt, explanation: t.explanation,
+          hint: 'Look at the blocks above. How many of the smaller block fit into the bigger one?' };
+      }
+    },
+    {
+      id: 'compose', kind: 'compose', title: 'Biggest and smallest',
+      explain: 'The thousands place is worth the most. Put the greatest digit there to make the greatest number, or the smallest digit to make the smallest number.',
+      check(r) {
+        let digits;
+        do { digits = pv.shuffle(r, [1, 2, 3, 4, 5, 6, 7, 8, 9]).slice(0, 4); } while (USED_DIGIT_SETS.includes(digits.slice().sort().join('')));
+        return make.compose(digits, pv.pick(r, ['greatest', 'smallest']));
+      }
+    }
+  ];
+
   function changeItem(r) {
     for (;;) {
       const n = pv.randomFourDigit(r);
@@ -488,7 +541,8 @@
       builderStart: 2137,
       changeStart: 4125,
       // Worked example for "making numbers from digits" (different digits from the practice bank).
-      composeDigits: [4, 1, 8, 6]
+      composeDigits: [4, 1, 8, 6],
+      steps: seeSteps
     },
     skills: {
       value: 'Value of a digit',
