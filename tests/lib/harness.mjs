@@ -138,6 +138,6 @@ export const FILL_HELPERS = `
       for (let n = 0; n < 9; n++) s.querySelector('[data-step="-1"]').click();
       for (let n = 0; n < r[k]; n++) s.querySelector('[data-step="1"]').click();
     });
-    else { const i = el.querySelector('.q-input'); i.value = r; fire(i, 'input'); }
+    else { const i = el.querySelector('.q-input, .letter-input'); i.value = r; fire(i, 'input'); }
   }
 `;
