@@ -1,7 +1,9 @@
 /*
- * Number Words phase engine: Learn → Say → Look, Cover, Write, Check → Practice → Spelling Test → Results.
- * Reusable for every phase: the words, tips, and sizes come from number-words/program.js.
- * Progress and results are stored in this browser only, separately from Lesson 2-1.
+ * Number Words (child view): a simple menu and one word or question at a time.
+ *   #          menu: Learn the Words · Say Them · Cover and Write · Practice · Spelling Test
+ *   #learn  #say  #write  #practice  #test  #done
+ * Words, tips, and sizes come from number-words/program.js; logic from assets/js/number-words.js.
+ * Progress is stored in this browser only, separately from Lesson 2-1. Grown-up details are on grown-ups/.
  */
 (function (root) {
   'use strict';
@@ -11,16 +13,22 @@
   const shell = MB.shell;
   const NW = MB.numberWords;
   const esc = Q.esc;
-  const head = shell.sectionHead;
 
-  const STAGES = [
-    { id: 'learn', label: 'Learn' },
-    { id: 'say', label: 'Say' },
-    { id: 'write', label: 'Write' },
-    { id: 'practice', label: 'Practice' },
-    { id: 'test', label: 'Test' },
-    { id: 'results', label: 'Results' }
-  ];
+  const ICON = {
+    learn: '<svg viewBox="0 0 48 48" aria-hidden="true"><rect x="6" y="8" width="36" height="32" rx="6" fill="#fff" stroke="#6b4fd8" stroke-width="2.5"/><text x="24" y="31" text-anchor="middle" font-family="Baloo 2, sans-serif" font-weight="800" font-size="18" fill="#24305e">7</text></svg>',
+    say: '<svg viewBox="0 0 48 48" aria-hidden="true"><path d="M8 10 h32 a4 4 0 0 1 4 4 v16 a4 4 0 0 1 -4 4 h-18 l-9 8 v-8 h-5 a4 4 0 0 1 -4 -4 v-16 a4 4 0 0 1 4 -4z" fill="#efe9ff" stroke="#6b4fd8" stroke-width="2.5"/></svg>',
+    write: '<svg viewBox="0 0 48 48" aria-hidden="true"><path d="M10 38 l4 -12 20 -20 8 8 -20 20z" fill="#ffde85" stroke="#9a7000" stroke-width="2.5" stroke-linejoin="round"/><path d="M10 38 l12 -4" stroke="#9a7000" stroke-width="2.5"/></svg>',
+    practice: '<svg viewBox="0 0 48 48" aria-hidden="true"><rect x="8" y="6" width="32" height="36" rx="6" fill="#fff" stroke="#6b4fd8" stroke-width="2.5"/><path d="M15 18 l4 4 8 -9 M15 31 l4 4 8 -9" stroke="#1f8a52" stroke-width="3" fill="none" stroke-linecap="round"/></svg>',
+    test: '<svg viewBox="0 0 48 48" aria-hidden="true"><path d="M24 4 l6 13 14 2 -10 10 2 14 -12 -7 -12 7 2 -14 -10 -10 14 -2z" fill="#ffc93c" stroke="#b88700" stroke-width="2" stroke-linejoin="round"/></svg>'
+  };
+
+  function menuBtn(href, icon, title, sub, extra) {
+    return `<a class="menu-btn violet" href="${href}"><span class="icon">${icon}</span><span><b>${esc(title)}</b><span class="sub">${esc(sub)}</span>${extra && extra.text ? `<span class="done-text">${esc(extra.text)}</span>` : ''}</span>${extra && extra.star ? '<span class="done" aria-label="Done">★</span>' : ''}</a>`;
+  }
+
+  function tiles(word) {
+    return `<div class="letter-word" aria-hidden="true">${word.split('').map((ch) => `<span class="letter-tile">${esc(ch)}</span>`).join('')}</div>`;
+  }
 
   function start(phaseId, opts) {
     opts = opts || {};
@@ -28,333 +36,225 @@
     if (!P || P.status !== 'ready') throw new Error('Number Words phase not available: ' + phaseId);
     NW.current = P;
     const store = shell.makeStore(P.storageKey);
+    const page = shell.frame(document.getElementById(opts.mount || 'mathbook'), opts.homeHref || './');
+    const main = page.main;
+    const range = `${P.words[0].n} to ${P.words[P.words.length - 1].n}`;
     const S = {
-      learnI: 0,
-      writeI: null,
-      writeStep: 'look', // look → write → checked
-      writeTyped: '',
-      practice: NW.practiceRound(P, shell.newSeed(), null),
-      practiceStates: {},
-      practicePos: { i: 0 },
-      focus: null,
-      activeTest: null,
-      pendingStart: false,
-      view: null
+      learnI: 0, sayI: 0, writeI: null, writeStep: 'look', writeTyped: '',
+      practice: NW.practiceRound(P, shell.newSeed(), null), practiceRun: { pos: 0, items: {} }, focus: null
     };
-    const range = `${P.words[0].n}–${P.words[P.words.length - 1].n}`;
-    const eyebrow = (stage) => `Number Words · Phase ${P.id} · Step ${STAGES.findIndex((s) => s.id === stage) + 1} of ${STAGES.length}`;
-    const mastered = (score) => score >= P.masteryScore;
+    document.title = `Number Words ${range} · Mathbook`;
+    const back = () => page.setBack('Number Words', '#');
 
-    document.title = `Number Words Phase ${P.id}: ${P.title} · Mathbook`;
-    const ctx = shell.startShell({
-      mount: opts.mount,
-      homeHref: opts.homeHref || './',
-      path: opts.path || '',
-      crumbs: `Number Words · Read It, Say It, Spell It, Write It`,
-      pill: `Phase ${P.id}: ${range}`,
-      navLabel: 'Number Words steps',
-      stages: STAGES,
-      activityTitle: `Number Words Phase ${P.id} (${range})`,
-      beforeRender() { S.activeTest = null; },
-      views: { learn: learnView, say: sayView, write: writeView, practice: practiceView, test: testView, results: resultsView }
+    const R = shell.router((route) => {
+      const views = { '': menuView, learn: learnView, say: sayView, write: writeView, practice: practiceView, test: testView, done: doneView };
+      (views[route] || menuView)();
+      const labels = { '': 'Menu', learn: 'Learn the Words', say: 'Say Them', write: 'Cover and Write', practice: 'Practice', test: 'Spelling Test', done: 'Spelling Test' };
+      shell.recordActivity({ path: (opts.path || '') + '#' + route, title: `Number Words ${range}`, step: labels[route] || '' });
+      shell.focusTitle(main);
     });
-    const main = ctx.main;
 
-    function pad(selected, doneSet, attr) {
-      return `<div class="nw-pad" role="group" aria-label="Choose a number">` + P.words.map((w, i) =>
-        `<button type="button" data-${attr}="${i}" aria-pressed="${i === selected}" class="${doneSet && doneSet[w.word] ? 'is-done' : ''}" aria-label="${w.n}${doneSet && doneSet[w.word] ? ' (done)' : ''}">${w.n}</button>`).join('') + `</div>`;
+    // ===== Menu =====
+    function menuView() {
+      page.setBack('All Number Words', opts.programHref || '../');
+      const said = Object.values(store.get('said', {})).filter(Boolean).length;
+      const written = Object.values(store.get('written', {})).filter((x) => x.correct).length;
+      const tests = store.get('attempts', []);
+      const mastered = tests.some((a) => a.score >= P.masteryScore);
+      const draft = store.get('draft', null);
+      main.innerHTML = `<h1 class="page-title">Number Words: ${esc(range)}</h1><p class="page-sub">Read it, say it, spell it, write it.</p>` +
+        `<nav class="menu" aria-label="Number Words activities">` +
+        menuBtn('#learn', ICON.learn, 'Learn the Words', `See and study ${P.words.length} words`) +
+        menuBtn('#say', ICON.say, 'Say Them', 'Say and spell each word out loud', said ? { text: `${said} of ${P.words.length} said`, star: said === P.words.length } : null) +
+        menuBtn('#write', ICON.write, 'Cover and Write', 'Look, cover, write, and check', written ? { text: `${written} of ${P.words.length} written`, star: written === P.words.length } : null) +
+        menuBtn('#practice', ICON.practice, 'Practice', 'Spelling practice with clues') +
+        menuBtn('#test', ICON.test, 'Spelling Test', `${P.testSize} words, no clues`, draft ? { text: 'Keep going' } : mastered ? { text: 'Mastered', star: true } : tests.length ? { text: 'Done' } : null) +
+        `</nav>`;
     }
 
-    function letterTiles(word) {
-      return `<div class="letter-word" aria-hidden="true">${word.split('').map((ch) => `<span class="letter-tile">${esc(ch)}</span>`).join('')}</div>`;
+    function wordCard(w, showTip) {
+      return `<div class="nw-row"><span class="numeral-card">${w.n}</span>${pv.tenFrameSVG(w.n)}</div>` +
+        `<p class="nw-big-word">${esc(w.word)}</p>${tiles(w.word)}` +
+        `<p class="say-big" style="text-align:center"><span class="sr-only">Spelled </span>${esc(NW.letters(w.word))} · ${w.word.length} letters</p>` +
+        (showTip ? `<p class="nw-tip"><b>Tip:</b> ${esc(w.tip)}</p>` : '');
     }
 
-    // ===== 1. Learn =====
+    function pager(title, i, n, label) {
+      return `<div class="activity-head"><h1>${esc(title)}</h1>${shell.dotsHTML(n, i, () => '', label)}</div>`;
+    }
+
+    // ===== Learn =====
     function learnView() {
-      main.innerHTML =
-        ctx.hero(eyebrow('learn'), `Learn the words ${range}`, 'Look at each number, its word, and how the word is spelled.') +
-        `<section class="card" id="learn-words">${head('A', 'Read it', 'student')}` +
-        pad(S.learnI, null, 'learn') + `<div id="learn-panel" aria-live="polite"></div>` +
-        `<div class="demo-controls"><button type="button" class="btn btn-ghost" id="learn-prev">← Previous</button>` +
-        `<span class="step-count" id="learn-count"></span>` +
-        `<button type="button" class="btn btn-primary" id="learn-next">Next word →</button></div></section>` +
-        `<section class="card card-parent" id="learn-parent">${head('B', 'How to teach it', 'parent')}<ul class="rules">` +
-        `<li>Point to the numeral, then the word. Read the word together.</li>` +
-        `<li>Point to each letter tile and say the letter.</li>` +
-        `<li>Read the spelling tip aloud. Ask: "What is tricky about this word?"</li></ul></section>` +
-        ctx.navButtons('learn');
-      const draw = () => {
-        const w = P.words[S.learnI];
-        main.querySelector('#learn-panel').innerHTML =
-          `<div class="nw-word-panel"><div><span class="numeral-card">${w.n}</span><div style="margin-top:0.6rem">${pv.tenFrameSVG(w.n)}</div></div>` +
-          `<div><p class="nw-big-word">${esc(w.word)}</p>${letterTiles(w.word)}` +
-          `<p class="nw-spelled"><span class="sr-only">Spelled </span>${esc(NW.letters(w.word))} · ${w.word.length} letters</p>` +
-          `<p class="nw-tip"><b>Spelling tip:</b> ${esc(w.tip)}</p></div></div>`;
-        main.querySelector('#learn-count').textContent = `Word ${S.learnI + 1} of ${P.words.length}`;
-        main.querySelector('#learn-prev').disabled = S.learnI === 0;
-        main.querySelector('#learn-next').disabled = S.learnI === P.words.length - 1;
-        main.querySelectorAll('[data-learn]').forEach((b) => b.setAttribute('aria-pressed', String(Number(b.dataset.learn) === S.learnI)));
-      };
-      main.querySelectorAll('[data-learn]').forEach((b) => b.addEventListener('click', () => { S.learnI = Number(b.dataset.learn); draw(); }));
-      main.querySelector('#learn-prev').addEventListener('click', () => { S.learnI = Math.max(0, S.learnI - 1); draw(); });
-      main.querySelector('#learn-next').addEventListener('click', () => { S.learnI = Math.min(P.words.length - 1, S.learnI + 1); draw(); });
-      draw();
+      back();
+      const i = S.learnI;
+      const w = P.words[i];
+      const last = i === P.words.length - 1;
+      main.innerHTML = pager('Learn the Words', i, P.words.length, `Word ${i + 1} of ${P.words.length}`) +
+        `<section class="qcard">${wordCard(w, true)}</section>` +
+        `<div class="controls">${i > 0 ? '<button type="button" class="btn btn-back" data-act="prev">← Previous</button>' : '<span class="spacer"></span>'}` +
+        (last ? '<a class="btn btn-main" href="#say">Next: Say Them →</a>' : '<button type="button" class="btn btn-main" data-act="next">Next →</button>') + `</div>`;
+      main.querySelectorAll('[data-act]').forEach((b) => b.addEventListener('click', () => { S.learnI += b.dataset.act === 'next' ? 1 : -1; learnView(); shell.focusTitle(main); }));
     }
 
-    // ===== 2. Say =====
+    // ===== Say =====
     function sayView() {
+      back();
+      const i = S.sayI;
+      const w = P.words[i];
       const said = store.get('said', {});
-      main.innerHTML =
-        ctx.hero(eyebrow('say'), 'Say it out loud', 'Say each word, then spell it out loud letter by letter. No microphone is needed.') +
-        `<section class="card card-parent">${head('', 'How to do it', 'parent')}<ol class="rules">` +
-        `<li>Your child says the word: "seven."</li><li>Then spells it aloud: "s, e, v, e, n."</li>` +
-        `<li>Tick the box when they have done both.</li></ol></section>` +
-        `<section class="card" id="say-list">${head('A', 'Say it, spell it', 'together', `<span class="step-count" id="say-count" aria-live="polite"></span>`)}` +
-        `<ul class="say-list">` + P.words.map((w) =>
-          `<li class="say-row"><span class="numeral-card" aria-hidden="true">${w.n}</span>` +
-          `<div><div class="say-word">${esc(w.word)}</div><div class="say-letters">${esc(NW.letters(w.word))}</div></div>` +
-          `<label class="say-check"><input type="checkbox" data-said="${esc(w.word)}"${said[w.word] ? ' checked' : ''}> Said and spelled <span class="sr-only">${esc(w.word)}</span></label></li>`).join('') +
-        `</ul></section>` + ctx.navButtons('say');
-      const count = () => { main.querySelector('#say-count').textContent = `${Object.values(store.get('said', {})).filter(Boolean).length} of ${P.words.length} done`; };
-      main.querySelectorAll('[data-said]').forEach((c) => c.addEventListener('change', () => {
-        const s = store.get('said', {});
-        s[c.dataset.said] = c.checked;
-        store.set('said', s);
-        count();
+      const last = i === P.words.length - 1;
+      main.innerHTML = pager('Say Them', i, P.words.length, `Word ${i + 1} of ${P.words.length}`) +
+        `<section class="qcard">${wordCard(w, false)}<p class="say-big" style="text-align:center">Say <b>${esc(w.word)}</b>. Then spell it out loud: ${esc(w.word.split('').join(', '))}.</p>` +
+        (said[w.word] ? `<p class="msg msg-right" style="text-align:center">You said it! ✓</p>` : '') + `</section>` +
+        `<div class="controls">${i > 0 ? '<button type="button" class="btn btn-back" data-act="prev">← Previous</button>' : '<span class="spacer"></span>'}` +
+        (said[w.word]
+          ? (last ? '<a class="btn btn-main" href="#write">Next: Cover and Write →</a>' : '<button type="button" class="btn btn-main" data-act="next">Next →</button>')
+          : '<button type="button" class="btn btn-main" data-act="said">I said it and spelled it!</button>') + `</div>`;
+      main.querySelectorAll('[data-act]').forEach((b) => b.addEventListener('click', () => {
+        if (b.dataset.act === 'said') { const s = store.get('said', {}); s[w.word] = true; store.set('said', s); sayView(); main.querySelector('[data-act="next"], a.btn-main').focus(); return; }
+        S.sayI += b.dataset.act === 'next' ? 1 : -1;
+        sayView();
+        shell.focusTitle(main);
       }));
-      count();
     }
 
-    // ===== 3. Look, Cover, Write, Check =====
+    // ===== Look, Cover, Write, Check =====
     function writeView() {
+      back();
       const written = store.get('written', {});
       if (S.writeI === null) {
-        const next = P.words.findIndex((w) => !(written[w.word] && written[w.word].correct));
+        const next = P.words.findIndex((x) => !(written[x.word] && written[x.word].correct));
         S.writeI = next === -1 ? 0 : next;
       }
-      const doneSet = {};
-      Object.keys(written).forEach((k) => { doneSet[k] = written[k].correct; });
-      main.innerHTML =
-        ctx.hero(eyebrow('write'), 'Look, Cover, Write, Check', 'Study the word, cover it, write it from memory, then check.') +
-        `<section class="card" id="lcwc">${head('A', 'Spell it from memory', 'student')}` +
-        `<p class="muted">Choose a number. A ✓ means it was written correctly from memory.</p>` +
-        pad(S.writeI, doneSet, 'wi') +
-        `<ol class="nw-steps" aria-label="Steps">` + ['Look', 'Cover', 'Write', 'Check'].map((s, i) => `<li data-step="${i}">${i + 1}. ${s}</li>`).join('') + `</ol>` +
-        `<div id="lcwc-panel"></div></section>` +
-        `<section class="card card-parent">${head('', 'Tips', 'parent')}<ul class="rules">` +
-        `<li>Let your child decide when they are ready to cover the word.</li>` +
-        `<li>After checking, point to any letter that is different and look at the word again.</li></ul></section>` +
-        ctx.navButtons('write');
-      main.querySelectorAll('[data-wi]').forEach((b) => b.addEventListener('click', () => {
-        S.writeI = Number(b.dataset.wi); S.writeStep = 'look'; S.writeTyped = ''; writeView();
-      }));
-      drawWrite();
-    }
-
-    function drawWrite() {
-      const w = P.words[S.writeI];
-      const panel = main.querySelector('#lcwc-panel');
-      const stepIndex = { look: 0, write: 2, checked: 3 }[S.writeStep];
-      main.querySelectorAll('.nw-steps li').forEach((li) => {
-        const i = Number(li.dataset.step);
-        li.classList.toggle('is-on', i === stepIndex || (S.writeStep === 'write' && i === 1));
-        li.classList.toggle('is-done', i < stepIndex && !(S.writeStep === 'write' && i === 1));
-      });
-      const visual = `<div><span class="numeral-card">${w.n}</span><div style="margin-top:0.6rem">${pv.tenFrameSVG(w.n)}</div></div>`;
+      const i = S.writeI;
+      const w = P.words[i];
+      const last = i === P.words.length - 1;
+      const head = pager('Cover and Write', i, P.words.length, `Word ${i + 1} of ${P.words.length}`);
+      const visual = `<div class="nw-row"><span class="numeral-card">${w.n}</span>${pv.tenFrameSVG(w.n)}</div>`;
+      const prev = i > 0 ? '<button type="button" class="btn btn-back" data-act="prev">← Previous</button>' : '<span class="spacer"></span>';
       if (S.writeStep === 'look') {
-        panel.innerHTML = `<div class="nw-word-panel">${visual}<div><p class="nw-big-word">${esc(w.word)}</p>${letterTiles(w.word)}` +
-          `<p class="muted">Study the word. Say each letter. When you are ready, cover it.</p>` +
-          `<div class="actions"><button type="button" class="btn btn-primary" data-act="cover">Cover the word</button></div></div></div>`;
+        main.innerHTML = head + `<section class="qcard">${visual}<p class="nw-big-word">${esc(w.word)}</p>${tiles(w.word)}<p class="say-big" style="text-align:center">Look at the word. Say each letter. When you are ready, cover it.</p></section>` +
+          `<div class="controls">${prev}<button type="button" class="btn btn-main" data-act="cover">Cover the word</button></div>`;
       } else if (S.writeStep === 'write') {
-        // The word is removed from the page (not just hidden) while the student writes.
-        panel.innerHTML = `<div class="nw-word-panel">${visual}<div><div class="nw-cover">The word is covered. Write it from memory.</div>` +
-          `<label class="q-prompt" for="lcwc-input" style="margin-top:0.8rem">Write the word for ${w.n}:</label>` +
+        // The word is removed from the page (not just hidden) while the child writes.
+        main.innerHTML = head + `<section class="qcard">${visual}<div class="nw-cover">The word is covered. Write it from memory.</div>` +
+          `<p><label class="q-prompt" for="lcwc-input">Write the word for ${w.n}:</label></p>` +
           `<input id="lcwc-input" class="q-input q-input-wide" type="text" autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false">` +
-          `<div class="error-box" role="alert" hidden></div>` +
-          `<div class="actions"><button type="button" class="btn btn-primary" data-act="check">Check</button></div></div></div>`;
-        const input = panel.querySelector('#lcwc-input');
+          `<p class="msg msg-info" data-empty hidden>Type the word first.</p></section>` +
+          `<div class="controls">${prev}<button type="button" class="btn btn-main" data-act="check">Check Answer</button></div>`;
+        const input = main.querySelector('#lcwc-input');
         input.focus();
-        input.addEventListener('keydown', (e) => { if (e.key === 'Enter') panel.querySelector('[data-act=check]').click(); });
+        input.addEventListener('keydown', (e) => { if (e.key === 'Enter') main.querySelector('[data-act=check]').click(); });
       } else {
         const ok = Q.normSpell(S.writeTyped) === w.word;
         const cmp = NW.compareLetters(S.writeTyped, w.word);
-        panel.innerHTML = `<div class="nw-word-panel">${visual}<div>` +
-          `<div class="feedback ${ok ? 'feedback-ok' : 'feedback-no'}" role="status"><p><b>${ok ? '✓ Correct!' : 'Not quite yet.'}</b> ` +
-          `${ok ? `${esc(w.word)} is spelled ${esc(NW.letters(w.word))}.` : 'Compare your letters with the word. Look again, then try once more.'}</p></div>` +
+        main.innerHTML = head + `<section class="qcard">${visual}` +
+          `<p class="msg ${ok ? 'msg-right' : 'msg-wrong'}" role="status">${ok ? `Yes! ${esc(w.word)} is spelled ${esc(NW.letters(w.word))}.` : 'Not quite. Look at the letters.'}</p>` +
           `<div class="compare"><div class="compare-row"><b>You wrote:</b><span class="compare-letters">${cmp.map((c) => `<span class="${c.ok ? 'is-right' : 'is-wrong'}">${esc(c.ch)}</span>`).join('')}</span></div>` +
           `<div class="compare-row"><b>The word:</b><span class="compare-letters">${w.word.split('').map((ch) => `<span>${esc(ch)}</span>`).join('')}</span></div></div>` +
-          `<p class="nw-tip"><b>Spelling tip:</b> ${esc(w.tip)}</p>` +
-          `<div class="actions"><button type="button" class="btn ${ok ? 'btn-ghost' : 'btn-primary'}" data-act="again">Try this word again</button>` +
-          (S.writeI < P.words.length - 1 ? `<button type="button" class="btn ${ok ? 'btn-primary' : 'btn-ghost'}" data-act="next">Next word →</button>` : `<a class="btn btn-primary" href="#practice">Go to Practice →</a>`) +
-          `</div></div></div>`;
+          `<p class="nw-tip"><b>Tip:</b> ${esc(w.tip)}</p></section>` +
+          `<div class="controls">${ok ? prev : '<span class="spacer"></span>'}` +
+          (ok ? (last ? '<a class="btn btn-main" href="#practice">Next: Practice →</a>' : '<button type="button" class="btn btn-main" data-act="next">Next word →</button>')
+            : `<button type="button" class="btn btn-try" data-act="again">Try Again</button>`) + `</div>` +
+          (ok ? '' : `<p style="text-align:center"><button type="button" class="btn btn-quiet" data-act="skip">Go to the next word</button></p>`);
       }
-      panel.querySelectorAll('[data-act]').forEach((b) => b.addEventListener('click', () => {
+      main.querySelectorAll('[data-act]').forEach((b) => b.addEventListener('click', () => {
         const act = b.dataset.act;
-        if (act === 'cover') { S.writeStep = 'write'; S.writeTyped = ''; drawWrite(); }
+        if (act === 'cover') { S.writeStep = 'write'; S.writeTyped = ''; writeView(); return; }
         if (act === 'check') {
-          const typed = panel.querySelector('#lcwc-input').value;
-          if (!typed.trim()) { const e = panel.querySelector('.error-box'); e.hidden = false; e.textContent = 'Type the word first.'; return; }
+          const typed = main.querySelector('#lcwc-input').value;
+          if (!typed.trim()) { main.querySelector('[data-empty]').hidden = false; return; }
           S.writeTyped = typed;
           S.writeStep = 'checked';
-          const written = store.get('written', {});
-          const prev = written[w.word] || { tries: 0, correct: false };
-          written[w.word] = { tries: prev.tries + 1, correct: prev.correct || Q.normSpell(typed) === w.word };
-          store.set('written', written);
+          const all = store.get('written', {});
+          const prevRec = all[w.word] || { tries: 0, correct: false };
+          all[w.word] = { tries: prevRec.tries + 1, correct: prevRec.correct || Q.normSpell(typed) === w.word };
+          store.set('written', all);
           writeView();
+          const m = main.querySelector('.controls .btn-main, .controls .btn-try');
+          if (m) m.focus();
+          return;
         }
-        if (act === 'again') { S.writeStep = 'look'; S.writeTyped = ''; drawWrite(); }
-        if (act === 'next') { S.writeI += 1; S.writeStep = 'look'; S.writeTyped = ''; writeView(); }
+        if (act === 'again') { S.writeStep = 'look'; S.writeTyped = ''; writeView(); return; }
+        if (act === 'prev') S.writeI = Math.max(0, i - 1);
+        if (act === 'next' || act === 'skip') S.writeI = Math.min(P.words.length - 1, i + 1);
+        S.writeStep = 'look';
+        S.writeTyped = '';
+        writeView();
+        shell.focusTitle(main);
       }));
     }
 
-    // ===== 4. Practice =====
+    // ===== Practice =====
     function practiceView() {
-      main.innerHTML =
-        ctx.hero(eyebrow('practice'), 'Guided practice', 'Different kinds of spelling practice. Hints and second tries are allowed.') +
-        `<section class="card" id="nw-practice">${head('A', 'Practice round', 'together')}` +
-        (S.focus && S.focus.length
-          ? `<p class="parent-tip"><b>Practicing missed words:</b> ${S.focus.map(esc).join(', ')}. <button type="button" class="btn btn-small" id="practice-all">Practice all words instead</button></p>`
-          : `<p class="muted">${P.practiceSize} questions: write the word, choose the right spelling, and fill in a missing letter.</p>`) +
-        `<div id="practice-runner"></div>` +
-        `<div class="actions"><button type="button" class="btn btn-small" id="practice-new">New practice round</button></div></section>` +
-        ctx.navButtons('practice');
-      const run = () => shell.guidedRunner(main.querySelector('#practice-runner'), {
-        items: S.practice, states: S.practiceStates, pos: S.practicePos, keyPrefix: 'nwp',
-        lastLabel: 'New round', onLast: () => newRound(S.focus)
+      back();
+      const title = S.focus && S.focus.length ? `Practice: ${S.focus.join(', ')}` : 'Practice';
+      shell.stepRunner({
+        main, title, items: S.practice, run: S.practiceRun, save() {}, keyPrefix: 'nwp', finishLabel: 'Finish',
+        onFinish(sum) {
+          main.innerHTML = `<section class="qcard" style="text-align:center"><h1>You finished practice!</h1><p class="result-stars" aria-hidden="true">${'★'.repeat(shell.starsFor(sum.firstRight / sum.total * 100))}</p>` +
+            `<p class="say-big">You got ${sum.firstRight} of ${sum.total} right on the first try.</p></section>` +
+            `<div class="controls"><button type="button" class="btn btn-back" id="again">Practice again</button><a class="btn btn-main" href="#test">Spelling Test →</a></div>`;
+          main.querySelector('#again').addEventListener('click', () => newRound(S.focus));
+          shell.focusTitle(main);
+        }
       });
-      const newRound = (focus) => {
-        S.focus = focus;
-        S.practice = NW.practiceRound(P, shell.newSeed(), focus);
-        S.practiceStates = {};
-        S.practicePos.i = 0;
-        practiceView();
-      };
-      main.querySelector('#practice-new').addEventListener('click', () => newRound(S.focus));
-      const all = main.querySelector('#practice-all');
-      if (all) all.addEventListener('click', () => newRound(null));
-      run();
     }
 
-    // ===== 5. Spelling test =====
+    function newRound(focus) {
+      S.focus = focus;
+      S.practice = NW.practiceRound(P, shell.newSeed(), focus);
+      S.practiceRun = { pos: 0, items: {} };
+      if (location.hash === '#practice') { practiceView(); shell.focusTitle(main); } else R.go('practice');
+    }
+
+    // ===== Spelling test =====
     function testView() {
-      if (S.pendingStart) { S.pendingStart = false; beginTest(); }
-      if (S.activeTest) return runTest();
-      const attempts = store.get('attempts', []);
-      const last = attempts[attempts.length - 1];
-      const draft = store.get('draft', null);
-      main.innerHTML =
-        ctx.hero(eyebrow('test'), 'Spelling test', `${P.testSize} words. Type each word in full.`) +
-        `<section class="card card-parent">${head('', 'Before you start', 'parent')}<ul class="rules">` +
-        `<li>Each question shows a number or a ten-frame. Your child types the number word.</li>` +
-        `<li>No hints, and no answers are shown until the test is submitted.</li>` +
-        `<li>Capital letters and extra spaces don't matter. Every letter does.</li>` +
-        `<li>There are ${P.words.length} words and ${P.testSize} questions, so one word sits out each time. It is always tested on the next attempt.</li>` +
-        `<li>Mastery: ${P.masteryScore} or more correct out of ${P.testSize}.</li></ul></section>` +
-        `<div class="card test-card"><h2>Phase ${P.id} spelling test</h2>` +
-        (last ? `<p class="test-last">Last score: <b>${last.score}/${last.total}</b> <span class="badge-m ${mastered(last.score) ? 'm-mastered' : 'm-review'}">${mastered(last.score) ? 'Mastered' : 'Keep practicing'}</span></p>` : '<p class="test-last muted">Not taken yet.</p>') +
-        (draft ? `<p class="test-last"><b>Unfinished:</b> ${Object.values(draft.responses || {}).filter((r) => String(r).trim()).length} of ${draft.questions.length} answered so far.</p>` : '') +
-        `<button type="button" class="btn btn-primary" data-start>${draft ? 'Resume test' : last ? 'Take a new test' : 'Start test'}</button></div>` +
-        ctx.navButtons('test');
-      main.querySelector('[data-start]').addEventListener('click', () => { beginTest(); runTest(); root.scrollTo(0, 0); });
-    }
-
-    function beginTest() {
+      back();
       let draft = store.get('draft', null);
       if (!draft) {
         const seed = shell.newSeed();
         const t = NW.spellingTest(P, seed, store.get('attempts', []));
         draft = { seed, questions: t.questions, omitted: t.omitted, assessed: t.assessed, responses: {}, started: new Date().toISOString() };
-        store.set('draft', draft);
       }
-      S.activeTest = draft;
-    }
-
-    function runTest() {
-      const D = S.activeTest;
-      shell.testRunner(ctx, {
-        store, draftKey: 'draft', draft: D, title: `Phase ${P.id} spelling test`, eyebrow: eyebrow('test'),
-        attemptNumber: store.get('attempts', []).length + 1,
-        onExit() { S.activeTest = null; testView(); root.scrollTo(0, 0); },
-        onSubmit(draft, correct) {
+      shell.testPager({
+        main, store, draftKey: 'draft', draft, title: 'Spelling Test',
+        onExit() { R.go(''); },
+        onSubmit(D, correct) {
           const score = correct.filter(Boolean).length;
-          const attempt = {
-            id: Date.now(), date: new Date().toISOString(), seed: draft.seed, questions: draft.questions, responses: draft.responses,
-            correct, score, total: draft.questions.length, assessed: draft.assessed, omitted: draft.omitted,
-            missed: draft.questions.filter((q, i) => !correct[i]).map((q) => q.answer), pauses: Math.max(0, (draft.sessions || 1) - 1)
-          };
           const all = store.get('attempts', []);
-          all.push(attempt);
+          all.push({ id: Date.now(), date: new Date().toISOString(), seed: D.seed, questions: D.questions, responses: D.responses, correct, score, total: D.questions.length,
+            assessed: D.assessed, omitted: D.omitted, missed: D.questions.filter((q, i) => !correct[i]).map((q) => q.answer), pauses: Math.max(0, (D.sessions || 1) - 1) });
           store.set('attempts', all);
-          S.activeTest = null;
-          S.view = attempt.id;
-          ctx.go('results');
+          R.go('done');
         }
       });
     }
 
-    // ===== 6. Results =====
-    function resultsView() {
-      const attempts = store.get('attempts', []);
-      const top = ctx.hero(eyebrow('results'), 'Spelling results', 'Which words are mastered, and which to practice again.');
-      const notice = `<section class="card card-notice">${head('', 'About saved progress', 'parent')}` +
-        `<p>Number Words progress is saved only in this browser on this device, separately from Lesson 2-1. It does not sync to other devices, and nothing is sent anywhere.</p>` +
-        (store.works() ? '' : `<p class="warn-text">This browser is not allowing saved data right now. Results will disappear when the page closes.</p>`) +
-        `<div id="clear-area"><button type="button" class="btn btn-ghost" id="clear">Clear saved Number Words Phase ${P.id} progress…</button></div></section>`;
-      const said = Object.values(store.get('said', {})).filter(Boolean).length;
-      const written = Object.values(store.get('written', {})).filter((x) => x.correct).length;
-      const progress = `<section class="card">${head('', 'Practice progress', 'parent')}` +
-        `<p>Said and spelled aloud: <b>${said} of ${P.words.length}</b> · Written from memory: <b>${written} of ${P.words.length}</b></p></section>`;
-
-      if (!attempts.length) {
-        main.innerHTML = top + `<section class="card"><h2>No spelling test results yet</h2><p>Take the spelling test and the results will appear here.</p>` +
-          `<a class="btn btn-primary" href="#test">Go to the test →</a></section>` + progress + notice + ctx.navButtons('results');
-        shell.bindClear(main, store, `Number Words Phase ${P.id} progress`, () => resultsView());
-        return;
-      }
-      const a = attempts.find((x) => x.id === S.view) || attempts[attempts.length - 1];
-      const ok = mastered(a.score);
-      const missedRows = a.questions.map((q, i) => ({ q, i })).filter((x) => !a.correct[x.i]).map((x) => {
-        const w = P.words.find((y) => y.word === x.q.answer);
-        const cmp = NW.compareLetters(a.responses[x.q.id], w.word);
-        return `<li class="rq rq-no"><p class="rq-prompt"><span class="rq-mark" aria-hidden="true">✗</span><span><span class="sr-only">Incorrect. </span>Question ${x.i + 1}: the word for ${w.n}</span></p>` +
+    function doneView() {
+      back();
+      const a = store.get('attempts', []).slice(-1)[0];
+      if (!a) return R.go('test');
+      const ok = a.score >= P.masteryScore;
+      const missedRows = a.questions.map((q, i) => ({ q, i })).filter((x) => !a.correct[x.i]).map(({ q }) => {
+        const w = P.words.find((y) => y.word === q.answer);
+        const cmp = NW.compareLetters(a.responses[q.id], w.word);
+        return `<li class="rq"><p class="rq-prompt">The word for ${w.n}</p>` +
           `<div class="compare"><div class="compare-row"><b>You wrote:</b><span class="compare-letters">${cmp.map((c) => `<span class="${c.ok ? 'is-right' : 'is-wrong'}">${esc(c.ch)}</span>`).join('')}</span></div>` +
-          `<div class="compare-row"><b>Correct:</b><span class="compare-letters">${w.word.split('').map((ch) => `<span class="is-right">${esc(ch)}</span>`).join('')}</span></div></div>` +
-          `<p><b>Why:</b> ${esc(x.q.explanation)}</p></li>`;
+          `<div class="compare-row"><b>The word:</b><span class="compare-letters">${w.word.split('').map((ch) => `<span class="is-right">${esc(ch)}</span>`).join('')}</span></div></div>` +
+          `<p>${esc(q.explanation)}</p></li>`;
       }).join('');
-      const rightWords = a.questions.filter((q, i) => a.correct[i]).map((q) => q.answer);
-      const history = attempts.slice().reverse().map((x) => `<tr${x.id === a.id ? ' class="is-on"' : ''}><td>${esc(shell.formatDate(x.date))}</td><td>${x.score}/${x.total}</td>` +
-        `<td><span class="badge-m ${mastered(x.score) ? 'm-mastered' : 'm-review'}">${mastered(x.score) ? 'Mastered' : 'Keep practicing'}</span></td>` +
-        `<td>${x.missed.length ? x.missed.map(esc).join(', ') : '—'}</td><td><button type="button" class="btn btn-small btn-ghost" data-view="${x.id}">View</button></td></tr>`).join('');
-
-      main.innerHTML = top +
-        `<section class="card result-detail" id="detail"><h2>Spelling test <span class="muted">· ${esc(shell.formatDate(a.date))}</span></h2>` +
-        `<div class="score-row"><p class="score-big">${a.score}<span>/${a.total}</span></p><p class="score-pct">${Math.round(a.score / a.total * 100)}%</p>` +
-        `<p class="badge-m badge-big ${ok ? 'm-mastered' : 'm-review'}">${ok ? 'Mastered' : 'Keep practicing'}</p></div>` +
-        `<p class="advice"><b>Next step:</b> ${ok ? `Phase ${P.id} is mastered. Keep reviewing any missed word below.` : `Practice the missed words, then take a new test. Mastery is ${P.masteryScore} or more out of ${P.testSize}.`}</p>` +
-        (a.pauses ? `<p class="muted">This test was paused and resumed ${a.pauses} time${a.pauses === 1 ? '' : 's'}.</p>` : '') +
-        `<h3>Words tested this time (${a.assessed.length})</h3><ul class="word-list">${a.assessed.map((w) => `<li>${esc(w)}</li>`).join('')}</ul>` +
-        (a.omitted.length ? `<p class="muted">Not tested this time: <b>${a.omitted.map(esc).join(', ')}</b> — it will be tested on the next attempt.</p>` : '') +
-        (a.missed.length ? `<h3>Words to practice (${a.missed.length})</h3><ol class="rq-list">${missedRows}</ol>` : '<p><b>Every word was spelled correctly.</b></p>') +
-        (rightWords.length ? `<details class="rq-right"><summary>Spelled correctly (${rightWords.length})</summary><ul class="word-list">${rightWords.map((w) => `<li>${esc(w)}</li>`).join('')}</ul></details>` : '') +
-        `<div class="actions">${a.missed.length ? `<button type="button" class="btn btn-primary" data-practice-missed>Practice missed words</button>` : ''}` +
-        `<button type="button" class="btn ${a.missed.length ? 'btn-ghost' : 'btn-primary'}" data-retake>Take another test</button></div></section>` +
-        `<section class="card">${head('', 'Attempt history', '')}<div class="table-wrap"><table class="history"><thead><tr><th>Date</th><th>Score</th><th>Result</th><th>Missed</th><th><span class="sr-only">View</span></th></tr></thead><tbody>${history}</tbody></table></div></section>` +
-        progress + notice + ctx.navButtons('results');
-
-      main.querySelectorAll('[data-view]').forEach((b) => b.addEventListener('click', () => { S.view = Number(b.dataset.view); resultsView(); main.querySelector('#detail').scrollIntoView({ block: 'start' }); }));
-      const pm = main.querySelector('[data-practice-missed]');
-      if (pm) pm.addEventListener('click', () => {
-        S.focus = a.missed.slice();
-        S.practice = NW.practiceRound(P, shell.newSeed(), S.focus);
-        S.practiceStates = {};
-        S.practicePos.i = 0;
-        ctx.go('practice');
-      });
-      main.querySelector('[data-retake]').addEventListener('click', () => { S.pendingStart = true; ctx.go('test'); });
-      shell.bindClear(main, store, `Number Words Phase ${P.id} progress`, () => { S.view = null; resultsView(); });
+      main.innerHTML = `<section class="qcard" style="text-align:center"><h1>You finished the Spelling Test!</h1>` +
+        `<p class="result-stars" aria-hidden="true">${'★'.repeat(shell.starsFor(a.score / a.total * 100))}</p><p class="result-big">${a.score} out of ${a.total}</p>` +
+        `<p class="say-big">${ok ? 'Amazing spelling! You mastered these words.' : 'Good try! Let\'s practice the words you missed.'}</p></section>` +
+        (a.missed.length ? `<section class="qcard"><h2 style="font-size:1.6rem">Words to practice</h2><ol class="rq-list">${missedRows}</ol></section>` : '') +
+        `<div class="controls">` + (a.missed.length ? `<button type="button" class="btn btn-main" id="practice-missed">Practice the words I missed</button>` : '') +
+        `<a class="btn ${a.missed.length ? 'btn-back' : 'btn-main'}" href="#">Back to Number Words</a></div>`;
+      const pm = main.querySelector('#practice-missed');
+      if (pm) pm.addEventListener('click', () => newRound(a.missed.slice()));
     }
 
-    ctx.render();
+    R.run();
   }
 
   MB.numberWords.startPhase = start;
