@@ -69,20 +69,26 @@
   // ---------- Shell and router ----------
   /**
    * o: { mount, homeHref, path (page path from the site root), crumbs, pill, navLabel, stages:[{id,label}],
-   *      views:{id: fn}, activityTitle, beforeRender(stage) }
+   *      views:{id: fn(ctx, arg)}, activityTitle, beforeRender(stage),
+   *      stagebar (default true; false = no stage tabs — the first stage is a menu instead),
+   *      menuLink ({ href, label } shown in the header, e.g. the lesson menu) }
+   * Routes may carry one sub-screen: '#practice/together' → stage 'practice', arg 'together'.
    */
   function startShell(o) {
     const mount = document.getElementById(o.mount || 'mathbook');
+    const showBar = o.stagebar !== false;
     mount.innerHTML =
       `<a class="skip" href="#stage" data-skip>Skip to content</a>` +
       `<header class="topbar"><div class="topbar-in">` +
       `<a class="brand" href="${esc(o.homeHref)}">${LOGO}<span>Mathbook</span></a>` +
       `<span class="crumbs">${esc(o.crumbs || '')}</span>` +
-      `<span class="topbar-right">${o.pill ? `<span class="lesson-pill">${esc(o.pill)}</span>` : ''}<a class="home-link" href="${esc(o.homeHref)}">Home</a></span>` +
+      `<span class="topbar-right">${o.pill ? `<span class="lesson-pill">${esc(o.pill)}</span>` : ''}` +
+      (o.menuLink ? `<a class="home-link" href="${esc(o.menuLink.href)}" data-menu-link>${esc(o.menuLink.label)}</a>` : '') +
+      `<a class="home-link" href="${esc(o.homeHref)}">Home</a></span>` +
       `</div></header>` +
-      `<nav class="stagebar" aria-label="${esc(o.navLabel || 'Lesson steps')}" style="--stage-count:${o.stages.length}"><ol>` +
-      o.stages.map((s, i) => `<li><a class="stage-link" href="#${s.id}" data-stage="${s.id}"><span class="stage-n">${i + 1}</span><span class="stage-t">${esc(s.label)}</span></a></li>`).join('') +
-      `</ol></nav>` +
+      (showBar ? `<nav class="stagebar" aria-label="${esc(o.navLabel || 'Lesson steps')}" style="--stage-count:${o.stages.length}"><ol>` +
+        o.stages.map((s, i) => `<li><a class="stage-link" href="#${s.id}" data-stage="${s.id}"><span class="stage-n">${i + 1}</span><span class="stage-t">${esc(s.label)}</span></a></li>`).join('') +
+        `</ol></nav>` : '') +
       `<div class="test-banner" role="region" aria-label="Test in progress"><div class="test-banner-in" id="test-banner"></div></div>` +
       `<main id="stage" class="stage" tabindex="-1"></main>` +
       `<footer class="footer"><p>Mathbook · Original learning content · Progress is saved in this browser only.</p></footer>`;
@@ -95,8 +101,10 @@
       main,
       stage: null,
       scrollTo: null,
+      arg: null,
       stageFromHash() {
-        const h = location.hash.replace('#', '');
+        const [h, arg] = location.hash.replace('#', '').split('/');
+        ctx.arg = arg || null;
         return o.stages.some((s) => s.id === h) ? h : o.stages[0].id;
       },
       go(stage, scrollTo) {
@@ -129,13 +137,15 @@
           if (a.dataset.stage === ctx.stage) a.setAttribute('aria-current', 'step');
           else a.removeAttribute('aria-current');
         });
-        o.views[ctx.stage](ctx);
+        const menuLink = mount.querySelector('[data-menu-link]');
+        if (menuLink) menuLink.hidden = ctx.stage === o.stages[0].id;
+        o.views[ctx.stage](ctx, ctx.arg);
         main.querySelectorAll('[data-jump]').forEach((b) => b.addEventListener('click', () => {
           const t = main.querySelector('#' + b.dataset.jump);
           if (t) { t.scrollIntoView({ block: 'start' }); const h = t.querySelector('h2'); if (h) { h.setAttribute('tabindex', '-1'); h.focus({ preventScroll: true }); } }
         }));
         const label = (o.stages.find((s) => s.id === ctx.stage) || {}).label;
-        recordActivity({ path: o.path + '#' + ctx.stage, title: o.activityTitle, step: label });
+        recordActivity({ path: o.path + '#' + ctx.stage + (ctx.arg ? '/' + ctx.arg : ''), title: o.activityTitle, step: label });
         if (ctx.scrollTo) {
           const t = main.querySelector('#' + ctx.scrollTo);
           if (t) t.scrollIntoView({ block: 'start' });
@@ -158,20 +168,12 @@
    * Items may include type 'explain' (parent listens; no typing).
    */
   function guidedRunner(box, cfg) {
-    const dotsId = cfg.keyPrefix + '-dots';
-    box.innerHTML = `<div class="dots" id="${dotsId}" role="group" aria-label="Problems">` +
-      cfg.items.map((g, i) => `<button type="button" class="dot" data-g="${i}" aria-label="Problem ${i + 1}">${i + 1}</button>`).join('') +
-      `</div><div class="guided-card"></div>`;
+    box.innerHTML = `<p class="q-count" aria-live="polite"></p><div class="guided-card"></div>`;
     const card = box.querySelector('.guided-card');
 
+    // "Question X of Y" instead of a row of numbered circles.
     function dots() {
-      box.querySelectorAll('.dot').forEach((d) => {
-        const n = Number(d.dataset.g);
-        const s = cfg.states[cfg.items[n].id];
-        d.classList.toggle('is-on', n === cfg.pos.i);
-        d.classList.toggle('is-done', !!(s && s.result === true));
-        if (n === cfg.pos.i) d.setAttribute('aria-current', 'step'); else d.removeAttribute('aria-current');
-      });
+      box.querySelector('.q-count').textContent = `Question ${cfg.pos.i + 1} of ${cfg.items.length}`;
     }
 
     function draw() {
@@ -179,19 +181,23 @@
       const q = cfg.items[i];
       const st = cfg.states[q.id] || (cfg.states[q.id] = { response: undefined, result: null, hint: false, reveal: false });
       dots();
+      // Grown-up coaching stays available but folded away from the child's question.
+      const help = q.parent || q.listenFor
+        ? `<details class="parent-help"><summary>Parent Help</summary>${q.parent ? `<p>${esc(q.parent)}</p>` : ''}` +
+          (q.listenFor ? `<p><b>Listen for:</b></p><ul>${q.listenFor.map((x) => `<li>${esc(x)}</li>`).join('')}</ul>` : '') + `</details>`
+        : '';
       let inner;
       if (q.type === 'explain') {
-        inner = `<div class="q"><p class="q-prompt"><span class="q-num" aria-hidden="true">${i + 1}</span><span>${esc(q.prompt)}</span></p></div>` +
-          `<div class="listen-box"><b>Listen for:</b><ul>${q.listenFor.map((x) => `<li>${esc(x)}</li>`).join('')}</ul></div>` +
+        inner = `<div class="q"><p class="q-prompt"><span>${esc(q.prompt)}</span></p></div>` +
           `<div class="actions"><button type="button" class="btn btn-primary" data-act="explained">They explained it</button>` +
           `<button type="button" class="btn btn-ghost" data-act="reveal">Show the explanation</button></div>`;
       } else {
-        inner = Q.render(q, cfg.keyPrefix + '-' + q.id, { number: i + 1, response: st.response }) +
+        inner = Q.render(q, cfg.keyPrefix + '-' + q.id, { response: st.response }) +
           `<div class="actions"><button type="button" class="btn btn-primary" data-act="check">Check answer</button>` +
           (q.hint ? `<button type="button" class="btn btn-ghost" data-act="hint">Show a hint</button>` : '') +
           `<button type="button" class="btn btn-ghost" data-act="reveal">Show answer and why</button></div>`;
       }
-      card.innerHTML = (q.parent ? `<div class="parent-tip"><b>Parent:</b> ${esc(q.parent)}</div>` : '') + inner +
+      card.innerHTML = inner + help +
         `<div class="hint-box" ${st.hint && q.hint ? '' : 'hidden'}><b>Hint:</b> ${esc(q.hint || '')}</div>` +
         `<div class="result-box" aria-live="polite"></div>` +
         `<div class="stage-nav stage-nav-inner"><button type="button" class="btn btn-ghost" data-act="prev" ${i === 0 ? 'disabled' : ''}>← Previous</button>` +
@@ -243,13 +249,20 @@
         } else if (act === 'prev') {
           cfg.pos.i = Math.max(0, i - 1);
           draw();
+          toTop();
         } else if (act === 'next') {
-          if (i < cfg.items.length - 1) { cfg.pos.i = i + 1; draw(); } else if (cfg.onLast) cfg.onLast();
+          if (i < cfg.items.length - 1) { cfg.pos.i = i + 1; draw(); toTop(); } else if (cfg.onLast) cfg.onLast();
         }
       }));
     }
 
-    box.querySelectorAll('.dot').forEach((d) => d.addEventListener('click', () => { cfg.pos.i = Number(d.dataset.g); draw(); }));
+    // A new question starts at the top of its content.
+    function toTop() {
+      box.scrollIntoView({ block: 'start' });
+      const c = card.querySelector('.q input, .q select, .q button');
+      if (c) c.focus({ preventScroll: true });
+    }
+
     draw();
     return { draw };
   }
@@ -268,60 +281,78 @@
       `<span>${esc(cfg.title)} · <span id="answered-banner"></span></span>` +
       `<span class="bar" aria-hidden="true"><span id="bar-fill"></span></span>` +
       `<button type="button" class="btn btn-ghost" data-exit>Save and finish later</button>`);
-    main.innerHTML =
-      ctx.hero(cfg.eyebrow, esc(cfg.title), `Attempt ${cfg.attemptNumber} · Answer every question, then press Submit. No hints during the test.`) +
-      `<section class="card test-run"><div class="test-progress"><span id="answered" aria-live="polite"></span></div>` +
-      `<form id="test-form" novalidate><ol class="q-list">` +
-      D.questions.map((q, i) => `<li class="q-item">${Q.render(q, 't-' + q.id, { number: i + 1, response: D.responses[q.id] })}</li>`).join('') +
-      `</ol><div class="error-box" role="alert" hidden></div>` +
-      `<div class="actions"><button type="submit" class="btn btn-primary btn-big">Submit test</button>` +
-      `<button type="button" class="btn btn-ghost" data-exit>Save and finish later</button></div></form></section>`;
-
-    const form = main.querySelector('#test-form');
-    const els = Array.from(form.querySelectorAll('.q[data-qkey]'));
+    // One question at a time; D.pos === n is the review screen with the Finish Test button.
+    const n = D.questions.length;
+    D.pos = Math.min(D.pos || 0, n);
+    const save = () => cfg.store.set(cfg.draftKey, D);
+    const answered = (q) => Q.isAnswered(q, D.responses[q.id]);
     const progress = () => {
-      const done = D.questions.filter((q) => Q.isAnswered(q, D.responses[q.id])).length;
-      const text = `${done} of ${D.questions.length} answered`;
-      main.querySelector('#answered').textContent = text;
+      const done = D.questions.filter(answered).length;
+      const text = `${done} of ${n} answered`;
       const banner = document.getElementById('answered-banner');
       if (banner) banner.textContent = text;
       const fill = document.getElementById('bar-fill');
-      if (fill) fill.style.width = `${(done / D.questions.length) * 100}%`;
+      if (fill) fill.style.width = `${(done / n) * 100}%`;
+      return done;
     };
-    els.forEach((el, i) => Q.bind(el, D.questions[i], (r) => {
-      D.responses[D.questions[i].id] = r;
-      el.closest('.q-item').classList.remove('needs-answer');
-      cfg.store.set(cfg.draftKey, D);
+    const exit = () => { save(); ctx.setTesting(false); cfg.onExit(); };
+    document.querySelectorAll('.test-banner [data-exit]').forEach((b) => b.addEventListener('click', exit));
+
+    function draw() {
+      if (D.pos >= n) return review();
+      const i = D.pos;
+      const q = D.questions[i];
+      main.innerHTML =
+        ctx.hero(cfg.eyebrow, esc(cfg.title), `Attempt ${cfg.attemptNumber} · No hints during the test. You can go back and change answers.`) +
+        `<section class="card test-run"><p class="q-count">Question ${i + 1} of ${n}</p>` +
+        `<div class="test-one">${Q.render(q, 't-' + q.id, { response: D.responses[q.id] })}</div>` +
+        `<div class="stage-nav stage-nav-inner">${i > 0 ? '<button type="button" class="btn btn-ghost" data-nav="prev">← Previous</button>' : '<span></span>'}` +
+        `<button type="button" class="btn btn-primary" data-nav="next">${i === n - 1 ? 'Review my answers →' : 'Next →'}</button></div>` +
+        `<p class="test-exit"><button type="button" class="btn btn-ghost" data-exit>Save and finish later</button></p></section>`;
+      const el = main.querySelector('.q[data-qkey]');
+      Q.bind(el, q, (r) => { D.responses[q.id] = r; save(); progress(); });
+      main.querySelectorAll('[data-nav]').forEach((b) => b.addEventListener('click', () => {
+        D.responses[q.id] = Q.read(el, q);
+        D.pos = b.dataset.nav === 'prev' ? i - 1 : i + 1;
+        save();
+        draw();
+        toTop();
+      }));
+      main.querySelector('[data-exit]').addEventListener('click', exit);
       progress();
-    }));
-    progress();
+    }
 
-    document.querySelectorAll('[data-exit]').forEach((b) => b.addEventListener('click', () => {
-      cfg.store.set(cfg.draftKey, D);
-      ctx.setTesting(false);
-      cfg.onExit();
-    }));
+    function review() {
+      const missing = D.questions.map((q, i) => (answered(q) ? null : i)).filter((x) => x !== null);
+      main.innerHTML =
+        ctx.hero(cfg.eyebrow, esc(cfg.title), 'Check that every question has an answer, then finish the test.') +
+        `<section class="card test-run"><h2 tabindex="-1">Ready to finish?</h2><p class="q-count">You answered ${n - missing.length} of ${n} questions.</p>` +
+        (missing.length
+          ? `<div class="error-box" role="alert">${missing.length === 1 ? 'This question still needs an answer:' : 'These questions still need answers:'}</div>` +
+            `<div class="actions">${missing.map((i) => `<button type="button" class="btn btn-ghost" data-go="${i}">Go to question ${i + 1}</button>`).join('')}</div>`
+          : `<p>Every question has an answer. You can still go back and change an answer.</p>`) +
+        `<div class="stage-nav stage-nav-inner"><button type="button" class="btn btn-ghost" data-nav="prev">← Previous</button>` +
+        `<button type="button" class="btn btn-primary btn-big" data-finish ${missing.length ? 'aria-disabled="true"' : ''}>Finish Test</button></div>` +
+        `<p class="test-exit"><button type="button" class="btn btn-ghost" data-exit>Save and finish later</button></p></section>`;
+      main.querySelectorAll('[data-go]').forEach((b) => b.addEventListener('click', () => { D.pos = Number(b.dataset.go); save(); draw(); toTop(); }));
+      main.querySelector('[data-nav="prev"]').addEventListener('click', () => { D.pos = n - 1; save(); draw(); toTop(); });
+      main.querySelector('[data-exit]').addEventListener('click', exit);
+      main.querySelector('[data-finish]').addEventListener('click', () => {
+        if (D.questions.some((q) => !answered(q))) { const g = main.querySelector('[data-go]'); if (g) g.focus(); return; }
+        const correct = D.questions.map((q) => Q.grade(q, D.responses[q.id]));
+        cfg.store.remove(cfg.draftKey);
+        ctx.setTesting(false);
+        cfg.onSubmit(D, correct);
+      });
+      progress();
+    }
 
-    form.addEventListener('submit', (e) => {
-      e.preventDefault();
-      els.forEach((el, i) => { D.responses[D.questions[i].id] = Q.read(el, D.questions[i]); });
-      const missing = D.questions.map((q, i) => (Q.isAnswered(q, D.responses[q.id]) ? null : i)).filter((x) => x !== null);
-      const err = form.querySelector('.error-box');
-      els.forEach((el, i) => el.closest('.q-item').classList.toggle('needs-answer', missing.includes(i)));
-      if (missing.length) {
-        err.hidden = false;
-        err.textContent = `Please answer every question before submitting. Still needed: ${missing.map((i) => i + 1).join(', ')}.`;
-        const first = els[missing[0]];
-        first.scrollIntoView({ block: 'center' });
-        const c = first.querySelector('input, select, button');
-        if (c) c.focus({ preventScroll: true });
-        return;
-      }
-      const correct = D.questions.map((q) => Q.grade(q, D.responses[q.id]));
-      cfg.store.remove(cfg.draftKey);
-      ctx.setTesting(false);
-      cfg.onSubmit(D, correct);
-    });
+    function toTop() {
+      root.scrollTo(0, 0);
+      const c = main.querySelector('.test-one input, .test-one select, .test-one button, h2');
+      if (c) c.focus({ preventScroll: true });
+    }
+    draw();
   }
 
   /** Clear-progress control with an in-page confirmation (no browser dialogs). */

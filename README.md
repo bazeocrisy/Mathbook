@@ -6,19 +6,20 @@ Live site: https://bazeocrisy.github.io/Mathbook/
 
 ## What's here
 
-- **Home** (`index.html`): galaxy-themed landing page with learning destinations and a Continue Learning card that only appears from progress saved in this browser.
+- **Home** (`index.html`): "What would you like to do?" with two choices (Math Lessons, Number Words) and one **Continue where I left off** button, shown only for unfinished work with real progress (a test or practice set with at least one answer, or Learn part-way done).
+- **Math Lessons** (`math/`): the list of lessons. Each lesson opens its Lesson Menu.
 - **Grade 3 · Chapter 2 · Lesson 2-1** (`curriculum/chapter-2/lesson-2-1/`): Represent 4-Digit Numbers.
 - **Number Words** (`number-words/`): Read It, Say It, Spell It, Write It. Phase 1 (0–10) is complete; Phases 2–4 are outlines only.
 
 ## Lesson structure
 
-Every lesson follows the same five stages. Each stage is split into labeled parts (A, B, C…) marked **For the student**, **Together**, or **For the parent**.
+Every lesson opens on a **Lesson Menu** ("What would you like to do?") with four big choices — **Learn**, **Practice**, **Take a Test**, **My Results** — and a smaller **Parent Guide** link. There is no stage bar: a child sees one activity, and inside it one step or one question, at a time ("Step X of Y", "Question X of Y"), with Back / Next and a way back to the Lesson Menu. Routes: `#menu`, `#teach`, `#see` (`#see/done`), `#practice` (`#practice/words`, `#practice/together`, `#practice/own`, `#practice/s1`…), `#test` (`#test/math`, `#test/vocab`), `#results`. Old bookmarks (`#teach`, `#see`, `#practice`, `#test`, `#results`) still work.
 
-1. **Teach It**: mission brief (learning target and big ideas), vocabulary, parent guide (what / what it means / why it works / how to demonstrate / what to ask / how to know), and a Show–Say–Ask teaching script.
-2. **See It**: a five-step guided wizard, one step on screen at a time — worked examples (base-ten blocks and a place-value chart), build your own number, change one place, groups of ten, biggest and smallest. Each step ends with a short check: a wrong answer gets a clue and Try Again; a second miss explains the answer and offers a new question. **Next Step** unlocks when the check is answered correctly. Completed steps can be revisited, and progress is saved in the browser. Each lesson defines its own steps in `lesson.js` (`seeIt.steps`: `id`, `kind`, `title`, `explain`, `check(rng)`).
-3. **Practice It**: vocabulary practice, guided practice (hints, check, correct, explain), and independent practice: the 50-question bank in five labeled sets of 10 (any order), with per-set status and scores and **Practice My Misses** to retry only the missed questions.
-4. **Test It**: Vocabulary Test and Math Test, 10 questions each. Focus mode hides the lesson tabs, no hints or feedback, every answer is required, every attempt uses new numbers, and unfinished tests survive a refresh.
-5. **Results**: score, mastery band, explained mistakes, skills to review, and attempt history.
+1. **Parent Guide** (`#teach`, was Teach It): mission brief (learning target and big ideas), vocabulary, parent guide (what / what it means / why it works / how to demonstrate / what to ask / how to know), and a Show–Say–Ask teaching script.
+2. **Learn** (`#see`, was See It): a five-step guided wizard, one step on screen at a time — worked examples (base-ten blocks and a place-value chart), build your own number, change one place, groups of ten, biggest and smallest. Each step ends with a short check: a wrong answer gets a clue and Try Again; a second miss explains the answer and offers a new question. **Next Step** unlocks when the check is answered correctly. Worked examples show one example at a time (Previous Example / Next Example). Completed steps can be revisited with Back, progress is saved in the browser, and finishing shows "You finished learning!" with Start Practice. Each lesson defines its own steps in `lesson.js` (`seeIt.steps`: `id`, `kind`, `title`, `explain`, `check(rng)`).
+3. **Practice**: a choice first — **Math Words** (vocabulary with hints), **Practice Together** (guided: hints, check, correct, explain; grown-up coaching folded under **Parent Help**), or **On My Own** (the 50-question bank in five labeled sets of 10, one question at a time, then Check my work, with per-set status and scores and **Practice My Misses** to retry only the missed questions).
+4. **Take a Test**: Math Test and Math Words Test, 10 questions each, one at a time. No hints or feedback; a review screen lists unanswered questions and **Finish Test** grades only when every question has an answer. Every attempt uses new numbers, and unfinished tests survive a refresh ("Save and finish later").
+5. **My Results**: score, mastery band, explained mistakes, skills to review, and attempt history.
 
 Mastery bands: **90–100%** Mastered · **70–89%** Review missed skills · **below 70%** Reteach and reassess.
 
@@ -29,12 +30,13 @@ Progress is stored in the browser's `localStorage` only (`mathbook:v2:*` keys, o
 ## Files
 
 ```
-index.html                         Home page (galaxy landing)
+index.html                         Home page
+math/index.html                    Math Lessons (lesson list)
 assets/css/mathbook.css            Shared styles (galaxy theme, panels, place colors)
 assets/js/place-value.js           Math helpers, answer parsing, SVG base-ten blocks, ten-frames (no DOM)
 assets/js/questions.js             Question types: render, read, grade
 assets/js/app-shell.js             Shared shell: header, stage router, guided runner, test runner, storage
-assets/js/lesson-app.js            Five-stage lesson engine (reusable for every lesson)
+assets/js/lesson-app.js            Lesson engine: Lesson Menu, Learn, Practice, Take a Test, My Results, Parent Guide (reusable for every lesson)
 assets/js/number-words.js          Number Words logic: practice rounds, spelling tests, rotation (no DOM)
 assets/js/number-words-app.js      Number Words phase engine (reusable for every phase)
 curriculum/chapter-2/lesson-2-1/
@@ -53,7 +55,8 @@ docs/audit/                        Baseline and post-implementation audits with 
 1. Copy `curriculum/chapter-2/lesson-2-1/` to the new lesson folder.
 2. Edit `lesson.js`: register `Mathbook.lessons['<id>']` with new content and a new `storageKey`. List the practice bank's sets in `bankSets` (each set: `id`, `title`, `blurb`, and 10 question `ids`; every bank question in exactly one set).
 3. In `index.html`, change the `startLesson('<id>', { path })` call. Script paths stay the same at the same folder depth.
-4. On the home page, replace part of the "coming later" row with a link to the new lesson.
+4. In `math/index.html`, add a `choice-card` link to `../curriculum/.../lesson-x-y/#menu`. The Lesson Menu, Learn wizard, Practice choices, tests, and results come from the shared engine; nothing about navigation is lesson-specific.
+5. On the home page, add the new lesson's storage keys to the Continue check if it should count as unfinished work.
 
 Question types available to any lesson: `mc`, `select`, `number`, `expanded`, `words`, `chart`, `build`, `spell`, `letter` (see `assets/js/questions.js`).
 
@@ -69,7 +72,7 @@ Requires Node 18+ (no packages to install) and Chrome or Edge for browser tests.
 ```
 npm test               # unit tests: every number 0–9,999, all 50 bank questions, thousands of generated tests, Number Words
 npm run test:browser   # end-to-end in headless Chrome/Edge, served under /Mathbook/ like GitHub Pages
-npm run audit -- after # device-state audit at 9 viewports → tests/audit-output/after/
+npm run audit -- after # Build 2.1 device-state audit (written for the old stage-bar layout; not yet updated)
 ```
 
 Browser tests write screenshots to `tests/screenshots/` (ignored by git). Set `CHROME_PATH` if Chrome is not found.

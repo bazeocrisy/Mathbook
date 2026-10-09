@@ -1,5 +1,5 @@
 /*
- * Mathbook lesson engine: the five-stage lesson (Teach It, See It, Practice It, Test It, Results).
+ * Mathbook lesson engine: a lesson menu that opens Learn, Practice, Take a Test, My Results, and the Parent Guide.
  * Reusable for every lesson: all teaching content comes from the lesson object (curriculum/.../lesson.js);
  * navigation, guided practice, and the test runner come from the shared shell (app-shell.js).
  * Progress is stored in this browser's localStorage only.
@@ -14,12 +14,15 @@
   const head = shell.sectionHead;
   const { PLACES, fmt, digitsOf, fromDigits, expandedForm, numberToWords } = pv;
 
+  // The first stage is the lesson menu; there is no stage bar. Old bookmarks (#teach, #see, #practice,
+  // #test, #results) still open the same screens.
   const STAGES = [
-    { id: 'teach', label: 'Teach It' },
-    { id: 'see', label: 'See It' },
-    { id: 'practice', label: 'Practice It' },
-    { id: 'test', label: 'Test It' },
-    { id: 'results', label: 'Results' }
+    { id: 'menu', label: 'Lesson Menu' },
+    { id: 'teach', label: 'Parent Guide' },
+    { id: 'see', label: 'Learn' },
+    { id: 'practice', label: 'Practice' },
+    { id: 'test', label: 'Take a Test' },
+    { id: 'results', label: 'My Results' }
   ];
   const SET_SIZE = 10;
   const SHORT = ['Th', 'H', 'T', 'O']; // column labels for compact charts
@@ -27,7 +30,7 @@
   function mastery(pct) {
     if (pct >= 90) return { key: 'mastered', label: 'Mastered', advice: 'Ready to move on to the next lesson.' };
     if (pct >= 70) return { key: 'review', label: 'Review missed skills', advice: 'Practice the skills listed below, then move on.' };
-    return { key: 'reteach', label: 'Reteach and reassess', advice: 'Reteach the skills below with See It, practice them, and then take a new test. Every new test uses different numbers.' };
+    return { key: 'reteach', label: 'Reteach and reassess', advice: 'Reteach the skills below with Learn, practice them, and then take a new test. Every new test uses different numbers.' };
   }
 
   function plural(n, word) {
@@ -90,7 +93,8 @@
       view: null,
       unsaved: null
     };
-    const eyebrow = (stage) => `Chapter ${L.chapter} · Lesson ${esc(L.number)} · Step ${STAGES.findIndex((s) => s.id === stage) + 1} of 5`;
+    const lessonEyebrow = () => `Lesson ${esc(L.number)} · ${esc(L.title)}`;
+    const eyebrow = lessonEyebrow;
 
     document.title = `Lesson ${L.number}: ${L.title} · Mathbook`;
     const ctx = shell.startShell({
@@ -100,14 +104,45 @@
       crumbs: `Grade 3 · Chapter ${L.chapter}: ${L.chapterTitle}`,
       pill: `Lesson ${L.number}`,
       stages: STAGES,
+      stagebar: false,
+      menuLink: { href: '#menu', label: 'Lesson Menu' },
       activityTitle: `Lesson ${L.number}: ${L.title}`,
-      // Leaving the Test It stage (any way at all) closes the running test; its draft stays saved.
-      beforeRender() { S.activeTest = null; },
-      views: { teach: teachView, see: seeView, practice: practiceView, test: testView, results: resultsView }
+      // Leaving a running test (any way at all) closes it; its draft stays saved. Every screen starts as a menu-width page.
+      beforeRender() { S.activeTest = null; activity(false); },
+      views: { menu: menuView, teach: teachView, see: seeView, practice: practiceView, test: testView, results: resultsView }
     });
     const main = ctx.main;
+    /** Menus and lists use the wider layout (about 960px); one-at-a-time activities use about 800px. */
+    const activity = (on) => { main.classList.toggle('stage-activity', on); main.classList.toggle('stage-menu', !on); };
 
-    // ===== 1. Teach It =====
+    // ---------- Navigation pieces ----------
+    /** A whole-card link: icon, title, one short line. */
+    function choiceCard(href, title, desc, icon, extra, tag) {
+      return `<a class="choice-card${extra ? ' ' + extra : ''}" href="${href}"><span class="choice-icon" aria-hidden="true">${icon}</span>` +
+        `<span class="choice-text"><span class="choice-title">${esc(title)}</span><span class="choice-desc">${esc(desc)}</span></span>${tag || ''}</a>`;
+    }
+    /** Bottom navigation for an activity: an optional way back, plus the Lesson Menu. */
+    function menuNav(backHref, backLabel) {
+      return `<div class="stage-nav">${backHref ? `<a class="btn btn-ghost" href="${backHref}">← ${esc(backLabel)}</a>` : '<span></span>'}` +
+        `<a class="btn btn-ghost" href="#menu">Lesson Menu</a></div>`;
+    }
+
+    // ===== Lesson menu =====
+    function menuView() {
+      const W = store.get('see-wizard', null);
+      const firstVisit = !W || !Object.keys(W.done || {}).length;
+      main.innerHTML =
+        `<section class="hero menu-hero"><p class="eyebrow">Lesson ${esc(L.number)}</p><h1 tabindex="-1">${esc(L.title)}</h1>` +
+        `<p class="lead">What would you like to do?</p></section>` +
+        `<nav class="choice-grid" aria-label="Lesson choices">` +
+        choiceCard('#see', 'Learn', 'See an example and try it.', '💡', firstVisit ? 'is-recommended' : '', firstVisit ? '<span class="choice-tag">Start here</span>' : '') +
+        choiceCard('#practice', 'Practice', 'Work on one problem at a time.', '✏️') +
+        choiceCard('#test', 'Take a Test', 'Show what you know.', '✓') +
+        choiceCard('#results', 'My Results', 'See how you did.', '★') +
+        `</nav><p class="parent-link"><a href="#teach">Parent Guide</a> <span class="muted">· how to teach this lesson</span></p>`;
+    }
+
+    // ===== Parent Guide (was Teach It) =====
     function teachView() {
       const vocab = L.vocabulary.map((v) =>
         `<div class="vocab-card"><h3>${esc(v.term)}</h3><p>${esc(v.meaning)}.</p>` +
@@ -125,7 +160,7 @@
         `</dl></li>`).join('');
 
       main.innerHTML =
-        ctx.hero(eyebrow('teach'), esc(L.title), esc(L.subtitle), [
+        ctx.hero(eyebrow('teach'), 'Parent Guide', 'How to teach this lesson: ' + esc(L.subtitle), [
           { id: 'brief', label: 'A · Mission brief' }, { id: 'vocabulary', label: 'B · Vocabulary' },
           { id: 'parent-guide', label: 'C · Parent guide' }, { id: 'script', label: 'D · Teaching script' }]) +
         `<section class="card" id="brief">${head('A', 'Mission brief', 'student')}` +
@@ -139,19 +174,19 @@
         `<p class="muted">Read each word together. Have your student point to the example and say it in their own words.</p>` +
         `<div class="vocab-grid">${vocab}</div>` +
         `<h3 class="sub">Places and base-ten blocks</h3><div class="place-grid">${placeWords}</div>` +
-        `<p class="muted">Vocabulary practice with hints is in <a href="#practice">Practice It</a>, before the Vocabulary Test.</p></section>` +
+        `<p class="muted">Vocabulary practice with hints is in <a href="#practice/words">Practice → Math Words</a>, before the Math Words Test.</p></section>` +
         `<section class="card card-parent" id="parent-guide">${head('C', 'Parent guide', 'parent')}` +
         `<div class="guide-grid">${guide}</div></section>` +
         `<section class="card card-parent" id="script">${head('D', 'Teaching script', 'parent')}` +
         `<p class="muted">About 10–15 minutes. Follow the steps in order.</p><ol class="script">${script}</ol>` +
-        `<div class="callout"><h3>During See It: questions to ask (example ${fmt(L.seeIt.examples[0])})</h3><ul>` +
+        `<div class="callout"><h3>During Learn: questions to ask (example ${fmt(L.seeIt.examples[0])})</h3><ul>` +
         demoSteps(L.seeIt.examples[0]).map((s) => `<li>${esc(s.ask.replace(/^Ask: /, ''))}</li>`).join('') +
-        `<li>Each See It step ends with a short check. If your student misses it twice, the answer is explained and a new question appears.</li></ul></div>` +
+        `<li>Each Learn step ends with a short check. If your student misses it twice, the answer is explained and a new question appears.</li></ul></div>` +
         `<div class="callout callout-warn"><h3>Watch for these mistakes</h3><ul>${L.mistakes.map((m) => `<li>${esc(m)}</li>`).join('')}</ul></div></section>` +
-        ctx.navButtons('teach');
+        menuNav();
     }
 
-    // ===== 2. See It =====
+    // ===== Learn (the See It wizard) =====
     function demoSteps(n) {
       const d = digitsOf(n);
       const steps = [{
@@ -178,7 +213,7 @@
       return steps;
     }
 
-    /** childOnly: leave out the parent's "Ask:" prompt (those live in Teach It's teaching script). */
+    /** childOnly: leave out the parent's "Ask:" prompt (those live in the Parent Guide's teaching script). */
     function demoBody(n, k, childOnly) {
       const s = demoSteps(n)[k];
       const d = digitsOf(n);
@@ -203,7 +238,8 @@
     // Saved as 'see-wizard': { step, done: { [stepId]: true }, checks: { [stepId]: { q, tries, retry, solved, revealed, response } }, ex, sub }
     // A step is complete when its check is answered correctly (on any try). After two misses the answer is
     // taught and a new question of the same kind is offered, so a child is never stuck and never skips the check.
-    function seeView() {
+    function seeView(c, arg) {
+      activity(true);
       const steps = L.seeIt.steps;
       const W = store.get('see-wizard', null) || { step: 0, done: {}, checks: {}, ex: 0, sub: 0 };
       const save = () => store.set('see-wizard', W);
@@ -218,8 +254,9 @@
       function demoHTML(step) {
         if (step.kind === 'examples') {
           const ex = L.seeIt.examples;
-          return `<div class="seg" role="group" aria-label="Choose an example">` +
-            ex.map((n, i) => `<button type="button" class="seg-btn" data-ex="${i}" aria-pressed="${i === W.ex}">${fmt(n)}</button>`).join('') + `</div>` +
+          return `<div class="ex-nav"><button type="button" class="btn btn-ghost" id="ex-prev">◀ Previous Example</button>` +
+            `<span class="ex-count" id="ex-count" aria-live="polite">Example ${W.ex + 1} of ${ex.length}</span>` +
+            `<button type="button" class="btn btn-ghost" id="ex-next">Next Example ▶</button></div>` +
             `<div id="demo-body" class="demo-body"></div>` +
             `<div class="demo-controls"><button type="button" class="btn btn-ghost" id="demo-prev">◀ Back a part</button>` +
             `<span class="step-count" id="demo-count" aria-live="polite"></span>` +
@@ -263,10 +300,14 @@
             main.querySelector('#demo-count').textContent = `Part ${W.sub + 1} of ${total}`;
             main.querySelector('#demo-prev').disabled = W.sub === 0;
             main.querySelector('#demo-next').disabled = W.sub === total - 1;
-            main.querySelectorAll('.seg-btn').forEach((b) => b.setAttribute('aria-pressed', String(Number(b.dataset.ex) === W.ex)));
+            main.querySelector('#ex-count').textContent = `Example ${W.ex + 1} of ${ex.length}: ${fmt(n)}`;
+            main.querySelector('#ex-prev').disabled = W.ex === 0;
+            main.querySelector('#ex-next').disabled = W.ex === ex.length - 1;
             save();
           };
-          main.querySelectorAll('.seg-btn').forEach((b) => b.addEventListener('click', () => { W.ex = Number(b.dataset.ex); W.sub = 0; draw(); }));
+          const pickEx = (d) => { W.ex = Math.min(ex.length - 1, Math.max(0, W.ex + d)); W.sub = 0; draw(); };
+          main.querySelector('#ex-prev').addEventListener('click', () => pickEx(-1));
+          main.querySelector('#ex-next').addEventListener('click', () => pickEx(1));
           main.querySelector('#demo-prev').addEventListener('click', () => { W.sub = Math.max(0, W.sub - 1); draw(); });
           main.querySelector('#demo-next').addEventListener('click', () => { W.sub += 1; draw(); });
           draw();
@@ -342,27 +383,20 @@
         save(); // keep this step's check question the same across a refresh
         const done = !!W.done[step.id];
         main.innerHTML =
-          // No lesson-stage number here: "Step N of 5" on this page always means the See It step.
-          ctx.hero(`Chapter ${L.chapter} · Lesson ${esc(L.number)} · See It`, 'See It: Build 4-Digit Numbers', 'One step at a time. Finish each step\'s check to unlock the next one.') +
-          `<nav class="wiz-steps" aria-label="See It steps"><ol>` + steps.map((s, k) => {
-            const state = W.done[s.id] ? 'is-done' : k === i ? 'is-current' : reachable(k) ? '' : 'is-locked';
-            return `<li><button type="button" class="wiz-step ${state}" data-go="${k}" ${reachable(k) ? '' : 'disabled'} ${k === i ? 'aria-current="step"' : ''}>` +
-              `<span class="wiz-n" aria-hidden="true">${W.done[s.id] ? '✓' : k + 1}</span><span class="wiz-t">${esc(s.title)}</span>` +
-              `<span class="sr-only">${W.done[s.id] ? ' (done)' : reachable(k) ? '' : ' (locked)'}</span></button></li>`;
-          }).join('') + `</ol></nav>` +
+          ctx.hero(lessonEyebrow(), 'Learn', 'One step at a time. Answer the check to unlock the next step.') +
           `<section class="card wiz-card"><p class="wiz-count">Step ${i + 1} of ${steps.length}</p><h2 tabindex="-1">${esc(step.title)}</h2>` +
           `<p class="wiz-explain">${esc(step.explain)}</p><div class="wiz-demo">${demoHTML(step)}</div>${checkHTML(step)}</section>` +
           `<div class="stage-nav wiz-nav">${i > 0 ? `<button type="button" class="btn btn-ghost btn-big" data-wiz="back">← Back</button>` : '<span></span>'}` +
           (i < steps.length - 1
             ? `<button type="button" class="btn btn-primary btn-big" data-wiz="next" ${done ? '' : 'disabled'}>Next Step →</button>`
-            : `<a class="btn btn-primary btn-big${done ? '' : ' is-disabled'}" href="#practice" ${done ? '' : 'aria-disabled="true" tabindex="-1"'} data-wiz="finish">Done! Go to Practice It →</a>`) +
-          `</div>` + (done ? '' : `<p class="wiz-locked-note" id="wiz-locked">Answer the check correctly to unlock ${i < steps.length - 1 ? 'the next step' : 'Practice It'}.</p>`);
+            : `<a class="btn btn-primary btn-big${done ? '' : ' is-disabled'}" href="#see/done" ${done ? '' : 'aria-disabled="true" tabindex="-1"'} data-wiz="finish">Finish →</a>`) +
+          `</div>` + (done ? '' : `<p class="wiz-locked-note" id="wiz-locked">Answer the check correctly to unlock ${i < steps.length - 1 ? 'the next step' : 'Finish'}.</p>`) +
+          `<div class="wiz-menu"><a class="btn btn-ghost" href="#menu">Lesson Menu</a></div>`;
         bindDemo(step);
         const qEl = main.querySelector('.wiz-check .q[data-qkey]');
         const locked = c.solved || c.revealed || c.retry;
         if (locked) qEl.querySelectorAll('input, select, button').forEach((x) => { x.disabled = true; });
         else Q.bind(qEl, c.q, (r) => { c.response = r; save(); });
-        main.querySelectorAll('[data-go]').forEach((b) => b.addEventListener('click', () => { W.step = Number(b.dataset.go); save(); draw(); main.querySelector('.wiz-card h2').focus(); }));
         main.querySelectorAll('[data-wiz]').forEach((b) => b.addEventListener('click', (e) => {
           const act = b.dataset.wiz;
           if (act === 'finish') { if (!W.done[step.id]) e.preventDefault(); return; }
@@ -385,43 +419,91 @@
         }));
       }
 
+      // #see/done: the completion screen (only once every step is done).
+      if (arg === 'done' && steps.every((s) => W.done[s.id])) {
+        main.innerHTML = ctx.hero(lessonEyebrow(), 'You finished learning!', 'Great work. Now try some practice problems.') +
+          `<section class="card done-card"><p class="done-title">You finished all ${steps.length} steps.</p>` +
+          `<div class="actions"><a class="btn btn-primary btn-big" href="#practice">Start Practice</a>` +
+          `<a class="btn btn-ghost btn-big" href="#menu">Lesson Menu</a>` +
+          `<button type="button" class="btn btn-ghost" id="learn-again">Go through Learn again</button></div></section>`;
+        main.querySelector('#learn-again').addEventListener('click', () => { W.step = 0; save(); ctx.go('see'); });
+        return;
+      }
       draw();
     }
 
-    // ===== 3. Practice It =====
-    function practiceView() {
+    // ===== Practice =====
+    // Practice: a choice screen first, then ONE activity on screen.
+    //   #practice  choices · #practice/words  Math Words · #practice/together  Practice Together
+    //   #practice/own  On My Own (choose a set) · #practice/s1 … s5  one set, one question at a time
+    function practiceView(c, arg) {
+      if (arg === 'words') return mathWordsView();
+      if (arg === 'together') return togetherView();
+      if (arg === 'own') return ownView();
+      if (arg && setOf(arg)) return setView(arg);
       main.innerHTML =
-        ctx.hero(eyebrow('practice'), 'Practice It', 'Warm up with vocabulary, solve problems together, then your student works alone.', [
-          { id: 'vocab-practice', label: 'A · Vocabulary practice' }, { id: 'guided', label: 'B · Guided practice' }, { id: 'independent', label: 'C · Independent practice' }]) +
-        `<section class="card" id="vocab-practice">${head('A', 'Vocabulary practice', 'together')}` +
-        `<p class="muted">Ten vocabulary questions with hints. Check each answer, fix mistakes, and read the explanation. New numbers every round.</p>` +
-        `<div id="vocab-runner"></div>` +
-        `<div class="actions"><button type="button" class="btn btn-small" id="vocab-new">New vocabulary round</button></div></section>` +
-        `<section class="card" id="guided">${head('B', 'Guided practice', 'together')}` +
-        `<p class="muted">Solve these together. Use hints, check answers, fix mistakes, and talk about why.</p>` +
-        `<div id="guided-runner"></div></section>` +
-        `<section class="card" id="independent">${head('C', `Independent practice: ${L.bankSets.length} sets of ${SET_SIZE}`, 'student')}` +
-        `<p class="muted">The ${L.bank.length} practice questions are in ${L.bankSets.length} sets, in teaching order. Choose any set. Your student answers every question, then checks the work. No hints until then.</p>` +
-        `<div class="set-grid" id="set-grid"></div>` +
-        `<div id="indep"></div></section>` +
-        ctx.navButtons('practice');
+        ctx.hero(lessonEyebrow(), 'Practice', 'Choose how you want to practice.') +
+        `<nav class="choice-grid" aria-label="Practice activities">` +
+        choiceCard('#practice/words', 'Math Words', 'Practice the math words with hints.', 'Ab') +
+        choiceCard('#practice/together', 'Practice Together', 'Solve problems with a grown-up. Hints and help are on.', '👥', 'icon-text') +
+        choiceCard('#practice/own', 'On My Own', `Choose a set of ${SET_SIZE}. Answer every question, then check your work.`, '★') +
+        `</nav>` + menuNav();
+    }
 
-      const vocabRunner = () => shell.guidedRunner(main.querySelector('#vocab-runner'), {
-        items: S.vocabItems, states: S.vocabStates, pos: S.vocabPos, keyPrefix: 'vp',
-        lastLabel: 'Go to guided practice ↓', onLast: () => main.querySelector('#guided').scrollIntoView({ block: 'start' })
+    function mathWordsView() {
+      activity(true);
+      main.innerHTML = ctx.hero(lessonEyebrow(), 'Math Words', 'Answer one question at a time. Use a hint if you need one.') +
+        `<section class="card activity-card"><div id="vocab-runner"></div></section>` + menuNav('#practice', 'Practice choices');
+      const run = () => shell.guidedRunner(main.querySelector('#vocab-runner'), {
+        items: S.vocabItems, states: S.vocabStates, pos: S.vocabPos, keyPrefix: 'vp', lastLabel: 'Finish',
+        onLast: () => doneCard('You finished Math Words practice!', `<button type="button" class="btn btn-primary" id="vocab-new">Practice new words</button>`, () => {
+          main.querySelector('#vocab-new').addEventListener('click', () => {
+            S.vocabItems = L.vocabPractice(shell.newSeed());
+            S.vocabStates = {};
+            S.vocabPos.i = 0;
+            mathWordsView();
+          });
+        })
       });
-      vocabRunner();
-      main.querySelector('#vocab-new').addEventListener('click', () => {
-        S.vocabItems = L.vocabPractice(shell.newSeed());
-        S.vocabStates = {};
-        S.vocabPos.i = 0;
-        vocabRunner();
-      });
+      run();
+    }
+
+    function togetherView() {
+      activity(true);
+      main.innerHTML = ctx.hero(lessonEyebrow(), 'Practice Together', 'Work with a grown-up. Check each answer, use hints, and fix mistakes.') +
+        `<section class="card activity-card"><div id="guided-runner"></div></section>` + menuNav('#practice', 'Practice choices');
       shell.guidedRunner(main.querySelector('#guided-runner'), {
-        items: L.guided, states: S.guidedStates, pos: S.guidedPos, keyPrefix: 'g',
-        lastLabel: 'Go to independent practice ↓', onLast: () => main.querySelector('#independent').scrollIntoView({ block: 'start' })
+        items: L.guided, states: S.guidedStates, pos: S.guidedPos, keyPrefix: 'g', lastLabel: 'Finish',
+        onLast: () => doneCard('You finished Practice Together!', `<button type="button" class="btn btn-primary" id="together-again">Practice together again</button><a class="btn btn-ghost" href="#practice/own">Go to On My Own</a>`, () => {
+          main.querySelector('#together-again').addEventListener('click', () => { S.guidedStates = {}; S.guidedPos.i = 0; togetherView(); });
+        })
       });
+    }
+
+    function ownView() {
+      main.innerHTML = ctx.hero(lessonEyebrow(), 'On My Own', `Choose a set. Answer every question, then check your work. No hints until you check.`) +
+        `<div class="set-grid" id="set-grid"></div>` + menuNav('#practice', 'Practice choices');
       drawSets();
+    }
+
+    function setView(id) {
+      activity(true);
+      const set = setOf(id);
+      if (!setState(id).active) startSet(id);
+      S.openSet = id;
+      saveBank();
+      main.innerHTML = ctx.hero(lessonEyebrow(), `Set ${L.bankSets.indexOf(set) + 1}: ${esc(set.title)}`, esc(set.blurb)) +
+        `<section class="card activity-card"><div id="indep"></div></section>` + menuNav('#practice/own', 'Choose a set');
+      drawIndep();
+    }
+
+    /** End-of-activity card: a short message, the activity's own action, and the Lesson Menu. */
+    function doneCard(message, actions, bind) {
+      main.innerHTML = ctx.hero(lessonEyebrow(), message, '') +
+        `<section class="card done-card"><p class="done-title">${esc(message)}</p><div class="actions">${actions}<a class="btn btn-ghost" href="#menu">Lesson Menu</a></div></section>`;
+      if (bind) bind();
+      root.scrollTo(0, 0);
+      main.querySelector('h1').focus({ preventScroll: true });
     }
 
     // ----- Practice bank: five sets of 10 and "Practice My Misses" -----
@@ -482,13 +564,8 @@
         const id = b.dataset.openSet;
         const st = setState(id);
         if (!st.active || st.active.checked) startSet(id); else { S.openSet = id; saveBank(); }
-        drawSets();
-        drawIndep();
-        main.querySelector('#indep').scrollIntoView({ block: 'start' });
-        const first = main.querySelector('#indep .q input, #indep .q select, #indep .q button');
-        if (first) first.focus({ preventScroll: true });
+        ctx.go('practice/' + id);
       }));
-      drawIndep();
     }
 
     function drawIndep() {
@@ -523,64 +600,93 @@
         }
       }
       const missesLeft = checked ? qs.filter((q) => !Q.grade(q, A.responses[q.id])).length : 0;
+      if (!checked) return drawOneQuestion(box, st, A, qs, isRetry, intro);
+      // After checking: the whole set with feedback for every question (unchanged from before).
       box.innerHTML = `<h3 class="set-title" tabindex="-1">${title}</h3>${intro}${score}<ol class="q-list">` + qs.map((q, i) => {
         const r = A.responses[q.id];
-        let fb = '';
-        if (checked) {
-          fb = Q.grade(q, r)
-            ? `<div class="feedback feedback-ok"><p><b>✓ Correct.</b> ${esc(q.explanation)}</p></div>`
-            : `<div class="feedback feedback-no"><p><b>✗ Your answer:</b> ${esc(Q.describe(q, r))}</p><p><b>Correct answer:</b> ${esc(Q.correctText(q))}</p><p><b>Why:</b> ${esc(q.explanation)}</p></div>`;
-        }
-        return `<li class="q-item${checked ? ' is-checked' : ''}">${Q.render(q, 'p-' + q.id, { number: i + 1, response: r })}${fb}</li>`;
+        const fb = Q.grade(q, r)
+          ? `<div class="feedback feedback-ok"><p><b>✓ Correct.</b> ${esc(q.explanation)}</p></div>`
+          : `<div class="feedback feedback-no"><p><b>✗ Your answer:</b> ${esc(Q.describe(q, r))}</p><p><b>Correct answer:</b> ${esc(Q.correctText(q))}</p><p><b>Why:</b> ${esc(q.explanation)}</p></div>`;
+        return `<li class="q-item is-checked">${Q.render(q, 'p-' + q.id, { number: i + 1, response: r })}${fb}</li>`;
       }).join('') + `</ol>` +
-        `<div class="error-box" role="alert" hidden></div>` +
         `<div class="actions">` +
-        (checked
-          ? (missesLeft ? `<button type="button" class="btn btn-primary" id="practice-misses">Practice My Misses (${missesLeft})</button>` : '') +
-            `<button type="button" class="btn ${missesLeft ? 'btn-ghost' : 'btn-primary'}" id="set-again">Practice this set again</button>` +
-            `<button type="button" class="btn btn-ghost" id="choose-set">Choose another set ↑</button>`
-          : `<button type="button" class="btn btn-primary" id="check-set">Check my work</button>`) +
-        `</div>`;
+        (missesLeft ? `<button type="button" class="btn btn-primary" id="practice-misses">Practice My Misses (${missesLeft})</button>` : '') +
+        `<button type="button" class="btn ${missesLeft ? 'btn-ghost' : 'btn-primary'}" id="set-again">Practice this set again</button>` +
+        `<button type="button" class="btn btn-ghost" id="choose-set">Choose another set</button>` +
+        `<a class="btn btn-ghost" href="#menu">Lesson Menu</a></div>`;
+      box.querySelectorAll('.q[data-qkey] input, .q[data-qkey] select, .q[data-qkey] button').forEach((c) => { c.disabled = true; });
+      box.querySelector('#practice-misses') && box.querySelector('#practice-misses').addEventListener('click', () => { startMisses(set.id); restart(); });
+      box.querySelector('#set-again').addEventListener('click', () => { startSet(set.id); restart(); });
+      box.querySelector('#choose-set').addEventListener('click', () => ctx.go('practice/own'));
+    }
 
-      box.querySelectorAll('.q[data-qkey]').forEach((el, i) => {
-        const q = qs[i];
-        if (checked) { el.querySelectorAll('input, select, button').forEach((c) => { c.disabled = true; }); return; }
-        Q.bind(el, q, (r) => { A.responses[q.id] = r; saveBank(); });
-      });
-      const focusTitle = () => { box.scrollIntoView({ block: 'start' }); box.querySelector('.set-title').focus({ preventScroll: true }); };
+    /** Back to the top of the set screen with the first question showing. */
+    function restart() {
+      drawIndep();
+      root.scrollTo(0, 0);
+      const first = main.querySelector('#indep .q input, #indep .q select, #indep .q button');
+      if (first) first.focus({ preventScroll: true });
+    }
+
+    /**
+     * An unchecked set, ONE question at a time ("Question X of N"), Previous / Next, then Check my work.
+     * Responses are saved as they change, so Back/Next and a refresh keep them. No hints or answers until checked.
+     */
+    function drawOneQuestion(box, st, A, qs, isRetry, intro) {
+      const n = qs.length;
+      A.pos = Math.min(Math.max(0, A.pos || 0), n - 1);
+      const i = A.pos;
+      const q = qs[i];
+      box.innerHTML = `${intro}<p class="q-count" aria-live="polite">Question ${i + 1} of ${n}</p>` +
+        `<div class="one-q">${Q.render(q, 'p-' + q.id, { response: A.responses[q.id] })}</div>` +
+        `<div class="error-box" role="alert" hidden></div>` +
+        `<div class="stage-nav one-q-nav">` +
+        (i > 0 ? `<button type="button" class="btn btn-ghost" data-q="prev">← Previous</button>` : '<span></span>') +
+        (i < n - 1 ? `<button type="button" class="btn btn-primary" data-q="next">Next →</button>`
+          : `<button type="button" class="btn btn-primary" id="check-set">Check my work</button>`) + `</div>`;
+      const el = box.querySelector('.q[data-qkey]');
+      Q.bind(el, q, (r) => { A.responses[q.id] = r; saveBank(); });
+      const keep = () => { A.responses[q.id] = Q.read(el, q); saveBank(); };
+      const moveTo = (k) => {
+        keep();
+        A.pos = k;
+        saveBank();
+        drawIndep();
+        box.scrollIntoView({ block: 'start' });
+        const c = box.querySelector('.q input, .q select, .q button');
+        if (c) c.focus({ preventScroll: true });
+      };
+      box.querySelectorAll('[data-q]').forEach((b) => b.addEventListener('click', () => moveTo(i + (b.dataset.q === 'next' ? 1 : -1))));
       const btn = box.querySelector('#check-set');
       if (btn) btn.addEventListener('click', () => {
-        box.querySelectorAll('.q[data-qkey]').forEach((el, i) => { A.responses[qs[i].id] = Q.read(el, qs[i]); });
-        const missing = qs.map((q, i) => (Q.isAnswered(q, A.responses[q.id]) ? null : i + 1)).filter(Boolean);
+        keep();
+        const missing = qs.map((x, k) => (Q.isAnswered(x, A.responses[x.id]) ? null : k)).filter((k) => k !== null);
         const err = box.querySelector('.error-box');
         if (missing.length) {
           err.hidden = false;
-          err.textContent = `Answer every question first. Still needed: ${missing.join(', ')}.`;
-          const el = box.querySelectorAll('.q[data-qkey]')[missing[0] - 1];
-          el.scrollIntoView({ block: 'center' });
-          const c = el.querySelector('input, select, button');
-          if (c) c.focus({ preventScroll: true });
+          err.innerHTML = `<p>Answer every question first. Still needed: ${missing.map((k) => k + 1).join(', ')}.</p>` +
+            `<div class="actions">${missing.map((k) => `<button type="button" class="btn btn-small" data-goto="${k}">Go to question ${k + 1}</button>`).join('')}</div>`;
+          err.querySelectorAll('[data-goto]').forEach((b) => b.addEventListener('click', () => moveTo(Number(b.dataset.goto))));
+          err.querySelector('[data-goto]').focus();
           return;
         }
-        const correct = qs.map((q) => Q.grade(q, A.responses[q.id]));
+        const correct = qs.map((x) => Q.grade(x, A.responses[x.id]));
         const record = { id: Date.now(), date: new Date().toISOString(), order: A.order.slice(), responses: Object.assign({}, A.responses),
-          correct, score: correct.filter(Boolean).length, total: qs.length };
+          correct, score: correct.filter(Boolean).length, total: n };
         if (isRetry) { record.parentId = A.parentId; st.retries.push(record); A.retryId = record.id; } else { st.attempts.push(record); A.attemptId = record.id; }
         A.checked = true;
+        delete A.pos;
         saveBank();
-        drawSets();
-        focusTitle();
+        drawIndep();
+        box.scrollIntoView({ block: 'start' });
+        box.querySelector('.set-title').focus({ preventScroll: true });
       });
-      const pm = box.querySelector('#practice-misses');
-      if (pm) pm.addEventListener('click', () => { startMisses(set.id); drawSets(); focusTitle(); });
-      const again = box.querySelector('#set-again');
-      if (again) again.addEventListener('click', () => { startSet(set.id); drawSets(); focusTitle(); });
-      const choose = box.querySelector('#choose-set');
-      if (choose) choose.addEventListener('click', () => main.querySelector('#set-grid').scrollIntoView({ block: 'start' }));
     }
 
-    // ===== 4. Test It =====
-    function testView() {
+    // ===== Take a Test =====
+    // #test chooses a test; #test/math or #test/vocab starts (or resumes) that test directly.
+    function testView(c, arg) {
+      if (arg && L.tests[arg] && !S.activeTest) S.pendingStart = arg;
       if (S.pendingStart) { const id = S.pendingStart; S.pendingStart = null; beginTest(id); }
       if (S.activeTest) return runTest();
       const attempts = store.get('attempts', []);
@@ -592,21 +698,21 @@
         const status = last
           ? `<p class="test-last">Last score: <b>${last.score}/${last.total} (${last.pct}%)</b> <span class="badge-m m-${mastery(last.pct).key}">${mastery(last.pct).label}</span></p>`
           : '<p class="test-last muted">Not taken yet.</p>';
-        const resume = draft ? `<p class="test-last"><b>Unfinished:</b> ${Object.keys(draft.responses || {}).length} of ${draft.questions.length} answered so far.</p>` : '';
+        const resume = draft ? `<p class="test-last"><b>Unfinished:</b> ${draft.questions.filter((q) => Q.isAnswered(q, (draft.responses || {})[q.id])).length} of ${draft.questions.length} answered so far.</p>` : '';
         return `<div class="card test-card"><h2>${esc(t.title)}</h2><p>${esc(t.blurb)}</p>` +
-          `<p class="test-meta">10 questions · about 10–15 minutes · ${plural(mine.length, 'attempt')} so far</p>${status}${resume}` +
-          `<button type="button" class="btn btn-primary" data-start="${id}">${draft ? 'Resume test' : mine.length ? 'Take a new test' : 'Start test'}</button></div>`;
+          `<p class="test-meta">${t.questions || 10} questions · one at a time</p>${status}${resume}` +
+          `<button type="button" class="btn btn-primary btn-big" data-start="${id}">${draft ? 'Keep going' : mine.length ? 'Take it again' : 'Start'}<span class="sr-only">: ${esc(t.title)}</span></button></div>`;
       }).join('');
 
       main.innerHTML =
-        ctx.hero(eyebrow('test'), 'Test It', 'Two short tests. Take the Vocabulary Test first, then the Math Test.') +
-        `<section class="card card-parent">${head('', 'Before you start', 'parent')}<ul class="rules">` +
-        `<li>Each test has 10 questions. Every question must be answered before submitting.</li>` +
-        `<li>No hints and no answer feedback until the test is submitted.</li>` +
-        `<li>During a test the lesson tabs are hidden. To stop early, press <b>Save and finish later</b>.</li>` +
+        ctx.hero(eyebrow('test'), 'Take a Test', 'Which test would you like to take?') +
+        `<div class="test-grid">${cards}</div>` +
+        `<details class="parent-help"><summary>Parent Help</summary><ul class="rules">` +
+        `<li>Each test has 10 questions, shown one at a time. Every question must be answered before pressing <b>Finish Test</b>.</li>` +
+        `<li>No hints and no answer feedback until the test is finished.</li>` +
+        `<li>To stop early, press <b>Save and finish later</b>. Answers are kept.</li>` +
         `<li>You may read the directions aloud. Do not explain the math during the test.</li>` +
-        `<li>Every new attempt uses new numbers, so retakes test understanding, not memory.</li></ul></section>` +
-        `<div class="test-grid">${cards}</div>` + ctx.navButtons('test');
+        `<li>Every new attempt uses new numbers, so retakes test understanding, not memory.</li></ul></details>` + menuNav();
 
       main.querySelectorAll('[data-start]').forEach((b) => b.addEventListener('click', () => {
         beginTest(b.dataset.start);
@@ -627,12 +733,13 @@
     }
 
     function runTest() {
+      activity(true);
       const D = S.activeTest;
       const t = L.tests[D.testId];
       shell.testRunner(ctx, {
         store, draftKey: 'draft-' + D.testId, draft: D, title: t.title, eyebrow: eyebrow('test'),
         attemptNumber: store.get('attempts', []).filter((a) => a.testId === D.testId).length + 1,
-        onExit() { S.activeTest = null; testView(); root.scrollTo(0, 0); },
+        onExit() { S.activeTest = null; ctx.go('test'); },
         onSubmit(draft, correct) {
           const score = correct.filter(Boolean).length;
           const attempt = {
@@ -650,19 +757,20 @@
       });
     }
 
-    // ===== 5. Results =====
+    // ===== My Results =====
     function resultsView() {
       const attempts = store.get('attempts', []);
       if (S.unsaved && !attempts.some((a) => a.id === S.unsaved.id)) attempts.push(S.unsaved);
-      const top = ctx.hero(eyebrow('results'), 'Results', 'Scores, mistakes to review, and what to do next.');
-      const notice = `<section class="card card-notice" id="privacy">${head('', 'About saved progress', 'parent')}` +
+      const top = ctx.hero(eyebrow('results'), 'My Results', 'See how you did.');
+      const testTitle = (a) => (L.tests[a.testId] || a).title;
+      const notice = `<details class="parent-help" id="privacy"><summary>Parent Help: saved progress</summary>` +
         `<p>Results are saved only in this browser on this device. They do <b>not</b> sync to other devices or browsers, and clearing browser data erases them. Mathbook does not ask for names or send results anywhere.</p>` +
         (store.works() ? '' : `<p class="warn-text">This browser is not allowing saved data right now (for example, a private window). Results will disappear when the page closes.</p>`) +
-        (attempts.length ? `<div id="clear-area"><button type="button" class="btn btn-ghost" id="clear">Clear saved progress for this lesson…</button></div>` : '') + `</section>`;
+        (attempts.length ? `<div id="clear-area"><button type="button" class="btn btn-ghost" id="clear">Clear saved progress for this lesson…</button></div>` : '') + `</details>`;
 
       if (!attempts.length) {
-        main.innerHTML = top + `<section class="card"><h2>No test results yet</h2><p>Take the Vocabulary Test and the Math Test, and the results will appear here.</p>` +
-          `<a class="btn btn-primary" href="#test">Go to Test It →</a></section>` + notice + ctx.navButtons('results');
+        main.innerHTML = top + `<section class="card done-card"><p class="done-title">You haven't taken a test yet.</p>` +
+          `<div class="actions"><a class="btn btn-primary btn-big" href="#test">Take a Test</a><a class="btn btn-ghost btn-big" href="#menu">Lesson Menu</a></div></section>` + notice;
         shell.bindClear(main, store, 'results, practice, and unfinished tests for this lesson', cleared);
         return;
       }
@@ -672,7 +780,7 @@
         const mine = attempts.filter((a) => a.testId === id);
         const a = mine[mine.length - 1];
         const t = L.tests[id];
-        if (!a) return `<div class="card sum-card"><h3>${esc(t.title)}</h3><p class="muted">Not taken yet.</p><a class="btn btn-ghost" href="#test">Take it</a></div>`;
+        if (!a) return `<div class="card sum-card"><h3>${esc(t.title)}</h3><p class="muted">Not taken yet.</p><a class="btn btn-ghost" href="#test/${id}">Take it</a></div>`;
         const m = mastery(a.pct);
         return `<div class="card sum-card m-${m.key}"><h3>${esc(t.title)}</h3><p class="sum-score">${a.score}/${a.total} <span>${a.pct}%</span></p>` +
           `<p><span class="badge-m m-${m.key}">${m.label}</span></p><button type="button" class="btn btn-ghost" data-view="${a.id}">See details</button></div>`;
@@ -688,7 +796,7 @@
         ? `<ul class="skill-list">` + skills.map((s) => {
           const action = bankSkills.has(s)
             ? `<button type="button" class="btn btn-small" data-practice="${s}">Practice this skill (Set ${L.bankSets.indexOf(setOf(bestSetFor(s))) + 1})</button>`
-            : `<button type="button" class="btn btn-small" data-vocab="1">Vocabulary practice</button>`;
+            : `<button type="button" class="btn btn-small" data-vocab="1">Math Words practice</button>`;
           return `<li><span>${esc(L.skills[s] || s)}</span>${action}</li>`;
         }).join('') + `</ul>`
         : '<p>No skills to review. Every question was correct.</p>';
@@ -706,13 +814,13 @@
 
       const history = attempts.slice().reverse().map((a) => {
         const am = mastery(a.pct);
-        return `<tr${a.id === selected.id ? ' class="is-on"' : ''}><td>${esc(shell.formatDate(a.date))}</td><td>${esc(a.title)}</td><td>${a.score}/${a.total}</td><td>${a.pct}%</td>` +
+        return `<tr${a.id === selected.id ? ' class="is-on"' : ''}><td>${esc(shell.formatDate(a.date))}</td><td>${esc(testTitle(a))}</td><td>${a.score}/${a.total}</td><td>${a.pct}%</td>` +
           `<td><span class="badge-m m-${am.key}">${am.label}</span></td><td><button type="button" class="btn btn-small btn-ghost" data-view="${a.id}">View</button></td></tr>`;
       }).join('');
 
       main.innerHTML = top +
         `<div class="sum-grid">${latest}</div>` +
-        `<section class="card result-detail" id="detail"><h2>${esc(selected.title)} <span class="muted">· ${esc(shell.formatDate(selected.date))}</span></h2>` +
+        `<section class="card result-detail" id="detail"><h2>${esc(testTitle(selected))} <span class="muted">· ${esc(shell.formatDate(selected.date))}</span></h2>` +
         `<div class="score-row"><p class="score-big">${selected.score}<span>/${selected.total}</span></p><p class="score-pct">${selected.pct}%</p>` +
         `<p class="badge-m badge-big m-${m.key}">${m.label}</p></div>` +
         `<p class="advice"><b>Next step:</b> ${esc(m.advice)}</p>` +
@@ -721,9 +829,9 @@
         `<h3>Skills to review</h3>${skillHTML}` +
         (missed.length ? `<h3>Mistakes to review (${missed.length})</h3><ol class="rq-list">${missed.map((x) => qBlock(x, false)).join('')}</ol>` : '') +
         (right.length ? `<details class="rq-right"><summary>Correct answers (${right.length})</summary><ol class="rq-list">${right.map((x) => qBlock(x, true)).join('')}</ol></details>` : '') +
-        `<div class="actions"><button type="button" class="btn btn-primary" data-retake="${selected.testId}">Take a new ${esc(selected.title)}</button></div></section>` +
+        `<div class="actions"><button type="button" class="btn btn-primary" data-retake="${selected.testId}">Take a new ${esc(testTitle(selected))}</button></div></section>` +
         `<section class="card">${head('', 'Attempt history', '')}<div class="table-wrap"><table class="history"><thead><tr><th>Date</th><th>Test</th><th>Score</th><th>%</th><th>Result</th><th><span class="sr-only">View</span></th></tr></thead><tbody>${history}</tbody></table></div></section>` +
-        notice + ctx.navButtons('results');
+        menuNav() + notice;
 
       main.querySelectorAll('[data-view]').forEach((b) => b.addEventListener('click', () => {
         S.view = Number(b.dataset.view);
@@ -734,9 +842,9 @@
         const id = bestSetFor(b.dataset.practice);
         const st = setState(id);
         if (!st.active || st.active.checked) startSet(id); else { S.openSet = id; saveBank(); }
-        ctx.go('practice', 'independent');
+        ctx.go('practice/' + id);
       }));
-      main.querySelectorAll('[data-vocab]').forEach((b) => b.addEventListener('click', () => ctx.go('practice', 'vocab-practice')));
+      main.querySelectorAll('[data-vocab]').forEach((b) => b.addEventListener('click', () => ctx.go('practice/words')));
       main.querySelectorAll('[data-retake]').forEach((b) => b.addEventListener('click', () => {
         S.pendingStart = b.dataset.retake;
         ctx.go('test');
