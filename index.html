@@ -65,31 +65,45 @@
       function get(key) { try { return JSON.parse(localStorage.getItem(key) || 'null'); } catch (e) { return null; } }
       function answered(r) { return r !== undefined && r !== '' && r !== null && !(Array.isArray(r) && r.every(function (v) { return v === '' || v === 0 || v === null; })); }
       function count(responses) { return Object.keys(responses || {}).filter(function (k) { return answered(responses[k]); }).length; }
-      var L21 = 'mathbook:v2:lesson-2-1:';
-      var page = 'curriculum/chapter-2/lesson-2-1/';
       var found = [];
-      [['math', 'Math Test'], ['vocab', 'Math Words Test']].forEach(function (t) {
-        var d = get(L21 + 'draft-' + t[0]);
-        var n = d && d.questions ? count(d.responses) : 0;
-        if (n) found.push({ href: page + '#test/' + t[0], what: 'Lesson 2-1 · ' + t[1] + ': ' + n + ' of ' + d.questions.length + ' answered' });
+      // Each lesson keeps its own progress (its own storage prefix).
+      var LESSONS = [
+        { id: '2-1', tests: [['math', 'Math Test'], ['vocab', 'Math Words Test']] },
+        { id: '2-2', tests: [['rounding', 'Rounding Test']] }
+      ];
+      LESSONS.forEach(function (lesson) {
+        var key = 'mathbook:v2:lesson-' + lesson.id + ':';
+        var page = 'curriculum/chapter-2/lesson-' + lesson.id + '/';
+        lesson.tests.forEach(function (t) {
+          var d = get(key + 'draft-' + t[0]);
+          var n = d && d.questions ? count(d.responses) : 0;
+          if (n) found.push({ href: page + '#test/' + t[0], what: 'Lesson ' + lesson.id + ' · ' + t[1] + ': ' + n + ' of ' + d.questions.length + ' answered' });
+        });
+        var bank = get(key + 'bank-sets') || {};
+        Object.keys(bank).forEach(function (id) {
+          var a = bank[id] && bank[id].active;
+          var n = a && !a.checked ? count(a.responses) : 0;
+          if (n) found.push({ href: page + '#practice/' + id, what: 'Lesson ' + lesson.id + ' · Practice on my own: ' + n + ' of ' + a.order.length + ' answered' });
+        });
+        var w = get(key + 'see-wizard');
+        var done = w && w.done ? Object.keys(w.done).length : 0;
+        if (w && (done || w.step) && done < 5) found.push({ href: page + '#see', what: 'Lesson ' + lesson.id + ' · Learn: step ' + ((w.step || 0) + 1) + ' of 5' });
       });
       var nw = get('mathbook:v2:number-words:phase-1:draft');
       var nwn = nw && nw.questions ? count(nw.responses) : 0;
       if (nwn) found.push({ href: 'number-words/phase-1/#test', what: 'Number Words · Spelling test: ' + nwn + ' of ' + nw.questions.length + ' answered' });
-      var bank = get(L21 + 'bank-sets') || {};
-      Object.keys(bank).forEach(function (id) {
-        var a = bank[id] && bank[id].active;
-        var n = a && !a.checked ? count(a.responses) : 0;
-        if (n) found.push({ href: page + '#practice/' + id, what: 'Lesson 2-1 · Practice on my own: ' + n + ' of ' + a.order.length + ' answered' });
-      });
-      var w = get(L21 + 'see-wizard');
-      var done = w && w.done ? Object.keys(w.done).length : 0;
-      if (w && (done || w.step) && done < 5) found.push({ href: page + '#see', what: 'Lesson 2-1 · Learn: step ' + ((w.step || 0) + 1) + ' of 5' });
       if (!found.length) return;
       // Prefer the screen that was open most recently, if it is one of these.
       var act = get('mathbook:v2:activity');
       var pick = found[0];
-      if (act && act.path) found.forEach(function (f) { if (act.path === f.href || act.path.indexOf(f.href + '/') === 0) pick = f; });
+      // Best: the same lesson and the same screen (e.g. #test and #test/rounding); next best: the same lesson.
+      if (act && act.path) {
+        var page = function (p) { return p.split('#')[0]; };
+        var screen = function (p) { return (p.split('#')[1] || '').split('/')[0]; };
+        var samePage = found.filter(function (f) { return page(f.href) === page(act.path); });
+        var sameScreen = samePage.filter(function (f) { return screen(f.href) === screen(act.path); });
+        pick = sameScreen[0] || samePage[0] || pick;
+      }
       document.getElementById('continue-link').href = pick.href;
       document.getElementById('continue-what').textContent = pick.what;
       document.getElementById('continue').hidden = false;

@@ -13,6 +13,12 @@
  *   build    – use + / – to build `answer` with base-ten blocks
  *   spell    – type a whole word (answer = word); capitals and surrounding spaces are ignored
  *   letter   – type the missing letter of `word` at index `missing` (answer = that letter)
+ *   parts    – several small answers graded together (all must be right). parts: [
+ *                { kind: 'num', label, answer }            a whole number
+ *                { kind: 'round', label, place, target }   any whole number that rounds to target at place (10 or 100)
+ *                { kind: 'choice', label, choices, answer } pick one
+ *                { kind: 'multi', label, choices, answer: [] } select all that apply (exactly the right set) ]
+ *              line: { place } draws a blank number line (left end, halfway, right end) with nothing filled in.
  * Optional visuals: model (number drawn as blocks, no captions), block (single block place index),
  *   numeral (big digit card), tenFrame (0–10 dots).
  */
@@ -28,7 +34,37 @@
   function emptyResponse(q) {
     if (q.type === 'chart') return ['', '', '', ''];
     if (q.type === 'build') return [0, 0, 0, 0];
+    if (q.type === 'parts') return q.parts.map((p) => (p.kind === 'multi' ? [] : ''));
     return '';
+  }
+
+  /** Blank number line for a rounding question: three marks to name, nothing revealed. */
+  function blankLine(place) {
+    const w = place === 10 ? 'ten' : 'hundred';
+    return `<div class="nline nline-blank" aria-hidden="true"><div class="nline-track"><span class="nline-bar"></span>` +
+      [0, 50, 100].map((p) => `<span class="nline-tick is-major" style="left:${p}%"></span>`).join('') +
+      `<span class="nline-label is-start" style="left:0%">lower ${w}</span><span class="nline-label" style="left:50%">halfway</span>` +
+      `<span class="nline-label is-end" style="left:100%">upper ${w}</span></div></div>`;
+  }
+
+  function partOK(p, r) {
+    if (p.kind === 'num') return pv.parseWholeNumber(r) === p.answer;
+    if (p.kind === 'round') { const n = pv.parseWholeNumber(r); return n !== null && pv.roundTo(n, p.place) === p.target; }
+    if (p.kind === 'choice') return r === p.answer;
+    if (p.kind === 'multi') return Array.isArray(r) && r.length === p.answer.length && p.answer.every((a) => r.includes(a));
+    return false;
+  }
+
+  function partAnswered(p, r) {
+    if (p.kind === 'multi') return Array.isArray(r) && r.length > 0;
+    return String(r === undefined || r === null ? '' : r).trim() !== '';
+  }
+
+  function partCorrectText(p) {
+    if (p.kind === 'num') return pv.fmt(p.answer);
+    if (p.kind === 'round') { const [a, b] = pv.roundRange(p.target, p.place); return `any whole number from ${pv.fmt(a)} to ${pv.fmt(b)}`; }
+    if (p.kind === 'multi') return p.answer.join(', ');
+    return p.answer;
   }
 
   function visuals(q) {
@@ -102,6 +138,22 @@
         body = `<input class="q-input q-input-wide" type="text" ${NO_ASSIST} aria-labelledby="${pid}" value="${esc(r)}">` +
           `<p class="q-help">Type the whole word.</p>`;
         break;
+      case 'parts': {
+        const rr = Array.isArray(r) ? r : emptyResponse(q);
+        body = (q.line ? blankLine(q.line.place) : '') + `<div class="q-parts">` + q.parts.map((p, i) => {
+          const v = rr[i];
+          if (p.kind === 'num' || p.kind === 'round') {
+            return `<label class="part part-num"><span class="part-label">${esc(p.label)}</span>` +
+              `<input class="part-input" data-part="${i}" type="text" inputmode="numeric" autocomplete="off" spellcheck="false" value="${esc(v || '')}"></label>`;
+          }
+          const multi = p.kind === 'multi';
+          return `<fieldset class="part part-${p.kind}" data-part="${i}"><legend class="part-label">${esc(p.label)}</legend>` +
+            (multi ? '<p class="q-help">Choose every one that is correct.</p>' : '') + `<div class="q-choices">` +
+            p.choices.map((c) => `<label class="choice"><input type="${multi ? 'checkbox' : 'radio'}" name="${key}-${i}" value="${esc(c)}"${(multi ? (v || []).includes(c) : v === c) ? ' checked' : ''}><span>${esc(c)}</span></label>`).join('') +
+            `</div></fieldset>`;
+        }).join('') + `</div>`;
+        break;
+      }
       case 'letter': {
         const letters = q.word.split('');
         const spoken = letters.map((ch, i) => (i === q.missing ? 'blank' : ch)).join(', ');
@@ -140,6 +192,13 @@
         return Array.from(el.querySelectorAll('.q-chart input')).map((i) => i.value.trim());
       case 'build':
         return Array.from(el.querySelectorAll('.stepper-count')).map((c) => Number(c.textContent));
+      case 'parts':
+        return q.parts.map((p, i) => {
+          if (p.kind === 'num' || p.kind === 'round') return el.querySelector(`.part-input[data-part="${i}"]`).value;
+          const box = el.querySelector(`fieldset[data-part="${i}"]`);
+          const on = Array.from(box.querySelectorAll('input:checked')).map((x) => x.value);
+          return p.kind === 'multi' ? on : (on[0] || '');
+        });
     }
     return '';
   }
@@ -170,6 +229,7 @@
   function isAnswered(q, r) {
     if (q.type === 'chart') return Array.isArray(r) && r.every((v) => String(v).trim() !== '');
     if (q.type === 'build') return Array.isArray(r) && r.some((v) => v > 0);
+    if (q.type === 'parts') return Array.isArray(r) && q.parts.every((p, i) => partAnswered(p, r[i]));
     return String(r === undefined || r === null ? '' : r).trim() !== '';
   }
 
@@ -192,6 +252,8 @@
           pv.fromDigits(r.map((v) => Number(String(v).trim()))) === q.answer;
       case 'build':
         return Array.isArray(r) && pv.fromDigits(r) === q.answer;
+      case 'parts':
+        return Array.isArray(r) && q.parts.every((p, i) => partOK(p, r[i]));
     }
     return false;
   }
@@ -204,6 +266,7 @@
       case 'words': return pv.numberToWords(q.answer);
       case 'chart': return pv.digitsOf(q.answer).map(String);
       case 'build': return pv.digitsOf(q.answer);
+      case 'parts': return q.parts.map((p) => (p.kind === 'num' ? pv.fmt(p.answer) : p.kind === 'round' ? pv.fmt(pv.roundRange(p.target, p.place)[0]) : p.kind === 'multi' ? p.answer.slice() : p.answer));
       default: return q.answer;
     }
   }
@@ -218,9 +281,13 @@
 
   /** Human-readable response for results pages. */
   function describe(q, r) {
+    if (q.type === 'parts' && Array.isArray(r) && q.parts.some((p, i) => partAnswered(p, r[i]))) {
+      return q.parts.map((p, i) => `${p.label} ${partAnswered(p, r[i]) ? (Array.isArray(r[i]) ? r[i].join(', ') : String(r[i]).trim()) : '—'}${partOK(p, r[i]) ? ' ✓' : ' ✗'}`).join(' · ');
+    }
     if (!isAnswered(q, r)) return 'No answer';
     if (q.type === 'chart') return describeChart(r);
     if (q.type === 'build') return describeBuild(r) + ` (${pv.fmt(pv.fromDigits(r))})`;
+    if (q.type === 'parts') return q.parts.map((p, i) => `${p.label} ${partAnswered(p, r[i]) ? (Array.isArray(r[i]) ? r[i].join(', ') : String(r[i]).trim()) : '—'}${partOK(p, r[i]) ? ' ✓' : ' ✗'}`).join(' · ');
     return String(r).trim();
   }
 
@@ -228,6 +295,7 @@
     if (q.type === 'letter') return `${q.answer} (${q.word})`;
     if (q.type === 'chart') return describeChart(pv.digitsOf(q.answer));
     if (q.type === 'build') return describeBuild(pv.digitsOf(q.answer)) + ` (${pv.fmt(q.answer)})`;
+    if (q.type === 'parts') return q.parts.map((p) => `${p.label} ${partCorrectText(p)}`).join(' · ');
     return String(correctResponse(q));
   }
 
@@ -241,5 +309,12 @@
     return 'The parts should add up to ' + pv.fmt(n) + '.';
   }
 
-  MB.Q = { esc, visuals, render, read, bind, isAnswered, grade, correctResponse, describe, correctText, emptyResponse, expandedTip, normSpell };
+  /** Coaching for a "parts" answer: name the parts to look at again (never the answers). */
+  function partsTip(q, r) {
+    if (q.type !== 'parts' || !Array.isArray(r)) return '';
+    const wrong = q.parts.filter((p, i) => !partOK(p, r[i])).map((p) => p.label.replace(/[:?]$/, ''));
+    return wrong.length && wrong.length < q.parts.length ? `Look again at: ${wrong.join('; ')}.` : '';
+  }
+
+  MB.Q = { esc, visuals, render, read, bind, isAnswered, grade, correctResponse, describe, correctText, emptyResponse, expandedTip, partsTip, normSpell };
 })(typeof window !== 'undefined' ? window : globalThis);

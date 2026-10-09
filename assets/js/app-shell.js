@@ -211,7 +211,7 @@
         } else if (st.result === true) {
           resultBox.innerHTML = `<div class="feedback feedback-ok"><p><b>✓ ${q.type === 'explain' ? 'Great explaining!' : 'Correct!'}</b> ${esc(q.explanation)}</p></div>`;
         } else if (st.result === false) {
-          const tip = q.type === 'expanded' ? Q.expandedTip(st.response, q.answer) + ' ' : '';
+          const tip = q.type === 'expanded' ? Q.expandedTip(st.response, q.answer) + ' ' : q.type === 'parts' ? Q.partsTip(q, st.response) + ' ' : '';
           // Don't repeat the hint when it is already showing.
           const hint = q.hint && !st.hint ? 'Hint: ' + esc(q.hint) + ' ' : '';
           resultBox.innerHTML = `<div class="feedback feedback-no"><p><b>Not yet.</b> ${esc(tip)}${hint}Fix it and check again.</p></div>`;

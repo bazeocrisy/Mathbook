@@ -271,10 +271,76 @@
     return normalizeWords(text) === normalizeWords(numberToWords(n));
   }
 
+  // ---------- Rounding (whole numbers, nearest 10 or 100) ----------
+
+  /** Rounds a nonnegative whole number to the nearest `place` (10 or 100). Halfway rounds up: 125 → 130, 950 → 1,000. */
+  function roundTo(n, place) {
+    return Math.floor((n + place / 2) / place) * place;
+  }
+
+  /** Every whole number that rounds to `target` at `place`: 240 (tens) → [235, 244]; 0 (tens) → [0, 4]. */
+  function roundRange(target, place) {
+    return [Math.max(0, target - place / 2), target + place / 2 - 1];
+  }
+
+  /** The multiples of `place` on either side of n, and the halfway point between them. An exact multiple is its own lower end. */
+  function roundEnds(n, place) {
+    const lo = Math.floor(n / place) * place;
+    return { lo, hi: lo + place, mid: lo + place / 2 };
+  }
+
+  /**
+   * A number line drawn with HTML (labels stay real text, readable at any width).
+   * cfg: { min, max, minor (gap between small ticks), major: [values with a big tick],
+   *   below: [{ v, text, cls }] labels under the line, point: { v, text } marked above the line,
+   *   go: { from, to } arrow along the line, band: { from, to } shaded stretch, label (accessible description), caption }
+   */
+  function numberLineHTML(cfg) {
+    const pos = (v) => ((v - cfg.min) / (cfg.max - cfg.min)) * 100;
+    const at = (v) => `left:${pos(v).toFixed(3)}%`;
+    // Labels near the ends are aligned inward so they never run off the line.
+    const edge = (v) => (pos(v) < 8 ? ' is-start' : pos(v) > 92 ? ' is-end' : '');
+    let html = `<figure class="nline"><div class="nline-track" role="img" aria-label="${cfg.label}">`;
+    html += `<span class="nline-bar" aria-hidden="true"></span>`;
+    if (cfg.band) html += `<span class="nline-band" style="${at(cfg.band.from)};width:${(pos(cfg.band.to) - pos(cfg.band.from)).toFixed(3)}%" aria-hidden="true"></span>`;
+    if (cfg.minor) for (let v = cfg.min; v <= cfg.max; v += cfg.minor) html += `<span class="nline-tick" style="${at(v)}" aria-hidden="true"></span>`;
+    (cfg.major || []).forEach((v) => { html += `<span class="nline-tick is-major" style="${at(v)}" aria-hidden="true"></span>`; });
+    if (cfg.go && cfg.go.from !== cfg.go.to) {
+      const a = Math.min(cfg.go.from, cfg.go.to), b = Math.max(cfg.go.from, cfg.go.to);
+      html += `<span class="nline-go ${cfg.go.to > cfg.go.from ? 'is-up' : 'is-down'}" style="${at(a)};width:${(pos(b) - pos(a)).toFixed(3)}%" aria-hidden="true"></span>`;
+    }
+    if (cfg.point) html += `<span class="nline-dot" style="${at(cfg.point.v)}" aria-hidden="true"></span><span class="nline-point${edge(cfg.point.v)}" style="${at(cfg.point.v)}" aria-hidden="true">${cfg.point.text}</span>`;
+    (cfg.below || []).forEach((l) => { html += `<span class="nline-label${edge(l.v)} ${l.cls || ''}" style="${at(l.v)}" aria-hidden="true">${l.text}</span>`; });
+    html += `</div>${cfg.caption ? `<figcaption class="nline-caption">${cfg.caption}</figcaption>` : ''}</figure>`;
+    return html;
+  }
+
+  /**
+   * The rounding number line for n at `place`. show: 'ends' (the two multiples), 'mid' (+ halfway), 'all' (+ which way it rounds).
+   */
+  function roundLineHTML(n, place, show) {
+    const { lo, hi, mid } = roundEnds(n, place);
+    const r = roundTo(n, place);
+    const word = place === 10 ? 'ten' : 'hundred';
+    const below = [{ v: lo, text: fmt(lo), cls: 'is-end-label' + (show === 'all' && r === lo ? ' is-answer' : '') },
+      { v: hi, text: fmt(hi), cls: 'is-end-label' + (show === 'all' && r === hi ? ' is-answer' : '') }];
+    if (show !== 'ends') below.push({ v: mid, text: fmt(mid), cls: 'is-mid' });
+    const parts = [`${fmt(n)} is between ${fmt(lo)} and ${fmt(hi)}`];
+    if (show !== 'ends') parts.push(`halfway is ${fmt(mid)}`);
+    if (show === 'all') parts.push(`${fmt(n)} rounds to ${fmt(r)}`);
+    return numberLineHTML({
+      min: lo, max: hi, minor: place / 10, major: show === 'ends' ? [lo, hi] : [lo, mid, hi], below,
+      point: { v: n, text: fmt(n) }, go: show === 'all' ? { from: n, to: r } : null,
+      label: `Number line from ${fmt(lo)} to ${fmt(hi)} by ${place / 10 === 1 ? 'ones' : 'tens'}: ` + parts.join(', ') + '.',
+      caption: show === 'all' ? `<b>${fmt(n)}</b> is closer to <b>${fmt(r)}</b>, so it rounds to <b>${fmt(r)}</b> (nearest ${word}).` : ''
+    });
+  }
+
   MB.pv = {
     normalizeWords, checkWords, tenFrameSVG,
     PLACES, digitsOf, fromDigits, fmt, expandedTerms, expandedForm, numberToWords,
     parseWholeNumber, checkExpanded, rng, randInt, pick, shuffle, randomFourDigit,
-    placeSVG, blocksHTML, singleBlockSVG
+    placeSVG, blocksHTML, singleBlockSVG,
+    roundTo, roundRange, roundEnds, numberLineHTML, roundLineHTML
   };
 })(typeof window !== 'undefined' ? window : globalThis);
