@@ -186,6 +186,46 @@ test('practice bank: five sets of 10 cover all 50 questions exactly once, in tea
   L.bankSets.forEach((s) => s.ids.forEach((id) => { const q = L.bank.find((x) => x.id === id); assert.equal(Q.grade(q, Q.correctResponse(q)), true, id); }));
 });
 
+test('See It wizard: five steps, each with a valid check that never reuses the demonstration', () => {
+  const steps = L.seeIt.steps;
+  assert.deepEqual(steps.map((s) => s.id), ['examples', 'build', 'change', 'ten', 'compose']);
+  steps.forEach((s) => assert.ok(s.title && s.explain && typeof s.check === 'function', s.id));
+  const used = ['1248', '3579', '1468'];
+  for (let seed = 1; seed <= 500; seed++) {
+    steps.forEach((s) => {
+      const q = s.check(pv.rng(seed));
+      Object.assign(q, { id: 'w-' + s.id });
+      checkQuestion(q, `wizard ${s.id} seed ${seed}`);
+      assert.ok(q.hint, `${s.id} check has a clue for Try Again`);
+      if (s.id === 'examples') {
+        assert.equal(q.type, 'chart');
+        assert.ok(![2137, 4628, 5072].includes(q.answer), 'not a worked example');
+        assert.ok(pv.digitsOf(q.answer).slice(1).includes(0), 'has a zero placeholder');
+        assert.equal(q.display, pv.numberToWords(q.answer), 'given in word form');
+      }
+      if (s.id === 'build') assert.equal(q.type, 'build');
+      if (s.id === 'change') {
+        assert.ok(q.answer >= 1000 && q.answer <= 9999);
+        const m = q.prompt.match(/What is ([\d,]+) (more|less) than ([\d,]+)\?/);
+        const size = pv.parseWholeNumber(m[1]), n = pv.parseWholeNumber(m[3]);
+        assert.equal(q.answer, m[2] === 'more' ? n + size : n - size);
+        // No regrouping: exactly one digit differs.
+        const d1 = pv.digitsOf(n), d2 = pv.digitsOf(q.answer);
+        assert.equal(d1.filter((d, i) => d !== d2[i]).length, 1, q.prompt);
+      }
+      if (s.id === 'ten') assert.ok([10, 100, 1000].includes(q.answer));
+      if (s.id === 'compose') {
+        const digits = q.prompt.match(/\d/g).map(Number);
+        assert.equal(new Set(digits).size, 4);
+        assert.ok(!digits.includes(0));
+        assert.ok(!used.includes(digits.slice().sort().join('')), 'not the example or practice-bank digits');
+        const sorted = digits.slice().sort((a, b) => (/greatest/.test(q.prompt) ? b - a : a - b));
+        assert.equal(q.answer, pv.fromDigits(sorted));
+      }
+    });
+  }
+});
+
 test('practice bank answers spot-check (hand-verified)', () => {
   const byPrompt = (p) => L.bank.find((q) => q.prompt === p);
   assert.equal(byPrompt('What is the value of the 8 in 8,341?').answer, 8000);

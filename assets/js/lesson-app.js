@@ -144,6 +144,9 @@
         `<div class="guide-grid">${guide}</div></section>` +
         `<section class="card card-parent" id="script">${head('D', 'Teaching script', 'parent')}` +
         `<p class="muted">About 10–15 minutes. Follow the steps in order.</p><ol class="script">${script}</ol>` +
+        `<div class="callout"><h3>During See It: questions to ask (example ${fmt(L.seeIt.examples[0])})</h3><ul>` +
+        demoSteps(L.seeIt.examples[0]).map((s) => `<li>${esc(s.ask.replace(/^Ask: /, ''))}</li>`).join('') +
+        `<li>Each See It step ends with a short check. If your student misses it twice, the answer is explained and a new question appears.</li></ul></div>` +
         `<div class="callout callout-warn"><h3>Watch for these mistakes</h3><ul>${L.mistakes.map((m) => `<li>${esc(m)}</li>`).join('')}</ul></div></section>` +
         ctx.navButtons('teach');
     }
@@ -175,14 +178,15 @@
       return steps;
     }
 
-    function demoBody(n, k) {
+    /** childOnly: leave out the parent's "Ask:" prompt (those live in Teach It's teaching script). */
+    function demoBody(n, k, childOnly) {
       const s = demoSteps(n)[k];
       const d = digitsOf(n);
       const shown = d.map((x, i) => x * PLACES[i].value).filter((v, i) => i < s.values && v > 0).map(fmt);
       let expanded = shown.length ? shown.join(' + ') : '…';
       if (s.values < 4) expanded += shown.length ? ' + …' : '';
       if (s.total) expanded = `${expandedForm(n)} = ${fmt(n)}`;
-      return `<div class="demo-note"><p class="demo-say">${esc(s.say)}</p><p class="demo-ask">${esc(s.ask)}</p></div>` +
+      return `<div class="demo-note"><p class="demo-say">${esc(s.say)}</p>${childOnly ? '' : `<p class="demo-ask">${esc(s.ask)}</p>`}</div>` +
         chartHTML(n, { highlight: s.highlight, values: [0, 1, 2, 3].map((i) => i < s.values) }) +
         pv.blocksHTML(n, { dim: s.dim }) +
         formsHTML(n, { expanded: esc(expanded), words: s.words ? esc(numberToWords(n)) : '<span class="muted">(last step)</span>' });
@@ -195,108 +199,193 @@
       return delta > 0 ? d <= 8 : d >= (i === 0 ? 2 : 1);
     }
 
+    // ----- See It: a guided wizard, one step at a time -----
+    // Saved as 'see-wizard': { step, done: { [stepId]: true }, checks: { [stepId]: { q, tries, retry, solved, revealed, response } }, ex, sub }
+    // A step is complete when its check is answered correctly (on any try). After two misses the answer is
+    // taught and a new question of the same kind is offered, so a child is never stuck and never skips the check.
     function seeView() {
-      const ex = L.seeIt.examples;
-      const tenChain = [3, 2, 1, 0].map((i, j) =>
-        `<div class="chain-item"><div class="chain-art">${pv.singleBlockSVG(i)}</div><b>${fmt(PLACES[i].value)}</b><span>${PLACES[i].blockName}</span></div>` +
-        (j < 3 ? `<div class="chain-arrow" aria-hidden="true">×10 →</div>` : '')).join('');
-      const cd = L.seeIt.composeDigits;
-      const greatest = fromDigits(cd.slice().sort((a, b) => b - a));
-      const smallest = fromDigits(cd.slice().sort((a, b) => a - b));
+      const steps = L.seeIt.steps;
+      const W = store.get('see-wizard', null) || { step: 0, done: {}, checks: {}, ex: 0, sub: 0 };
+      const save = () => store.set('see-wizard', W);
+      const reachable = (i) => i === 0 || steps.slice(0, i).every((s) => W.done[s.id]);
+      if (!reachable(W.step)) W.step = 0;
 
-      main.innerHTML =
-        ctx.hero(eyebrow('see'), 'See It: Build 4-Digit Numbers', 'Step through each example one place at a time. Then build and change numbers yourself.', [
-          { id: 'demo', label: 'A · Worked examples' }, { id: 'builder', label: 'B · Build a number' },
-          { id: 'change', label: 'C · Change one place' }, { id: 'why', label: 'D · Groups of ten' }, { id: 'challenge', label: 'E · Biggest and smallest' }]) +
-        `<section class="card" id="demo">${head('A', 'Worked examples', 'together',
-          `<div class="seg" role="group" aria-label="Choose an example">` + ex.map((n, i) => `<button type="button" class="seg-btn" data-ex="${i}" aria-pressed="${i === S.see.ex}">${fmt(n)}</button>`).join('') + `</div>`)}` +
-        `<div id="demo-body" class="demo-body"></div>` +
-        `<div class="demo-controls"><button type="button" class="btn btn-ghost" id="demo-prev">← Back</button>` +
-        `<span class="step-count" id="demo-count" aria-live="polite"></span>` +
-        `<button type="button" class="btn btn-primary" id="demo-next">Next step →</button></div></section>` +
-        `<section class="card" id="builder">${head('B', 'Build your own number', 'student')}` +
-        `<p class="muted">Add or remove blocks, or type a number. Everything updates together.</p>` +
-        `<div class="builder-top">${stepperHTML(S.builder, 'bld')}` +
-        `<label class="builder-type">Type a number <input id="bld-input" type="text" inputmode="numeric" autocomplete="off" maxlength="5" aria-describedby="bld-note"></label></div>` +
-        `<p class="q-help" id="bld-note">Any whole number from 0 to 9,999.</p>` +
-        `<div id="bld-out" aria-live="polite"></div></section>` +
-        `<section class="card" id="change">${head('C', 'Change one place: 10, 100, or 1,000 more or less', 'together')}` +
-        `<p>Press a button. Watch which digit changes. <span class="muted">Buttons that would need regrouping are turned off — that comes in a later lesson.</span></p>` +
-        `<div class="change-row" role="group" aria-label="Change the number">` +
-        [1000, 100, 10].map((v) => `<button type="button" class="btn btn-ghost" data-delta="${v}">+ ${fmt(v)}</button>`).join('') +
-        [1000, 100, 10].map((v) => `<button type="button" class="btn btn-ghost" data-delta="${-v}">− ${fmt(v)}</button>`).join('') +
-        `<button type="button" class="btn btn-small" id="change-reset">Start again at ${fmt(L.seeIt.changeStart)}</button></div>` +
-        `<div class="change-out" id="change-out" aria-live="polite"></div></section>` +
-        `<section class="card" id="why">${head('D', 'Why it works: groups of ten', 'student')}` +
-        `<div class="chain">${tenChain}</div>` +
-        `<p>10 units make 1 rod. 10 rods make 1 flat. 10 flats make 1 cube. That is why each place is worth 10 times the place to its right.</p></section>` +
-        `<section class="card" id="challenge">${head('E', 'Challenge: biggest and smallest numbers', 'together')}` +
-        `<p>Use the digits <b>${cd.join(', ')}</b> once each.</p>` +
-        `<div class="idea"><h3>Greatest number: ${fmt(greatest)}</h3><p>The thousands place is worth the most, so put the <b>greatest</b> digit there, then the next greatest in the hundreds place, and so on.</p>${chartHTML(greatest, { label: 'Greatest number' })}</div>` +
-        `<div class="idea"><h3>Smallest number: ${fmt(smallest)}</h3><p>Put the <b>smallest</b> digit in the thousands place, then the next smallest, and so on.</p>${chartHTML(smallest, { label: 'Smallest number' })}</div></section>` +
-        ctx.navButtons('see');
+      function checkState(step) {
+        if (!W.checks[step.id]) W.checks[step.id] = { q: step.check(pv.rng(shell.newSeed())), tries: 0, retry: false, solved: false, revealed: false };
+        return W.checks[step.id];
+      }
 
-      // Worked examples
-      const body = main.querySelector('#demo-body');
-      const drawDemo = () => {
-        const n = ex[S.see.ex];
-        const total = demoSteps(n).length;
-        body.innerHTML = demoBody(n, S.see.step);
-        main.querySelector('#demo-count').textContent = `Step ${S.see.step + 1} of ${total}`;
-        main.querySelector('#demo-prev').disabled = S.see.step === 0;
-        main.querySelector('#demo-next').disabled = S.see.step === total - 1;
-        main.querySelectorAll('.seg-btn').forEach((b) => b.setAttribute('aria-pressed', String(Number(b.dataset.ex) === S.see.ex)));
-      };
-      main.querySelectorAll('.seg-btn').forEach((b) => b.addEventListener('click', () => { S.see = { ex: Number(b.dataset.ex), step: 0 }; drawDemo(); }));
-      main.querySelector('#demo-prev').addEventListener('click', () => { S.see.step = Math.max(0, S.see.step - 1); drawDemo(); });
-      main.querySelector('#demo-next').addEventListener('click', () => { S.see.step += 1; drawDemo(); });
-      drawDemo();
-
-      // Builder
-      const out = main.querySelector('#bld-out');
-      const input = main.querySelector('#bld-input');
-      const drawBuilder = (fromInput) => {
-        const n = fromDigits(S.builder);
-        main.querySelectorAll('#builder .stepper-count').forEach((o, i) => { o.textContent = S.builder[i]; });
-        if (!fromInput) input.value = fmt(n);
-        out.innerHTML = `<p class="big-number" aria-label="Number built: ${fmt(n)}">${fmt(n)}</p>` +
-          chartHTML(n, { values: [true, true, true, true] }) + pv.blocksHTML(n) + formsHTML(n);
-      };
-      main.querySelectorAll('#builder .stepper-btn').forEach((b) => b.addEventListener('click', () => {
-        const i = Number(b.parentElement.dataset.place);
-        S.builder[i] = Math.min(9, Math.max(0, S.builder[i] + Number(b.dataset.step)));
-        drawBuilder(false);
-      }));
-      input.addEventListener('input', () => {
-        const n = pv.parseWholeNumber(input.value);
-        if (n !== null && n <= 9999) { S.builder = digitsOf(n); drawBuilder(true); }
-      });
-      drawBuilder(false);
-
-      // Change one place
-      const changeOut = main.querySelector('#change-out');
-      const drawChange = (before, delta) => {
-        const n = S.change;
-        main.querySelectorAll('[data-delta]').forEach((b) => { b.disabled = !changeOK(n, Number(b.dataset.delta)); });
-        if (before === undefined) {
-          changeOut.innerHTML = `<p class="change-eq">${fmt(n)}</p>${chartHTML(n, { label: 'Current number' })}`;
-          return;
+      function demoHTML(step) {
+        if (step.kind === 'examples') {
+          const ex = L.seeIt.examples;
+          return `<div class="seg" role="group" aria-label="Choose an example">` +
+            ex.map((n, i) => `<button type="button" class="seg-btn" data-ex="${i}" aria-pressed="${i === W.ex}">${fmt(n)}</button>`).join('') + `</div>` +
+            `<div id="demo-body" class="demo-body"></div>` +
+            `<div class="demo-controls"><button type="button" class="btn btn-ghost" id="demo-prev">◀ Back a part</button>` +
+            `<span class="step-count" id="demo-count" aria-live="polite"></span>` +
+            `<button type="button" class="btn btn-ghost" id="demo-next">Next part ▶</button></div>`;
         }
-        const i = PLACES.findIndex((p) => p.value === Math.abs(delta));
-        const p = PLACES[i];
-        changeOut.innerHTML = `<p class="change-eq">${fmt(before)} ${delta > 0 ? '+' : '−'} ${fmt(Math.abs(delta))} = ${fmt(n)}</p>` +
-          `<p><b>Only the ${p.key} digit changed:</b> ${digitsOf(before)[i]} became ${digitsOf(n)[i]}.</p>` +
-          `<div class="change-charts"><div><h3>Before</h3>${chartHTML(before, { highlight: i, label: 'Before' })}</div><div><h3>After</h3>${chartHTML(n, { highlight: i, label: 'After' })}</div></div>`;
-      };
-      main.querySelectorAll('[data-delta]').forEach((b) => b.addEventListener('click', () => {
-        const delta = Number(b.dataset.delta);
-        if (!changeOK(S.change, delta)) return;
-        const before = S.change;
-        S.change += delta;
-        drawChange(before, delta);
-      }));
-      main.querySelector('#change-reset').addEventListener('click', () => { S.change = L.seeIt.changeStart; drawChange(); });
-      drawChange();
+        if (step.kind === 'build') {
+          return `<div class="builder-top">${stepperHTML(S.builder, 'bld')}` +
+            `<label class="builder-type">Type a number <input id="bld-input" type="text" inputmode="numeric" autocomplete="off" maxlength="5" aria-describedby="bld-note"></label></div>` +
+            `<p class="q-help" id="bld-note">Any whole number from 0 to 9,999.</p><div id="bld-out" aria-live="polite"></div>`;
+        }
+        if (step.kind === 'change') {
+          return `<div class="change-row" role="group" aria-label="Change the number">` +
+            [1000, 100, 10].map((v) => `<button type="button" class="btn btn-ghost" data-delta="${v}">+ ${fmt(v)}</button>`).join('') +
+            [1000, 100, 10].map((v) => `<button type="button" class="btn btn-ghost" data-delta="${-v}">− ${fmt(v)}</button>`).join('') +
+            `<button type="button" class="btn btn-small" id="change-reset">Start again at ${fmt(L.seeIt.changeStart)}</button></div>` +
+            `<p class="muted">Buttons that would need regrouping are turned off. That comes in a later lesson.</p>` +
+            `<div class="change-out" id="change-out" aria-live="polite"></div>`;
+        }
+        if (step.kind === 'ten') {
+          return `<div class="chain">` + [3, 2, 1, 0].map((i, j) =>
+            `<div class="chain-item"><div class="chain-art">${pv.singleBlockSVG(i)}</div><b>${fmt(PLACES[i].value)}</b><span>${PLACES[i].blockName}</span></div>` +
+            (j < 3 ? `<div class="chain-arrow" aria-hidden="true">×10 →</div>` : '')).join('') + `</div>`;
+        }
+        const cd = L.seeIt.composeDigits;
+        const greatest = fromDigits(cd.slice().sort((a, b) => b - a));
+        const smallest = fromDigits(cd.slice().sort((a, b) => a - b));
+        return `<p>Example: use the digits <b>${cd.join(', ')}</b> once each.</p>` +
+          `<div class="idea"><h3>Greatest number: ${fmt(greatest)}</h3><p>Put the <b>greatest</b> digit in the thousands place, then the next greatest in the hundreds place, and so on.</p>${chartHTML(greatest, { label: 'Greatest number' })}</div>` +
+          `<div class="idea"><h3>Smallest number: ${fmt(smallest)}</h3><p>Put the <b>smallest</b> digit in the thousands place, then the next smallest, and so on.</p>${chartHTML(smallest, { label: 'Smallest number' })}</div>`;
+      }
+
+      function bindDemo(step) {
+        if (step.kind === 'examples') {
+          const ex = L.seeIt.examples;
+          const body = main.querySelector('#demo-body');
+          const draw = () => {
+            const n = ex[W.ex];
+            const total = demoSteps(n).length;
+            W.sub = Math.min(W.sub, total - 1);
+            body.innerHTML = demoBody(n, W.sub, true);
+            main.querySelector('#demo-count').textContent = `Part ${W.sub + 1} of ${total}`;
+            main.querySelector('#demo-prev').disabled = W.sub === 0;
+            main.querySelector('#demo-next').disabled = W.sub === total - 1;
+            main.querySelectorAll('.seg-btn').forEach((b) => b.setAttribute('aria-pressed', String(Number(b.dataset.ex) === W.ex)));
+            save();
+          };
+          main.querySelectorAll('.seg-btn').forEach((b) => b.addEventListener('click', () => { W.ex = Number(b.dataset.ex); W.sub = 0; draw(); }));
+          main.querySelector('#demo-prev').addEventListener('click', () => { W.sub = Math.max(0, W.sub - 1); draw(); });
+          main.querySelector('#demo-next').addEventListener('click', () => { W.sub += 1; draw(); });
+          draw();
+        }
+        if (step.kind === 'build') {
+          const out = main.querySelector('#bld-out');
+          const input = main.querySelector('#bld-input');
+          const draw = (fromInput) => {
+            const n = fromDigits(S.builder);
+            main.querySelectorAll('.builder-top .stepper-count').forEach((o, i) => { o.textContent = S.builder[i]; });
+            if (!fromInput) input.value = fmt(n);
+            out.innerHTML = `<p class="big-number" aria-label="Number built: ${fmt(n)}">${fmt(n)}</p>` + chartHTML(n, { values: [true, true, true, true] }) + pv.blocksHTML(n) + formsHTML(n);
+          };
+          main.querySelectorAll('.builder-top .stepper-btn').forEach((b) => b.addEventListener('click', () => {
+            const i = Number(b.parentElement.dataset.place);
+            S.builder[i] = Math.min(9, Math.max(0, S.builder[i] + Number(b.dataset.step)));
+            draw(false);
+          }));
+          input.addEventListener('input', () => {
+            const n = pv.parseWholeNumber(input.value);
+            if (n !== null && n <= 9999) { S.builder = digitsOf(n); draw(true); }
+          });
+          draw(false);
+        }
+        if (step.kind === 'change') {
+          const out = main.querySelector('#change-out');
+          const draw = (before, delta) => {
+            const n = S.change;
+            main.querySelectorAll('[data-delta]').forEach((b) => { b.disabled = !changeOK(n, Number(b.dataset.delta)); });
+            if (before === undefined) { out.innerHTML = `<p class="change-eq">${fmt(n)}</p>${chartHTML(n, { label: 'Current number' })}`; return; }
+            const i = PLACES.findIndex((p) => p.value === Math.abs(delta));
+            out.innerHTML = `<p class="change-eq">${fmt(before)} ${delta > 0 ? '+' : '−'} ${fmt(Math.abs(delta))} = ${fmt(n)}</p>` +
+              `<p><b>Only the ${PLACES[i].key} digit changed:</b> ${digitsOf(before)[i]} became ${digitsOf(n)[i]}.</p>` +
+              `<div class="change-charts"><div><h3>Before</h3>${chartHTML(before, { highlight: i, label: 'Before' })}</div><div><h3>After</h3>${chartHTML(n, { highlight: i, label: 'After' })}</div></div>`;
+          };
+          main.querySelectorAll('[data-delta]').forEach((b) => b.addEventListener('click', () => {
+            const delta = Number(b.dataset.delta);
+            if (!changeOK(S.change, delta)) return;
+            const before = S.change;
+            S.change += delta;
+            draw(before, delta);
+          }));
+          main.querySelector('#change-reset').addEventListener('click', () => { S.change = L.seeIt.changeStart; draw(); });
+          draw();
+        }
+      }
+
+      function checkHTML(step) {
+        const c = checkState(step);
+        const q = c.q;
+        let msg = '';
+        if (c.solved) msg = `<div class="feedback feedback-ok"><p><b>✓ ${c.tries <= 1 ? 'Correct!' : 'You got it!'}</b> ${esc(q.explanation)}</p></div>`;
+        else if (c.revealed) msg = `<div class="feedback feedback-info"><p><b>The answer is ${esc(Q.correctText(q))}.</b> ${esc(q.explanation)}</p><p>Now try a new one like it.</p></div>`;
+        else if (c.retry) {
+          const tip = q.type === 'expanded' ? Q.expandedTip(c.response, q.answer) + ' ' : '';
+          msg = `<div class="feedback feedback-no"><p><b>Not quite.</b> ${esc(tip + (q.hint || 'Look again at the example above.'))}</p></div>`;
+        }
+        let action;
+        if (c.solved) action = `<button type="button" class="btn btn-ghost" data-wiz="another">Try another one</button>`;
+        else if (c.revealed) action = `<button type="button" class="btn btn-primary" data-wiz="new">Try a new one</button>`;
+        else if (c.retry) action = `<button type="button" class="btn btn-primary" data-wiz="again">Try Again</button>`;
+        else action = `<button type="button" class="btn btn-primary" data-wiz="check">Check Answer</button>`;
+        return `<section class="wiz-check" aria-labelledby="wiz-check-title"><h3 id="wiz-check-title">Your turn</h3>` +
+          Q.render(q, 'wiz-' + step.id, { response: c.response }) +
+          `<div aria-live="polite">${msg}<p class="feedback feedback-info" data-empty hidden>Type or choose an answer first.</p></div>` +
+          `<div class="actions">${action}</div></section>`;
+      }
+
+      function draw() {
+        const i = W.step;
+        const step = steps[i];
+        const c = checkState(step);
+        save(); // keep this step's check question the same across a refresh
+        const done = !!W.done[step.id];
+        main.innerHTML =
+          // No lesson-stage number here: "Step N of 5" on this page always means the See It step.
+          ctx.hero(`Chapter ${L.chapter} · Lesson ${esc(L.number)} · See It`, 'See It: Build 4-Digit Numbers', 'One step at a time. Finish each step\'s check to unlock the next one.') +
+          `<nav class="wiz-steps" aria-label="See It steps"><ol>` + steps.map((s, k) => {
+            const state = W.done[s.id] ? 'is-done' : k === i ? 'is-current' : reachable(k) ? '' : 'is-locked';
+            return `<li><button type="button" class="wiz-step ${state}" data-go="${k}" ${reachable(k) ? '' : 'disabled'} ${k === i ? 'aria-current="step"' : ''}>` +
+              `<span class="wiz-n" aria-hidden="true">${W.done[s.id] ? '✓' : k + 1}</span><span class="wiz-t">${esc(s.title)}</span>` +
+              `<span class="sr-only">${W.done[s.id] ? ' (done)' : reachable(k) ? '' : ' (locked)'}</span></button></li>`;
+          }).join('') + `</ol></nav>` +
+          `<section class="card wiz-card"><p class="wiz-count">Step ${i + 1} of ${steps.length}</p><h2 tabindex="-1">${esc(step.title)}</h2>` +
+          `<p class="wiz-explain">${esc(step.explain)}</p><div class="wiz-demo">${demoHTML(step)}</div>${checkHTML(step)}</section>` +
+          `<div class="stage-nav wiz-nav">${i > 0 ? `<button type="button" class="btn btn-ghost btn-big" data-wiz="back">← Back</button>` : '<span></span>'}` +
+          (i < steps.length - 1
+            ? `<button type="button" class="btn btn-primary btn-big" data-wiz="next" ${done ? '' : 'disabled'}>Next Step →</button>`
+            : `<a class="btn btn-primary btn-big${done ? '' : ' is-disabled'}" href="#practice" ${done ? '' : 'aria-disabled="true" tabindex="-1"'} data-wiz="finish">Done! Go to Practice It →</a>`) +
+          `</div>` + (done ? '' : `<p class="wiz-locked-note" id="wiz-locked">Answer the check correctly to unlock ${i < steps.length - 1 ? 'the next step' : 'Practice It'}.</p>`);
+        bindDemo(step);
+        const qEl = main.querySelector('.wiz-check .q[data-qkey]');
+        const locked = c.solved || c.revealed || c.retry;
+        if (locked) qEl.querySelectorAll('input, select, button').forEach((x) => { x.disabled = true; });
+        else Q.bind(qEl, c.q, (r) => { c.response = r; save(); });
+        main.querySelectorAll('[data-go]').forEach((b) => b.addEventListener('click', () => { W.step = Number(b.dataset.go); save(); draw(); main.querySelector('.wiz-card h2').focus(); }));
+        main.querySelectorAll('[data-wiz]').forEach((b) => b.addEventListener('click', (e) => {
+          const act = b.dataset.wiz;
+          if (act === 'finish') { if (!W.done[step.id]) e.preventDefault(); return; }
+          if (act === 'check') {
+            const r = Q.read(qEl, c.q);
+            if (!Q.isAnswered(c.q, r)) { main.querySelector('[data-empty]').hidden = false; return; }
+            c.response = r;
+            c.tries += 1;
+            if (Q.grade(c.q, r)) { c.solved = true; c.retry = false; W.done[step.id] = true; } else if (c.tries >= 2) { c.revealed = true; c.retry = false; } else { c.retry = true; }
+          }
+          if (act === 'again') c.retry = false;
+          if (act === 'new' || act === 'another') W.checks[step.id] = { q: step.check(pv.rng(shell.newSeed())), tries: 0, retry: false, solved: false, revealed: false };
+          if (act === 'back') W.step = Math.max(0, i - 1);
+          if (act === 'next' && W.done[step.id]) W.step = i + 1;
+          save();
+          draw();
+          if (act === 'back' || act === 'next') { root.scrollTo(0, 0); main.querySelector('.wiz-card h2').focus({ preventScroll: true }); return; }
+          const focusTarget = main.querySelector('[data-wiz="next"]:not([disabled]), a[data-wiz="finish"]:not(.is-disabled), [data-wiz="again"], [data-wiz="new"], .wiz-check input:not([disabled]), .wiz-check button:not([disabled])');
+          if (focusTarget) focusTarget.focus();
+        }));
+      }
+
+      draw();
     }
 
     // ===== 3. Practice It =====

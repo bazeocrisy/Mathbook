@@ -510,3 +510,34 @@ a.lesson-row:hover { border-color: var(--primary); box-shadow: 0 0 0 4px var(--p
   .hero, .hero h1, .eyebrow, .lead { color: #000; }
   .card { box-shadow: none; break-inside: avoid; }
 }
+
+/* ---------- See It wizard: one step at a time ---------- */
+.wiz-steps ol { list-style: none; margin: 0.6rem 0 0; padding: 0; display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 0.5rem; }
+.wiz-step { font: inherit; width: 100%; min-height: 64px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 0.2rem; padding: 0.45rem 0.3rem; border-radius: 16px; border: 2px solid rgba(255, 255, 255, 0.3); background: rgba(255, 255, 255, 0.08); color: #fff; cursor: pointer; text-align: center; }
+.wiz-step:hover:not(:disabled) { background: rgba(255, 255, 255, 0.16); }
+.wiz-n { display: inline-grid; place-items: center; width: 2rem; height: 2rem; border-radius: 50%; background: rgba(255, 255, 255, 0.15); font-weight: 900; }
+.wiz-t { font-weight: 700; font-size: 0.85rem; line-height: 1.15; }
+.wiz-step.is-current { background: var(--star); color: #1a1446; border-color: var(--star); }
+.wiz-step.is-current .wiz-n { background: #1a1446; color: var(--star); }
+.wiz-step.is-done .wiz-n { background: #4cc38a; color: #08311c; }
+.wiz-step.is-locked, .wiz-step:disabled { opacity: 1; cursor: not-allowed; color: #aab3d9; border-style: dashed; background: transparent; }
+.wiz-card { margin-top: 1rem; }
+.wiz-count { text-transform: uppercase; letter-spacing: 0.08em; font-weight: 800; font-size: 0.8rem; color: var(--student); margin: 0; }
+.wiz-card h2 { font-size: clamp(1.5rem, 4vw, 2rem); margin: 0.2rem 0 0.4rem; }
+.wiz-explain { font-size: 1.2rem; font-weight: 700; color: var(--heading); max-width: 46rem; }
+.wiz-demo { margin: 0.8rem 0 1.2rem; }
+.wiz-check { border: 3px solid #cfc3ff; background: var(--student-soft); border-radius: 20px; padding: clamp(0.9rem, 3vw, 1.4rem); }
+.wiz-check h3 { margin: 0 0 0.6rem; color: var(--student); font-size: 1.2rem; }
+.wiz-nav .btn { min-width: 9rem; }
+a.btn.is-disabled { background: #eceef5; color: #545a75; pointer-events: none; }
+.wiz-locked-note { text-align: right; color: var(--on-space-muted); font-weight: 700; margin: 0.4rem 0 0; }
+@media (max-width: 760px) {
+  .wiz-t { font-size: 0.7rem; }
+  .wiz-steps ol { gap: 0.25rem; }
+  .wiz-n { width: 1.7rem; height: 1.7rem; }
+  .wiz-locked-note { text-align: center; }
+}
+@media (max-width: 400px) {
+  .wiz-t { display: none; }
+  .wiz-step { min-height: 52px; }
+}

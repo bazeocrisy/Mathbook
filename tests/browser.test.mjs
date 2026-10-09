@@ -16,6 +16,7 @@ const server = await startServer();
 const b = await startBrowser();
 const O = server.origin;
 const { js, wait, hash } = b;
+const pv_hasZero = (n) => String(n).includes('0');
 
 async function noHorizontalScroll(label) {
   const r = await js(`
@@ -86,8 +87,23 @@ try {
     return { hash: location.hash, focused: document.activeElement.id };`);
   check('Skip link focuses content without changing the stage (B-20)', skip.hash === '#see' && skip.focused === 'stage', skip);
 
-  // ----- See It -----
+  // ----- See It: five-step wizard -----
+  const WIZ = `${FILL_HELPERS}
+    const W = () => JSON.parse(localStorage.getItem(L.storageKey + ':see-wizard') || 'null');
+    const wbtn = (a) => document.querySelector('[data-wiz="' + a + '"]');
+    const qel = () => document.querySelector('.wiz-check .q[data-qkey]');
+    const stepId = () => L.seeIt.steps[W().step].id;
+    const curQ = () => { const w = W(); const c = w && w.checks[stepId()]; if (!c) throw new Error('no check for step ' + stepId() + ' in ' + JSON.stringify(w).slice(0, 300)); return c.q; };
+    const feedback = () => (document.querySelector('.wiz-check [aria-live] .feedback:not([hidden])') || {}).innerText || '';
+    const answer = (ok) => { fill(qel(), curQ(), ok); wbtn('check').click(); };
+    const steps = () => Array.from(document.querySelectorAll('.wiz-step')).map((b) => (b.disabled ? 'locked' : b.classList.contains('is-done') ? 'done' : b.classList.contains('is-current') ? 'current' : 'open'));`;
   await hash('#teach'); await hash('#see');
+  const wiz0 = await js(`${WIZ}
+    document.querySelector('[data-go="2"]').click();
+    return { steps: steps(), count: document.querySelector('.wiz-count').textContent, title: document.querySelector('.wiz-card h2').textContent, nextDisabled: wbtn('next').disabled,
+      eyebrow: document.querySelector('.hero .eyebrow').textContent, cards: document.querySelectorAll('.wiz-card').length, ask: /Ask:/.test(document.querySelector('.wiz-card').innerText) };`);
+  check('See It wizard: one step shown (Step 1 of 5: Worked examples); steps 2–5 locked; Next Step locked', wiz0.cards === 1 && wiz0.count === 'Step 1 of 5' && wiz0.title === 'Worked examples' && JSON.stringify(wiz0.steps) === JSON.stringify(['current', 'locked', 'locked', 'locked', 'locked']) && wiz0.nextDisabled, wiz0);
+  check('See It: header does not show a competing "Step 2 of 5"; no parent "Ask:" lines on the child screen', !/Step \d of/.test(wiz0.eyebrow) && !wiz0.ask, wiz0);
   const demo = await js(`
     const body = document.querySelector('#demo-body');
     const counts = () => ['thousand','hundred','ten','one'].map((k) => body.querySelectorAll('[data-block="' + k + '"]').length);
@@ -99,23 +115,55 @@ try {
     for (let i = 0; i < 2; i++) document.querySelector('#demo-next').click();
     zero.note = body.querySelector('.demo-say').textContent;
     return { first, last, zero };`);
-  check('See It: 2,137 shows 2 thousands, 1 hundred, 3 tens, 7 ones', JSON.stringify(demo.first.counts) === '[2,1,3,7]', demo.first);
-  check('See It: steps advance one at a time and stop at the end', demo.first.step === 'Step 1 of 7' && demo.first.prevDisabled && demo.last.step === 'Step 7 of 7' && demo.last.nextDisabled, demo);
-  check('See It: final step shows expanded and word form', demo.last.text.includes('2,000 + 100 + 30 + 7 = 2,137') && demo.last.text.includes('two thousand, one hundred thirty-seven'), demo.last.text);
-  check('See It: 5,072 example shows 0 hundred flats and explains the zero', JSON.stringify(demo.zero.counts) === '[5,0,7,2]' && /0 is in the hundreds place/.test(demo.zero.note), demo.zero);
+  check('See It step 1: 2,137 shows 2 thousands, 1 hundred, 3 tens, 7 ones', JSON.stringify(demo.first.counts) === '[2,1,3,7]', demo.first);
+  check('See It step 1: parts advance one at a time and stop at the end', demo.first.step === 'Part 1 of 7' && demo.first.prevDisabled && demo.last.step === 'Part 7 of 7' && demo.last.nextDisabled, demo);
+  check('See It step 1: final part shows expanded and word form', demo.last.text.includes('2,000 + 100 + 30 + 7 = 2,137') && demo.last.text.includes('two thousand, one hundred thirty-seven'), demo.last.text);
+  check('See It step 1: 5,072 example shows 0 hundred flats and explains the zero', JSON.stringify(demo.zero.counts) === '[5,0,7,2]' && /0 is in the hundreds place/.test(demo.zero.note), demo.zero);
+
+  const c1 = await js(`${WIZ}
+    const q1 = curQ();
+    wbtn('check').click(); const empty = !document.querySelector('[data-empty]').hidden;
+    answer(false);
+    const once = { fb: feedback(), again: !!wbtn('again'), reveals: /The answer is/.test(feedback()), next: wbtn('next').disabled, locked: Array.from(qel().querySelectorAll('input')).every((i) => i.disabled) };
+    wbtn('again').click(); answer(false);
+    const twice = { fb: feedback(), newBtn: !!wbtn('new'), next: wbtn('next').disabled, done: !!W().done.examples };
+    wbtn('new').click();
+    const q2 = curQ(); const fresh = { differs: q2.answer !== q1.answer || q2.display !== q1.display, blank: !Q.isAnswered(q2, Q.read(qel(), q2)), noFb: feedback() === '' };
+    answer(true);
+    return { q1: { prompt: q1.prompt, display: q1.display, type: q1.type, answer: q1.answer }, empty, once, twice, fresh, right: feedback(), next: !wbtn('next').disabled, steps: steps(), done: W().done };`);
+  check('Check: the step-1 check uses a new number in word form with a zero (not 2,137, 4,628, or 5,072)', c1.q1.type === 'chart' && ![2137, 4628, 5072].includes(c1.q1.answer) && pv_hasZero(c1.q1.answer), c1.q1);
+  check('Check: empty answer is caught; a wrong answer gets a clue and Try Again — the answer is not revealed; Next stays locked', c1.empty && /Not quite/.test(c1.once.fb) && c1.once.again && !c1.once.reveals && c1.once.next && c1.once.locked, c1.once);
+  check('Check: second miss teaches the answer and offers a new question; the step is not complete yet', /The answer is/.test(c1.twice.fb) && c1.twice.newBtn && c1.twice.next && !c1.twice.done, c1.twice);
+  check('Check: the new question is different and blank; a right answer completes the step and unlocks Next Step', c1.fresh.differs && c1.fresh.blank && c1.fresh.noFb && /Correct|You got it/.test(c1.right) && c1.next && c1.done.examples === true && c1.steps[0] === 'done' && c1.steps[1] === 'open', c1);
+
+  await js(`document.querySelector('[data-wiz="next"]').click();`);
   const builder = await js(`
-    const st = document.querySelectorAll('#builder .stepper');
+    const st = document.querySelectorAll('.builder-top .stepper');
     st[1].querySelector('[data-step="1"]').click(); st[1].querySelector('[data-step="1"]').click();
     st[3].querySelector('[data-step="-1"]').click();
     const out = document.querySelector('#bld-out');
-    const a = { text: out.innerText, input: document.querySelector('#bld-input').value,
+    const a = { title: document.querySelector('.wiz-card h2').textContent, count: document.querySelector('.wiz-count').textContent, text: out.innerText, input: document.querySelector('#bld-input').value,
       counts: ['thousand','hundred','ten','one'].map((k) => out.querySelectorAll('[data-block="' + k + '"]').length) };
     const inp = document.querySelector('#bld-input'); inp.value = '9,050'; inp.dispatchEvent(new Event('input', { bubbles: true }));
     a.typed = ['thousand','hundred','ten','one'].map((k) => out.querySelectorAll('[data-block="' + k + '"]').length);
     a.typedText = out.innerText;
     return a;`);
-  check('Builder: + / − update number, blocks, and forms (2,137 → 2,336)', builder.input === '2,336' && JSON.stringify(builder.counts) === '[2,3,3,6]' && builder.text.includes('2,000 + 300 + 30 + 6') && builder.text.includes('two thousand, three hundred thirty-six'), builder);
-  check('Builder: typing 9,050 rebuilds the model', JSON.stringify(builder.typed) === '[9,0,5,0]' && builder.typedText.includes('nine thousand, fifty'), builder);
+  check('Step 2 of 5: Build your own number — + / − update number, blocks, and forms (2,137 → 2,336)', builder.count === 'Step 2 of 5' && builder.title === 'Build your own number' && builder.input === '2,336' && JSON.stringify(builder.counts) === '[2,3,3,6]' && builder.text.includes('2,000 + 300 + 30 + 6') && builder.text.includes('two thousand, three hundred thirty-six'), builder);
+  check('Step 2: typing 9,050 rebuilds the model', JSON.stringify(builder.typed) === '[9,0,5,0]' && builder.typedText.includes('nine thousand, fifty'), builder);
+  const c2 = await js(`${WIZ} const q = curQ(); answer(true); return { type: q.type, fb: feedback(), next: !wbtn('next').disabled };`);
+  check('Step 2 check: build a new number with blocks; right on the first try completes the step', c2.type === 'build' && /Correct/.test(c2.fb) && c2.next, c2);
+
+  await b.reload(); await hash('#see');
+  const after = await js(`${WIZ} return { count: document.querySelector('.wiz-count').textContent, steps: steps(), next: !wbtn('next').disabled, fb: feedback() };`);
+  check('Refresh: stays on step 2, both completed steps kept, Next Step still unlocked', after.count === 'Step 2 of 5' && after.steps[0] === 'done' && after.steps[1] === 'done' && after.steps[2] === 'open' && after.steps[3] === 'locked' && after.next && /Correct/.test(after.fb), after);
+  const backTo = await js(`${WIZ} wbtn('back').click();
+    const s = { count: document.querySelector('.wiz-count').textContent, fb: feedback(), locked: Array.from(qel().querySelectorAll('input')).every((i) => i.disabled), another: !!wbtn('another'), next: !wbtn('next').disabled };
+    const before = JSON.stringify(curQ()); wbtn('another').click();
+    s.newQ = JSON.stringify(curQ()) !== before; s.stillDone = W().done.examples === true && !wbtn('next').disabled; s.stepsAfter = steps();
+    return s;`);
+  check('Back: completed step 1 shows its result (locked), "Try another one" gives new practice without losing completion', backTo.count === 'Step 1 of 5' && /You got it|Correct/.test(backTo.fb) && backTo.locked && backTo.another && backTo.next && backTo.newQ && backTo.stillDone && backTo.stepsAfter[1] === 'done', backTo);
+
+  await js(`document.querySelector('[data-go="2"]').click();`);
   const change = await js(`
     const out = document.querySelector('#change-out');
     document.querySelector('[data-delta="100"]').click(); const a = out.innerText;
@@ -123,11 +171,26 @@ try {
     document.querySelector('#change-reset').click();
     for (let i = 0; i < 8; i++) document.querySelector('[data-delta="1000"]').click();
     const capped = { text: out.querySelector('.change-eq').innerText, disabled: document.querySelector('[data-delta="1000"]').disabled };
-    return { a, b, capped };`);
-  check('Change one place: 4,125 + 100 = 4,225, then − 10 = 4,215; only one digit changes', /4,125 \+ 100 = 4,225/.test(change.a) && /hundreds digit changed: 1 became 2/.test(change.a) && /4,225 − 10 = 4,215/.test(change.b), change);
-  check('Change one place: buttons that would need regrouping are disabled (stops at 9,125)', /= 9,125/.test(change.capped.text) && change.capped.disabled, change.capped);
-  const challenge = await js(`return document.querySelector('#challenge').innerText;`);
-  check('Challenge: greatest 8,641 and smallest 1,468 from 4, 1, 8, 6 (audit B-11)', /Greatest number: 8,641/.test(challenge) && /Smallest number: 1,468/.test(challenge), challenge.slice(0, 200));
+    return { a, b, capped, count: document.querySelector('.wiz-count').textContent };`);
+  check('Step 3 of 5: 4,125 + 100 = 4,225, then − 10 = 4,215; only one digit changes', change.count === 'Step 3 of 5' && /4,125 \+ 100 = 4,225/.test(change.a) && /hundreds digit changed: 1 became 2/.test(change.a) && /4,225 − 10 = 4,215/.test(change.b), change);
+  check('Step 3: buttons that would need regrouping are disabled (stops at 9,125)', /= 9,125/.test(change.capped.text) && change.capped.disabled, change.capped);
+  const c3 = await js(`${WIZ} const q = curQ(); answer(false); const once = feedback(); wbtn('again').click(); answer(true); return { prompt: q.prompt, answer: q.answer, once, fb: feedback(), next: !wbtn('next').disabled, rec: W().checks.change };`);
+  check('Step 3 check: a new "more or less" question (4-digit answer); right on the second try completes the step', /more|less/.test(c3.prompt) && c3.answer >= 1000 && c3.answer <= 9999 && /Not quite/.test(c3.once) && /You got it/.test(c3.fb) && c3.next && c3.rec.tries === 2, c3);
+
+  await js(`document.querySelector('[data-wiz="next"]').click();`);
+  const tenBefore = await js(`${WIZ} return JSON.stringify(curQ());`);
+  await b.reload(); await hash('#see');
+  check('Refresh on a new step before answering keeps the same check question', await js(`${WIZ} return JSON.stringify(curQ()) === ${JSON.stringify(tenBefore)} && document.querySelector('.wiz-count').textContent === 'Step 4 of 5'`));
+  const ten = await js(`${WIZ} const blocks = document.querySelectorAll('.wiz-demo .chain-item').length; const q = curQ(); answer(true);
+    return { count: document.querySelector('.wiz-count').textContent, blocks, prompt: q.prompt, answer: q.answer, fb: feedback(), next: !wbtn('next').disabled };`);
+  check('Step 4 of 5: Groups of ten — unit, rod, flat, cube shown; its check (answer 10, 100, or 1,000) completes the step', ten.count === 'Step 4 of 5' && ten.blocks === 4 && [10, 100, 1000].includes(ten.answer) && /Correct/.test(ten.fb) && ten.next, ten);
+
+  await js(`document.querySelector('[data-wiz="next"]').click();`);
+  const c5 = await js(`${WIZ} const text = document.querySelector('.wiz-demo').innerText; const finishLocked = document.querySelector('[data-wiz="finish"]').classList.contains('is-disabled');
+    const q = curQ(); answer(true);
+    return { count: document.querySelector('.wiz-count').textContent, text: text.slice(0, 300), finishLocked, prompt: q.prompt, answer: q.answer, fb: feedback(), finish: document.querySelector('[data-wiz="finish"]').getAttribute('href'), finishOpen: !document.querySelector('[data-wiz="finish"]').classList.contains('is-disabled'), done: W().done };`);
+  check('Step 5 of 5: greatest 8,641 and smallest 1,468 from 4, 1, 8, 6 (audit B-11)', c5.count === 'Step 5 of 5' && /Greatest number: 8,641/.test(c5.text) && /Smallest number: 1,468/.test(c5.text), c5.text);
+  check('Step 5 check: new digits (not 4,1,8,6 / 2,8,4,1 / 3,9,5,7); finishing is locked until it is answered, then opens Practice It', c5.finishLocked && !/digits (4, 1, 8, and 6|2, 8, 4, and 1|3, 9, 5, and 7) /.test(c5.prompt) && /Correct/.test(c5.fb) && c5.finishOpen && c5.finish === '#practice' && Object.keys(c5.done).length === 5, c5);
 
   // ----- Practice It -----
   await hash('#practice');

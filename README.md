@@ -15,7 +15,7 @@ Live site: https://bazeocrisy.github.io/Mathbook/
 Every lesson follows the same five stages. Each stage is split into labeled parts (A, B, C…) marked **For the student**, **Together**, or **For the parent**.
 
 1. **Teach It**: mission brief (learning target and big ideas), vocabulary, parent guide (what / what it means / why it works / how to demonstrate / what to ask / how to know), and a Show–Say–Ask teaching script.
-2. **See It**: step-by-step worked examples with base-ten blocks and a place-value chart, build-a-number, change-one-place, groups of ten, biggest/smallest challenge.
+2. **See It**: a five-step guided wizard, one step on screen at a time — worked examples (base-ten blocks and a place-value chart), build your own number, change one place, groups of ten, biggest and smallest. Each step ends with a short check: a wrong answer gets a clue and Try Again; a second miss explains the answer and offers a new question. **Next Step** unlocks when the check is answered correctly. Completed steps can be revisited, and progress is saved in the browser. Each lesson defines its own steps in `lesson.js` (`seeIt.steps`: `id`, `kind`, `title`, `explain`, `check(rng)`).
 3. **Practice It**: vocabulary practice, guided practice (hints, check, correct, explain), and independent practice: the 50-question bank in five labeled sets of 10 (any order), with per-set status and scores and **Practice My Misses** to retry only the missed questions.
 4. **Test It**: Vocabulary Test and Math Test, 10 questions each. Focus mode hides the lesson tabs, no hints or feedback, every answer is required, every attempt uses new numbers, and unfinished tests survive a refresh.
 5. **Results**: score, mastery band, explained mistakes, skills to review, and attempt history.
