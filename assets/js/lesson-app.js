@@ -92,6 +92,18 @@
       view: null,
       unsaved: null
     };
+    if (L.saveGuided) {
+      const g = store.get('guided', null);
+      if (g) { S.guidedStates = g.states || {}; S.guidedPos.i = Math.min(g.i || 0, L.guided.length - 1); }
+    }
+    const saveGuided = () => { if (L.saveGuided) store.set('guided', { i: S.guidedPos.i, states: S.guidedStates }); };
+    /** Forget this lesson's in-memory progress after its saved progress is erased. */
+    function forgetProgress() {
+      S.bank = {}; S.openSet = null; S.view = null; S.unsaved = null; S.guidedStates = {}; S.guidedPos.i = 0; S.vocabStates = {}; S.vocabPos.i = 0;
+      // Home's Continue must not point into erased progress.
+      const act = shell.readActivity && shell.readActivity();
+      if (act && act.path && opts.path && act.path.indexOf(opts.path) === 0) { try { root.localStorage.removeItem('mathbook:v2:activity'); } catch (e) { /* ignore */ } }
+    }
     const lessonEyebrow = () => `Lesson ${esc(L.number)} · ${esc(L.title)}`;
     const eyebrow = lessonEyebrow;
 
@@ -201,7 +213,14 @@
         `<section class="card card-parent" id="check">${head('D', 'Questions, mistakes, and checklist', 'parent')}` +
         `<h3>Ask</h3>${list(p.ask)}<div class="callout callout-warn"><h3>Watch for these mistakes</h3>${list(L.mistakes)}</div>` +
         `<h3>Checklist: the five Learn steps</h3><ol class="checks">${p.checklist.map((x) => `<li>${esc(x)}</li>`).join('')}</ol></section>` +
+        `<section class="card card-parent" id="reset">${head('', 'Reset Lesson Progress', 'parent')}` +
+        `<p>Erase Section ${esc(L.number)}'s saved answers, Learn completion, and test scores on this device. Other lessons and Number Words are not changed.</p>` +
+        `<div id="clear-area"><button type="button" class="btn btn-ghost" id="clear">Reset Lesson Progress…</button></div></section>` +
         menuNav();
+      const bindReset = () => shell.bindClear(main, store, `answers, Learn completion, and scores for Section ${L.number}`,
+        () => { forgetProgress(); ctx.go('menu'); },
+        () => { main.querySelector('#clear-area').innerHTML = '<button type="button" class="btn btn-ghost" id="clear">Reset Lesson Progress…</button>'; bindReset(); main.querySelector('#clear').focus(); });
+      bindReset();
     }
 
     // ===== Learn (the See It wizard) =====
@@ -276,7 +295,7 @@
       function demoHTML(step) {
         if (step.kind === 'slides') {
           const n = step.slides.length;
-          return `<div id="slide-body" class="demo-body slide-body"></div>` + (n > 1
+          return `<div id="slide-body" class="demo-body slide-body"></div>` + `<div class="slide-over" id="slide-over"></div>` + (n > 1
             ? `<div class="demo-controls"><button type="button" class="btn btn-ghost" id="slide-prev">◀ Back a part</button>` +
               `<span class="step-count" id="slide-count" aria-live="polite"></span>` +
               `<button type="button" class="btn btn-ghost" id="slide-next">Next part ▶</button></div>` : '');
@@ -334,6 +353,18 @@
             }
             save();
           };
+          const overBox = main.querySelector('#slide-over');
+          const overButton = () => {
+            overBox.innerHTML = '<button type="button" class="btn btn-ghost" data-over="ask">Start Over</button>';
+            overBox.querySelector('[data-over]').addEventListener('click', () => {
+              overBox.innerHTML = '<div class="rl-confirm" role="alertdialog" aria-label="Start this problem over?"><p><b>Start this problem over?</b></p>' +
+                '<button type="button" class="btn btn-primary" data-over="yes">Start Over</button> <button type="button" class="btn btn-ghost" data-over="no">Cancel</button></div>';
+              overBox.querySelector('[data-over="yes"]').addEventListener('click', () => { W.slide[step.id] = 0; draw(); overButton(); main.querySelector('#slide-body').scrollIntoView({ block: 'nearest' }); });
+              overBox.querySelector('[data-over="no"]').addEventListener('click', () => { overButton(); overBox.querySelector('[data-over]').focus(); });
+              overBox.querySelector('[data-over="no"]').focus();
+            });
+          };
+          overButton();
           if (n > 1) {
             main.querySelector('#slide-prev').addEventListener('click', () => { W.slide[step.id] -= 1; draw(); });
             main.querySelector('#slide-next').addEventListener('click', () => { W.slide[step.id] += 1; draw(); });
@@ -428,6 +459,7 @@
         else if (c.revealed) action = `<button type="button" class="btn btn-primary" data-wiz="new">Try a new one</button>`;
         else if (c.retry) action = `<button type="button" class="btn btn-primary" data-wiz="again">Try Again</button>`;
         else action = `<button type="button" class="btn btn-primary" data-wiz="check">Check Answer</button>`;
+        if (q.type === 'rline') return `<div class="wiz-check">${Q.render(q, 'wiz-' + step.id, { response: c.response, mode: 'guided' })}</div>`;
         return `<div class="wiz-check">` + Q.render(q, 'wiz-' + step.id, { response: c.response }) +
           `<div class="actions wiz-check-actions">${action}</div>` +
           `<div aria-live="polite">${msg}<p class="feedback feedback-info" data-empty hidden>Type or choose an answer first.</p></div></div>`;
@@ -465,7 +497,18 @@
           `<div class="wiz-menu"><a class="btn btn-ghost" href="#menu">Lesson Menu</a></div>`;
         const qEl = main.querySelector('.wiz-check .q[data-qkey]');
         if (phase === 'example') bindDemo(step);
-        else if (c.solved || c.revealed || c.retry) qEl.querySelectorAll('input, select, button').forEach((x) => { x.disabled = true; });
+        else if (c.q.type === 'rline') {
+          Q.bind(qEl, c.q, (r) => {
+            c.response = r;
+            if (r.complete && !W.done[step.id]) {
+              // Completion is earned once and kept (Start Over clears answers, never completion).
+              c.solved = true; W.done[step.id] = true; save(); draw();
+              const t = main.querySelector('.rl-task'); if (t) t.focus();
+              return;
+            }
+            save();
+          });
+        } else if (c.solved || c.revealed || c.retry) qEl.querySelectorAll('input, select, button').forEach((x) => { x.disabled = true; });
         else Q.bind(qEl, c.q, (r) => { c.response = r; save(); });
         main.querySelectorAll('[data-wiz]').forEach((b) => b.addEventListener('click', (e) => {
           const act = b.dataset.wiz;
@@ -552,9 +595,9 @@
       main.innerHTML = ctx.hero(lessonEyebrow(), 'Practice Together', 'Work with a grown-up. Check each answer, use hints, and fix mistakes.') +
         `<section class="card activity-card"><div id="guided-runner"></div></section>` + menuNav('#practice', 'Practice choices');
       shell.guidedRunner(main.querySelector('#guided-runner'), {
-        items: L.guided, states: S.guidedStates, pos: S.guidedPos, keyPrefix: 'g', lastLabel: 'Finish',
+        items: L.guided, states: S.guidedStates, pos: S.guidedPos, keyPrefix: 'g', lastLabel: 'Finish', onChange: saveGuided,
         onLast: () => doneCard('You finished Practice Together!', `<button type="button" class="btn btn-primary" id="together-again">Practice together again</button><a class="btn btn-ghost" href="#practice/own">Go to On My Own</a>`, () => {
-          main.querySelector('#together-again').addEventListener('click', () => { S.guidedStates = {}; S.guidedPos.i = 0; togetherView(); });
+          main.querySelector('#together-again').addEventListener('click', () => { S.guidedStates = {}; S.guidedPos.i = 0; saveGuided(); togetherView(); });
         })
       });
     }
@@ -686,7 +729,7 @@
         const fb = Q.grade(q, r)
           ? `<div class="feedback feedback-ok"><p><b>✓ Correct.</b> ${esc(q.explanation)}</p></div>`
           : `<div class="feedback feedback-no"><p><b>✗ Your answer:</b> ${esc(Q.describe(q, r))}</p><p><b>Correct answer:</b> ${esc(Q.correctText(q))}</p><p><b>Why:</b> ${esc(q.explanation)}</p></div>`;
-        return `<li class="q-item is-checked">${Q.render(q, 'p-' + q.id, { number: i + 1, response: r })}${fb}</li>`;
+        return `<li class="q-item is-checked">${Q.render(q, 'p-' + q.id, { number: i + 1, response: r, review: true })}${fb}</li>`;
       }).join('') + `</ol>` +
         `<div class="actions">` +
         (missesLeft ? `<button type="button" class="btn btn-primary" id="practice-misses">Practice My Misses (${missesLeft})</button>` : '') +
@@ -943,10 +986,8 @@
     }
 
     function cleared() {
-      S.bank = {};
-      S.openSet = null;
-      S.view = null;
-      S.unsaved = null;
+      if (!store.get('attempts', null)) forgetProgress(); // a confirmed reset (Cancel leaves the attempts in place)
+      else { S.bank = store.get('bank-sets', {}); S.view = null; S.unsaved = null; }
       resultsView();
     }
 

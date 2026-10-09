@@ -126,6 +126,8 @@ export const FILL_HELPERS = `
       case 'letter': return q.answer === 'z' ? 'q' : 'z';
       case 'chart': return q.answer === 9999 ? ['1','1','1','1'] : ['9','9','9','9'];
       case 'build': return q.answer === 1000 ? [2,0,0,0] : [1,0,0,0];
+      // rline: the lower end wrong, back at the first part.
+      case 'rline': return Object.assign(Q.emptyResponse(q), Q.correctResponse(q), { lo: pv.fmt(pv.roundEnds(q.n, q.place).lo + q.place), stage: 0, ok: {}, complete: false });
       // parts: the first part wrong, the rest right.
       case 'parts': return q.parts.map((p, i) => { const ok = Q.correctResponse(q)[i]; if (i) return ok;
         if (p.kind === 'num') return String(p.answer + 1);
@@ -140,6 +142,7 @@ export const FILL_HELPERS = `
     if (q.type === 'mc') { const i = Array.from(el.querySelectorAll('input[type=radio]')).find((x) => x.value === r); i.click(); }
     else if (q.type === 'select') { const s = el.querySelector('select'); s.value = r; fire(s, 'change'); }
     else if (q.type === 'chart') el.querySelectorAll('.q-chart input').forEach((i, k) => { i.value = r[k]; fire(i, 'input'); });
+    else if (q.type === 'rline') el.mbSetResponse(r);
     else if (q.type === 'parts') q.parts.forEach((p, i) => {
       if (p.kind === 'num' || p.kind === 'round') { const inp = el.querySelector('.part-input[data-part="' + i + '"]'); inp.value = r[i]; fire(inp, 'input'); return; }
       el.querySelectorAll('fieldset[data-part="' + i + '"] input').forEach((x) => { const want = Array.isArray(r[i]) ? r[i].includes(x.value) : x.value === r[i]; if (x.checked !== want) x.click(); });

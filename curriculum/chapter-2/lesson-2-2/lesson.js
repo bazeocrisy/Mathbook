@@ -20,8 +20,8 @@
     const { lo, hi, mid } = roundEnds(n, place);
     const r = roundTo(n, place);
     if (n % place === 0) return `${fmt(n)} is already a multiple of ${place}, so to the nearest ${word(place)} it stays ${fmt(n)}.`;
-    const side = n === mid ? 'exactly halfway, and a number exactly halfway rounds up'
-      : n > mid ? `past halfway, so it is closer to ${fmt(hi)}` : `before halfway, so it is closer to ${fmt(lo)}`;
+    if (n === mid) return `${fmt(n)} is between ${fmt(lo)} and ${fmt(hi)}, exactly halfway. Both are equally close, so we use the rule: round up to the higher ${word(place)}. ${fmt(n)} rounds to ${fmt(r)}.`;
+    const side = n > mid ? `past halfway, so it is closer to ${fmt(hi)}` : `before halfway, so it is closer to ${fmt(lo)}`;
     return `${fmt(n)} is between ${fmt(lo)} and ${fmt(hi)}. Halfway is ${fmt(mid)}. ${fmt(n)} is ${side}. ${fmt(n)} rounds to ${fmt(r)}.`;
   }
 
@@ -40,20 +40,15 @@
 
   // ---------- Question builders ----------
 
-  /** Number line: the child names both ends, the halfway point, and the rounded number (the method, not just the answer). */
+  /**
+   * Number line: one line, one small part at a time — the two tens/hundreds, halfway, then which one it rounds to.
+   * Checks the method, not just the answer. Hints and feedback for each part come from the "rline" question type.
+   */
   function lineQ(n, place, id) {
-    const { lo, hi, mid } = roundEnds(n, place);
-    const w = word(place);
     return {
-      id, type: 'parts', skill: place === 10 ? 'line10' : 'line100',
-      prompt: `Round ${fmt(n)} to the nearest ${w}. Fill in the number line.`, display: fmt(n), line: { place },
-      parts: [
-        { kind: 'num', label: `Lower ${w}:`, answer: lo },
-        { kind: 'num', label: 'Halfway:', answer: mid },
-        { kind: 'num', label: `Upper ${w}:`, answer: hi },
-        { kind: 'num', label: `${fmt(n)} rounded to the nearest ${w}:`, answer: roundTo(n, place) }
-      ],
-      hint: `Which two ${w}s is ${fmt(n)} between? Halfway is in the middle of them. Is ${fmt(n)} before or after halfway?`,
+      id, type: 'rline', n, place, skill: place === 10 ? 'line10' : 'line100',
+      prompt: `Round ${fmt(n)} to the nearest ${word(place)}.`,
+      hint: `Which two ${word(place)}s is ${fmt(n)} between? Then find halfway.`,
       explanation: why(n, place)
     };
   }
@@ -92,24 +87,28 @@
   const steps = [
     {
       id: 'tens-line', kind: 'slides', title: 'Nearest ten on a number line',
-      explain: 'Find the two tens on either side of the number. Find halfway. The number rounds to the ten it is closer to.',
+      explain: 'Find the two tens. Find halfway. Then see which ten is closer.',
       slides: [
-        say('<b>127</b> is between two tens: <b>120</b> and <b>130</b>.') + roundLineHTML(127, 10, 'ends'),
-        say('Halfway between 120 and 130 is <b>125</b>.') + roundLineHTML(127, 10, 'mid'),
-        say('127 is past halfway, so it is closer to 130. <b>127 rounds to 130.</b>') + roundLineHTML(127, 10, 'all')
+        say('What two tens is 127 between? <b>120</b> and <b>130</b>.') + roundLineHTML(127, 10, 'ends'),
+        say('What number is halfway? <b>125</b>.') + roundLineHTML(127, 10, 'mid'),
+        say('Put 127 on the line. Which ten is closer? <b>130</b>.') + roundLineHTML(127, 10, 'point'),
+        say('<b>127 is closer to 130, so it rounds to 130.</b>') + roundLineHTML(127, 10, 'all')
       ],
-      check(r) { return lineQ(randomNot(r, 101, 989, (n) => n % 10 !== 0), 10, 'learn-1'); }
+      check(r) { return lineQ(randomNot(r, 101, 989, (n) => n % 10 !== 0), 10, 'learn-1'); },
+      staged: true
     },
     {
       id: 'hundreds-line', kind: 'slides', title: 'Nearest hundred on a number line',
-      explain: 'Now use hundreds. Find the two hundreds on either side, find halfway, and see which hundred is closer.',
+      explain: 'Now use hundreds. Find the two hundreds. Find halfway. Then see which hundred is closer.',
       slides: [
-        say('<b>127</b> is between two hundreds: <b>100</b> and <b>200</b>.') + roundLineHTML(127, 100, 'ends'),
-        say('Halfway between 100 and 200 is <b>150</b>.') + roundLineHTML(127, 100, 'mid'),
-        say('127 is before halfway, so it is closer to 100. <b>127 rounds to 100.</b>') + roundLineHTML(127, 100, 'all')
+        say('What two hundreds is 127 between? <b>100</b> and <b>200</b>.') + roundLineHTML(127, 100, 'ends'),
+        say('What number is halfway? <b>150</b>.') + roundLineHTML(127, 100, 'mid'),
+        say('Put 127 on the line. Which hundred is closer? <b>100</b>.') + roundLineHTML(127, 100, 'point'),
+        say('<b>127 is closer to 100, so it rounds to 100.</b>') + roundLineHTML(127, 100, 'all')
       ],
       // Your Turn: a number past the halfway point (it rounds up).
-      check(r) { return lineQ(randomNot(r, 151, 999, (n) => n % 100 > 50), 100, 'learn-2'); }
+      check(r) { return lineQ(randomNot(r, 151, 999, (n) => n % 100 > 50), 100, 'learn-2'); },
+      staged: true
     },
     {
       id: 'place-value', kind: 'slides', title: 'Use place value',
@@ -240,37 +239,32 @@
     };
   }
   function explain100Q(id, n, seed) {
-    const { lo, hi, mid } = roundEnds(n, 100);
-    const r = roundTo(n, 100);
-    const right = n >= mid ? `${fmt(n)} is more than the halfway point, ${fmt(mid)}, so it is closer to ${fmt(hi)}.` : `${fmt(n)} is less than the halfway point, ${fmt(mid)}, so it is closer to ${fmt(lo)}.`;
-    const flip = n >= mid ? `${fmt(n)} is less than the halfway point, ${fmt(mid)}, so it is closer to ${fmt(lo)}.` : `${fmt(n)} is more than the halfway point, ${fmt(mid)}, so it is closer to ${fmt(hi)}.`;
+    const { mid } = roundEnds(n, 100);
+    const up = n >= mid;
+    const right = up ? 'It is past the halfway mark, so it is closer to the upper hundred.' : 'It is before the halfway mark, so it is closer to the lower hundred.';
+    const flip = up ? 'It is before the halfway mark, so it is closer to the lower hundred.' : 'It is past the halfway mark, so it is closer to the upper hundred.';
     const d = n % 10;
     return {
-      id, type: 'parts', skill: 'explain100', prompt: `${fmt(n)} rounded to the nearest hundred is ${fmt(r)}. Show why.`, display: fmt(n), line: { place: 100 },
-      parts: [
-        { kind: 'num', label: 'Lower hundred:', answer: lo },
-        { kind: 'num', label: 'Halfway:', answer: mid },
-        { kind: 'num', label: 'Upper hundred:', answer: hi },
-        { kind: 'choice', label: `Why does ${fmt(n)} round to ${fmt(r)}?`, answer: right, choices: fixedOrder(seed, [right, flip,
-          `The ones digit is ${d}, so it rounds ${d >= 5 ? 'up' : 'down'}.`, `Numbers always round ${r === hi ? 'down' : 'up'} to the ${r === hi ? 'lower' : 'next'} hundred.`]) }
-      ],
+      id, type: 'rline', n, place: 100, skill: 'explain100', prompt: `Round ${fmt(n)} to the nearest hundred, then explain why.`,
+      why: { label: `Why does ${fmt(n)} round that way?`, answer: right, choices: fixedOrder(seed, [right, flip,
+        `The ones digit is ${d}, so it rounds ${d >= 5 ? 'up' : 'down'}.`, `Numbers always round ${up ? 'down' : 'up'}.`]) },
       hint: 'Find the two hundreds and the halfway point. Is the number before or after halfway?',
       explanation: why(n, 100)
     };
   }
   function halfwayQ(id, who, n, place, seed) {
     const up = n + place / 2, down = n - place / 2;
-    const right = `No. A number exactly halfway rounds up, so ${fmt(n)} rounds to ${fmt(up)}.`;
+    const right = `No. A number exactly halfway rounds up to the higher ${word(place)}.`;
     return {
       id, type: 'parts', skill: 'halfway',
       prompt: `${who} says ${fmt(n)} rounded to the nearest ${word(place)} is ${fmt(down)}, because ${fmt(n)} is exactly halfway.`,
       parts: [
         { kind: 'choice', label: `Is ${who} right?`, answer: right, choices: fixedOrder(seed, [right, 'Yes. Numbers exactly halfway round down.',
-          `Yes. ${fmt(n)} is closer to ${fmt(down)} than to ${fmt(up)}.`, `No. ${fmt(n)} rounds to ${fmt(roundTo(n, place * 10))}.`]) },
+          'Yes. The smaller number is always the answer.', `No. ${fmt(n)} rounds to the next ${place === 10 ? 'hundred' : 'thousand'}.`]) },
         { kind: 'num', label: 'The correct answer:', answer: up }
       ],
       hint: `${fmt(n)} is exactly halfway between ${fmt(down)} and ${fmt(up)}. Which way do halfway numbers round?`,
-      explanation: `${fmt(n)} is exactly halfway between ${fmt(down)} and ${fmt(up)}. A number exactly halfway rounds up, so ${fmt(n)} rounds to ${fmt(up)}.`
+      explanation: `${fmt(n)} is exactly halfway between ${fmt(down)} and ${fmt(up)}, so both are equally close. The rule is to round up to the higher ${word(place)}: ${fmt(up)}.`
     };
   }
   function selectQ(id, target, unit, list) {
@@ -287,11 +281,10 @@
     const exact = prices.reduce((s, p) => s + p, 0);
     const enough = exact <= have;
     const left = have - exact;
-    const right = enough ? `Yes. The exact total is $${exact}, which is ${exact === have ? 'exactly' : 'less than'} $${have}.${left > 0 ? ` ${name} will have $${left} left.` : ''}`
-      : `No. The exact total is $${exact}, which is more than $${have}.`;
+    const right = enough ? `Yes. The exact total is not more than $${have}.` : `No. The exact total is more than $${have}.`;
     const wrong = enough
-      ? [`No. The estimate is $${est}, so ${name} cannot be sure.`, `Yes. The estimate is $${est}, so ${name} will have $${have - est} left.`, `No. The exact total is more than $${have}.`]
-      : [`Yes. The estimate is $${est}, which is ${est < have ? 'less than' : 'not more than'} $${have}.`, `Yes. ${name} will have $${have - est} left.`, `No. The estimate is more than $${have}.`];
+      ? [`No. An estimate can never tell us anything.`, `Yes, because the estimate is always the exact cost.`, `No. The exact total is more than $${have}.`]
+      : [`Yes. The estimate is not more than $${have}, so that proves it.`, `Yes, because the estimate is always the exact cost.`, `No. The estimate is more than $${have}.`];
     return {
       id, type: 'parts', skill: 'money',
       prompt: `${name} has $${have}. ${name} wants things that cost ${prices.map((p) => `$${p}`).join(', ').replace(/, ([^,]*)$/, ', and $1')}.`,
@@ -429,6 +422,7 @@
       apply: 'Rounding in real life'
     },
     guided: practice,
+    saveGuided: true, // Practice Together keeps its place and answers across a refresh
     bank: practice,
     bankSets: [{ id: 's1', title: 'Rounding Practice', blurb: 'All 12 practice questions: number lines, place value, reasoning, and real life.', ids: practice.map((q) => q.id) }],
     tests: {

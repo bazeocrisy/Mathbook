@@ -76,7 +76,8 @@ test('Learn: five steps, Example slides and a Your Turn check that never reuses 
   assert.deepEqual(steps.map((s) => s.id), ['tens-line', 'hundreds-line', 'place-value', 'reasoning', 'real-life']);
   assert.ok(steps.every((s) => s.kind === 'slides' && s.slides.length >= 2));
   const html = steps.map((s) => s.slides.join(' ')).join(' ');
-  for (const must of ['127 rounds to 130', '127 rounds to 100', 'Halfway between 120 and 130 is <b>125</b>', 'Halfway between 100 and 200 is <b>150</b>',
+  for (const must of ['127 is closer to 130, so it rounds to 130', '127 is closer to 100, so it rounds to 100', 'What two tens is 127 between? <b>120</b> and <b>130</b>',
+    'What number is halfway? <b>125</b>', 'What number is halfway? <b>150</b>', 'Which ten is closer? <b>130</b>',
     '896 rounds to 900', '<b>995</b> rounds to <b>1,000</b>', '<b>950</b> rounds to <b>1,000</b>', '235 through 244', '315 rounds to <b>320</b>', '$15 + $22 + $12 = <b>$49</b>', '<b>$1</b> left']) {
     assert.ok(html.includes(must), 'Learn shows: ' + must);
   }
@@ -87,11 +88,9 @@ test('Learn: five steps, Example slides and a Your Turn check that never reuses 
       assert.ok(Q.grade(q, Q.correctResponse(q)), `${q.id} seed ${seed}: correct response grades right`);
       assert.ok(!Q.grade(q, Q.emptyResponse(q)), `${q.id}: blank is wrong`);
     }
-    const n1 = Number(qs[0].display.replace(/,/g, ''));
-    assert.ok(n1 !== 127 && n1 % 10 !== 0, 'step 1 uses a new number that is not a multiple of 10');
-    assert.deepEqual(qs[0].parts.map((p) => p.answer), [pv.roundEnds(n1, 10).lo, pv.roundEnds(n1, 10).mid, pv.roundEnds(n1, 10).hi, pv.roundTo(n1, 10)]);
-    const n2 = Number(qs[1].display.replace(/,/g, ''));
-    assert.ok(n2 !== 127 && n2 % 100 > 50 && pv.roundTo(n2, 100) === pv.roundEnds(n2, 100).hi, 'step 2: upper side of halfway');
+    assert.ok(qs[0].type === 'rline' && qs[0].place === 10 && qs[0].n !== 127 && qs[0].n % 10 !== 0, 'step 1: a staged number line with a new number, not a multiple of 10');
+    assert.ok(qs[1].type === 'rline' && qs[1].place === 100 && qs[1].n !== 127 && qs[1].n % 100 > 50, 'step 2: a staged number line, upper side of halfway');
+    assert.match(Q.correctText(qs[0]), new RegExp('Between ' + pv.fmt(pv.roundEnds(qs[0].n, 10).lo) + ' and ' + pv.fmt(pv.roundEnds(qs[0].n, 10).hi) + ' · Halfway ' + pv.fmt(pv.roundEnds(qs[0].n, 10).mid)));
     assert.equal(qs[2].parts.length, 2, 'step 3 checks both places');
     assert.deepEqual(qs[3].parts.map((p) => p.kind), ['num', 'round', 'choice'], 'step 4: place, original number, halfway rule');
     assert.deepEqual(qs[4].parts.map((p) => p.kind), ['multi', 'choice'], 'step 5: select all + conclusion');
@@ -114,13 +113,14 @@ test('Practice and Test: 12 each, matching coverage, different numbers, every au
   assert.ok(T.every((q) => !q.hint && !q.parent), 'no hints on the test');
   assert.ok(P.every((q) => q.hint && q.explanation), 'practice has hints and explanations');
   // Hand-verified answers.
-  const ans = (q) => (q.type === 'parts' ? q.parts.map((p) => (p.kind === 'round' ? pv.roundRange(p.target, p.place).join('–') : p.kind === 'choice' ? p.answer.split('.')[0] : p.answer)) : q.answer);
+  const ans = (q) => (q.type === 'rline' ? [pv.roundEnds(q.n, q.place).lo, pv.roundEnds(q.n, q.place).mid, pv.roundEnds(q.n, q.place).hi, pv.roundTo(q.n, q.place)].concat(q.why ? [q.why.answer.split(',')[0]] : [])
+    : q.type === 'parts' ? q.parts.map((p) => (p.kind === 'round' ? pv.roundRange(p.target, p.place).join('–') : p.kind === 'choice' ? p.answer.split('.')[0] : p.answer)) : q.answer);
   const want = {
     p1: [360, 365, 370, 360], p2: [390, 395, 400, 400], p3: 60, p4: 490, p5: [400, 450, 500, 400], p6: [600, 650, 700, 700],
-    p7: [250, 200, 'Nearest ten looks at the ones digit (9), so it rounds up'], p8: ['375–384'], p9: [500, 550, 600, '561 is more than the halfway point, 550, so it is closer to 600'],
+    p7: [250, 200, 'Nearest ten looks at the ones digit (9), so it rounds up'], p8: ['375–384'], p9: [500, 550, 600, 600, 'It is past the halfway mark'],
     p10: ['No', 700], p11: [['251 crayons', '300 crayons', '342 crayons']], p12: [40, 49, 'No'],
     t1: [580, 585, 590, 580], t2: [290, 295, 300, 300], t3: 620, t4: 740, t5: [300, 350, 400, 300], t6: [700, 750, 800, 800],
-    t7: [350, 300, 'Nearest ten looks at the ones digit (7), so it rounds up'], t8: ['515–524'], t9: [800, 850, 900, '849 is less than the halfway point, 850, so it is closer to 800'],
+    t7: [350, 300, 'Nearest ten looks at the ones digit (7), so it rounds up'], t8: ['515–524'], t9: [800, 850, 900, 800, 'It is before the halfway mark'],
     t10: ['No', 90], t11: [['450 pages', '482 pages', '500 pages', '538 pages']], t12: [60, 57, 'Yes']
   };
   for (const q of P.concat(T)) assert.deepEqual(ans(q), want[q.id], q.id);
@@ -137,6 +137,7 @@ test('Practice and Test: 12 each, matching coverage, different numbers, every au
   for (const q of P.concat(T)) {
     assert.ok(Q.grade(q, Q.correctResponse(q)), q.id + ' correct');
     assert.ok(!Q.grade(q, Q.emptyResponse(q)), q.id + ' blank');
+    if (q.why) assert.equal(new Set(q.why.choices).size, q.why.choices.length, q.id + ' unique why choices');
     if (q.type === 'parts') q.parts.forEach((p) => { if (p.choices) assert.equal(new Set(p.choices).size, p.choices.length, q.id + ' unique choices'); if (p.kind === 'choice') assert.ok(p.choices.includes(p.answer)); });
   }
 });
@@ -149,4 +150,34 @@ test('Lesson 2-2 is separate from 2-1 and complete', () => {
   for (const q of L.guided.concat(L.tests.rounding.generate(2))) assert.ok(L.skills[q.skill], 'skill named: ' + q.skill);
   // The test is reproducible for a saved seed, and choice order varies between attempts.
   assert.deepEqual(L.tests.rounding.generate(9), L.tests.rounding.generate(9));
+});
+
+test('staged number line: grading, halfway wording, and no answers given away in choices', () => {
+  const q = { type: 'rline', n: 206, place: 10 };
+  const right = Q.correctResponse(q);
+  assert.ok(Q.grade(q, right) && Q.isAnswered(q, right));
+  assert.ok(!Q.grade(q, Object.assign({}, right, { pick: 'lo' })), 'wrong side');
+  assert.ok(!Q.grade(q, Object.assign({}, right, { mid: '' })) && !Q.isAnswered(q, Object.assign({}, right, { mid: '' })), 'blank halfway is not an answer');
+  assert.ok(Q.grade(q, Object.assign({}, right, { lo: ' 200 ', hi: '210', mid: '205' })), 'spaces are fine');
+  assert.ok(!Q.grade(q, [200, 210]) && !Q.isAnswered(q, null), 'old or missing responses are simply unanswered');
+  assert.equal(Q.rlExplain(q), '206 is closer to 210, so it rounds to 210.');
+  // Halfway: both ends are equally close; the rule rounds up. Never "closer".
+  for (const [n, place, up] of [[205, 10, '210'], [85, 10, '90'], [650, 100, '700'], [950, 100, '1,000'], [995, 10, '1,000']]) {
+    const e = Q.rlExplain({ type: 'rline', n, place });
+    assert.match(e, /equally close/); assert.doesNotMatch(e, /closer/); assert.match(e, new RegExp('rounds to ' + up));
+    assert.doesNotMatch(L._why(n, place), /closer/);
+  }
+  // Explanation choices never contain the answer to a box the child still has to fill.
+  for (const item of L.guided.concat(L.tests.rounding.generate(3))) {
+    if (item.why) {
+      const e = pv.roundEnds(item.n, item.place);
+      const given = [e.lo, e.mid, e.hi, pv.roundTo(item.n, item.place)].map(pv.fmt);
+      item.why.choices.forEach((c) => given.forEach((x) => assert.ok(!c.includes(x), `${item.id}: why-choice gives away ${x}`)));
+    }
+    if (item.type !== 'parts') continue;
+    const asked = item.parts.filter((p) => p.kind === 'num').map((p) => pv.fmt(p.answer)).filter((a) => !item.prompt.includes(a));
+    item.parts.filter((p) => p.choices).forEach((p) => p.choices.forEach((c) => asked.forEach((a) => assert.ok(!new RegExp('(^|[^\\d,])\\$?' + a.replace(',', ',') + '([^\\d,]|$)').test(c), `${item.id}: "${c}" gives away ${a}`))));
+  }
+  // Coverage is unchanged: same 12 skills in Practice and Test, with the number-line items staged.
+  assert.deepEqual(L.guided.map((x) => x.type), ['rline', 'rline', 'number', 'number', 'rline', 'rline', 'parts', 'parts', 'rline', 'parts', 'parts', 'parts']);
 });
