@@ -83,7 +83,8 @@
       vocabPos: { i: 0 },
       vocabStates: {},
       vocabItems: L.vocabPractice(shell.newSeed()),
-      indep: store.get('practice', null),
+      bank: store.get('bank-sets', {}),
+      openSet: store.get('bank-open', null),
       activeTest: null,
       pendingStart: null,
       view: null,
@@ -300,10 +301,6 @@
 
     // ===== 3. Practice It =====
     function practiceView() {
-      const skillCounts = {};
-      L.bank.forEach((q) => { skillCounts[q.skill] = (skillCounts[q.skill] || 0) + 1; });
-      const skill = S.indep ? S.indep.skill : 'all';
-
       main.innerHTML =
         ctx.hero(eyebrow('practice'), 'Practice It', 'Warm up with vocabulary, solve problems together, then your student works alone.', [
           { id: 'vocab-practice', label: 'A · Vocabulary practice' }, { id: 'guided', label: 'B · Guided practice' }, { id: 'independent', label: 'C · Independent practice' }]) +
@@ -314,12 +311,9 @@
         `<section class="card" id="guided">${head('B', 'Guided practice', 'together')}` +
         `<p class="muted">Solve these together. Use hints, check answers, fix mistakes, and talk about why.</p>` +
         `<div id="guided-runner"></div></section>` +
-        `<section class="card" id="independent">${head('C', 'Independent practice', 'student')}` +
-        `<p class="muted">The practice bank has ${L.bank.length} questions. Each set picks ${SET_SIZE}. Your student answers every question, then checks the work. No hints until then.</p>` +
-        `<div class="indep-controls"><label>Skill <select id="skill-filter">` +
-        `<option value="all">All skills (${L.bank.length})</option>` +
-        Object.keys(skillCounts).map((k) => `<option value="${k}"${k === skill ? ' selected' : ''}>${esc(L.skills[k])} (${skillCounts[k]})</option>`).join('') +
-        `</select></label><button type="button" class="btn btn-primary" id="new-set">Start a new set</button></div>` +
+        `<section class="card" id="independent">${head('C', `Independent practice: ${L.bankSets.length} sets of ${SET_SIZE}`, 'student')}` +
+        `<p class="muted">The ${L.bank.length} practice questions are in ${L.bankSets.length} sets, in teaching order. Choose any set. Your student answers every question, then checks the work. No hints until then.</p>` +
+        `<div class="set-grid" id="set-grid"></div>` +
         `<div id="indep"></div></section>` +
         ctx.navButtons('practice');
 
@@ -338,42 +332,110 @@
         items: L.guided, states: S.guidedStates, pos: S.guidedPos, keyPrefix: 'g',
         lastLabel: 'Go to independent practice ↓', onLast: () => main.querySelector('#independent').scrollIntoView({ block: 'start' })
       });
-      main.querySelector('#new-set').addEventListener('click', () => newSet(main.querySelector('#skill-filter').value));
-      drawIndep();
+      drawSets();
     }
 
-    /** A fresh set of practice questions, avoiding the previous set's questions when the pool allows. */
-    function makeSet(skill) {
-      const pool = L.bank.filter((q) => skill === 'all' || q.skill === skill);
-      const last = new Set(S.indep ? S.indep.ids : []);
-      const r = pv.rng(shell.newSeed());
-      const ordered = pv.shuffle(r, pool).sort((a, b) => Number(last.has(a.id)) - Number(last.has(b.id)));
-      S.indep = { skill, ids: ordered.slice(0, SET_SIZE).map((q) => q.id), responses: {}, checked: false };
-      store.set('practice', S.indep);
+    // ----- Practice bank: five sets of 10 and "Practice My Misses" -----
+    // Saved as 'bank-sets': { [setId]: { attempts: [], retries: [], active } } — attempts and retries are never edited after checking.
+    const bankQ = (id) => L.bank.find((q) => q.id === id);
+    const setOf = (id) => L.bankSets.find((s) => s.id === id);
+    const setState = (id) => S.bank[id] || (S.bank[id] = { attempts: [], retries: [], active: null });
+    const saveBank = () => { store.set('bank-sets', S.bank); store.set('bank-open', S.openSet); };
+
+    /** Start a new attempt at a whole set, in a new random order (each question once). */
+    function startSet(id) {
+      const st = setState(id);
+      st.active = { kind: 'set', order: pv.shuffle(pv.rng(shell.newSeed()), setOf(id).ids), responses: {}, checked: false, started: new Date().toISOString() };
+      S.openSet = id;
+      saveBank();
     }
 
-    function newSet(skill) {
-      makeSet(skill);
+    /** Retry only the questions missed in the checked attempt (or checked retry) — fresh, unanswered, no answers shown. */
+    function startMisses(id) {
+      const st = setState(id);
+      const a = st.active;
+      const missed = a.order.filter((qid) => !Q.grade(bankQ(qid), a.responses[qid]));
+      st.active = { kind: 'retry', order: pv.shuffle(pv.rng(shell.newSeed()), missed), responses: {}, checked: false,
+        parentId: a.kind === 'set' ? a.attemptId : a.parentId, started: new Date().toISOString() };
+      saveBank();
+    }
+
+    /** Which original misses have since been answered correctly in a "Practice My Misses" retry. */
+    function improvement(st, attempt) {
+      const missed = attempt.order.filter((qid, i) => !attempt.correct[i]);
+      const fixed = new Set();
+      st.retries.filter((r) => r.parentId === attempt.id).forEach((r) => r.order.forEach((qid, i) => { if (r.correct[i]) fixed.add(qid); }));
+      return { missed: missed.length, fixed: missed.filter((qid) => fixed.has(qid)).length };
+    }
+
+    function drawSets() {
+      const grid = main.querySelector('#set-grid');
+      grid.innerHTML = L.bankSets.map((set, n) => {
+        const st = setState(set.id);
+        const last = st.attempts[st.attempts.length - 1];
+        const best = st.attempts.reduce((m, a) => Math.max(m, a.score), 0);
+        const inProgress = st.active && !st.active.checked;
+        const status = inProgress
+          ? `<span class="badge-m m-review">In progress</span>`
+          : last ? `<span class="badge-m m-mastered">Completed</span>` : `<span class="badge-m set-new">Not started</span>`;
+        let scores = '';
+        if (last) {
+          const imp = improvement(st, last);
+          scores = `<p class="set-scores">Last score <b>${last.score}/${last.total}</b> · Best <b>${best}/${last.total}</b>` +
+            (imp.missed && st.retries.some((r) => r.parentId === last.id) ? ` · Misses fixed <b>${imp.fixed} of ${imp.missed}</b>` : '') + `</p>`;
+        }
+        const label = inProgress ? 'Continue' : last ? 'Practice this set again' : 'Start set';
+        return `<div class="set-card${S.openSet === set.id ? ' is-open' : ''}"><p class="eyebrow-dark">Set ${n + 1}</p><h3>${esc(set.title)}</h3><p>${esc(set.blurb)}</p>` +
+          `<p class="set-status">${status}</p>${scores}` +
+          `<button type="button" class="btn ${inProgress ? 'btn-primary' : 'btn-ghost'}" data-open-set="${set.id}" aria-label="${label}: Set ${n + 1}, ${esc(set.title)}">${label}</button></div>`;
+      }).join('');
+      grid.querySelectorAll('[data-open-set]').forEach((b) => b.addEventListener('click', () => {
+        const id = b.dataset.openSet;
+        const st = setState(id);
+        if (!st.active || st.active.checked) startSet(id); else { S.openSet = id; saveBank(); }
+        drawSets();
+        drawIndep();
+        main.querySelector('#indep').scrollIntoView({ block: 'start' });
+        const first = main.querySelector('#indep .q input, #indep .q select, #indep .q button');
+        if (first) first.focus({ preventScroll: true });
+      }));
       drawIndep();
-      const first = main.querySelector('#indep .q input, #indep .q select, #indep .q button');
-      if (first) first.focus();
     }
 
     function drawIndep() {
       const box = main.querySelector('#indep');
-      if (!S.indep || !S.indep.ids.length) {
-        box.innerHTML = `<p class="empty">Choose a skill (or all skills) and press <b>Start a new set</b>.</p>`;
+      const set = S.openSet && setOf(S.openSet);
+      const st = set && setState(set.id);
+      const A = st && st.active;
+      if (!A) {
+        box.innerHTML = `<p class="empty">Choose a set above to begin.</p>`;
         return;
       }
-      const qs = S.indep.ids.map((id) => L.bank.find((q) => q.id === id)).filter(Boolean);
-      const checked = S.indep.checked;
+      const n = L.bankSets.indexOf(set) + 1;
+      const qs = A.order.map(bankQ);
+      const checked = A.checked;
+      const isRetry = A.kind === 'retry';
+      const parent = isRetry ? st.attempts.find((a) => a.id === A.parentId) : null;
+      const attemptNo = isRetry ? null : (checked ? st.attempts.findIndex((a) => a.id === A.attemptId) + 1 : st.attempts.length + 1);
+      let title = isRetry ? `Set ${n} · ${esc(set.title)} — Practice My Misses (${plural(qs.length, 'question')})` : `Set ${n} · ${esc(set.title)} — attempt ${attemptNo}`;
+      let intro = isRetry
+        ? `<p class="parent-tip"><b>On your own:</b> these are the questions missed before. Answer them again without help. Explanations appear after you check.</p>`
+        : '';
       let score = '';
       if (checked) {
-        const right = qs.filter((q) => Q.grade(q, S.indep.responses[q.id])).length;
-        score = `<div class="set-score" role="status"><b>${right} of ${qs.length} correct.</b> Read the explanations together for any ✗, then start a new set.</div>`;
+        const right = qs.filter((q) => Q.grade(q, A.responses[q.id])).length;
+        if (isRetry && parent) {
+          const imp = improvement(st, parent);
+          score = `<div class="set-score" role="status"><b>Practice My Misses: ${right} of ${qs.length} now correct.</b> ` +
+            `The original attempt stays ${parent.score}/${parent.total}. Misses fixed so far: ${imp.fixed} of ${imp.missed}.</div>`;
+        } else {
+          score = `<div class="set-score" role="status"><b>${right} of ${qs.length} correct.</b> ` +
+            (right < qs.length ? 'Read the explanations together for any ✗, then press Practice My Misses.' : 'Every question correct!') + `</div>`;
+        }
       }
-      box.innerHTML = score + `<ol class="q-list">` + qs.map((q, i) => {
-        const r = S.indep.responses[q.id];
+      const missesLeft = checked ? qs.filter((q) => !Q.grade(q, A.responses[q.id])).length : 0;
+      box.innerHTML = `<h3 class="set-title" tabindex="-1">${title}</h3>${intro}${score}<ol class="q-list">` + qs.map((q, i) => {
+        const r = A.responses[q.id];
         let fb = '';
         if (checked) {
           fb = Q.grade(q, r)
@@ -383,17 +445,24 @@
         return `<li class="q-item${checked ? ' is-checked' : ''}">${Q.render(q, 'p-' + q.id, { number: i + 1, response: r })}${fb}</li>`;
       }).join('') + `</ol>` +
         `<div class="error-box" role="alert" hidden></div>` +
-        (checked ? '' : `<div class="actions"><button type="button" class="btn btn-primary" id="check-set">Check my work</button></div>`);
+        `<div class="actions">` +
+        (checked
+          ? (missesLeft ? `<button type="button" class="btn btn-primary" id="practice-misses">Practice My Misses (${missesLeft})</button>` : '') +
+            `<button type="button" class="btn ${missesLeft ? 'btn-ghost' : 'btn-primary'}" id="set-again">Practice this set again</button>` +
+            `<button type="button" class="btn btn-ghost" id="choose-set">Choose another set ↑</button>`
+          : `<button type="button" class="btn btn-primary" id="check-set">Check my work</button>`) +
+        `</div>`;
 
       box.querySelectorAll('.q[data-qkey]').forEach((el, i) => {
         const q = qs[i];
         if (checked) { el.querySelectorAll('input, select, button').forEach((c) => { c.disabled = true; }); return; }
-        Q.bind(el, q, (r) => { S.indep.responses[q.id] = r; store.set('practice', S.indep); });
+        Q.bind(el, q, (r) => { A.responses[q.id] = r; saveBank(); });
       });
+      const focusTitle = () => { box.scrollIntoView({ block: 'start' }); box.querySelector('.set-title').focus({ preventScroll: true }); };
       const btn = box.querySelector('#check-set');
       if (btn) btn.addEventListener('click', () => {
-        box.querySelectorAll('.q[data-qkey]').forEach((el, i) => { S.indep.responses[qs[i].id] = Q.read(el, qs[i]); });
-        const missing = qs.map((q, i) => (Q.isAnswered(q, S.indep.responses[q.id]) ? null : i + 1)).filter(Boolean);
+        box.querySelectorAll('.q[data-qkey]').forEach((el, i) => { A.responses[qs[i].id] = Q.read(el, qs[i]); });
+        const missing = qs.map((q, i) => (Q.isAnswered(q, A.responses[q.id]) ? null : i + 1)).filter(Boolean);
         const err = box.querySelector('.error-box');
         if (missing.length) {
           err.hidden = false;
@@ -404,11 +473,21 @@
           if (c) c.focus({ preventScroll: true });
           return;
         }
-        S.indep.checked = true;
-        store.set('practice', S.indep);
-        drawIndep();
-        box.scrollIntoView({ block: 'start' });
+        const correct = qs.map((q) => Q.grade(q, A.responses[q.id]));
+        const record = { id: Date.now(), date: new Date().toISOString(), order: A.order.slice(), responses: Object.assign({}, A.responses),
+          correct, score: correct.filter(Boolean).length, total: qs.length };
+        if (isRetry) { record.parentId = A.parentId; st.retries.push(record); A.retryId = record.id; } else { st.attempts.push(record); A.attemptId = record.id; }
+        A.checked = true;
+        saveBank();
+        drawSets();
+        focusTitle();
       });
+      const pm = box.querySelector('#practice-misses');
+      if (pm) pm.addEventListener('click', () => { startMisses(set.id); drawSets(); focusTitle(); });
+      const again = box.querySelector('#set-again');
+      if (again) again.addEventListener('click', () => { startSet(set.id); drawSets(); focusTitle(); });
+      const choose = box.querySelector('#choose-set');
+      if (choose) choose.addEventListener('click', () => main.querySelector('#set-grid').scrollIntoView({ block: 'start' }));
     }
 
     // ===== 4. Test It =====
@@ -519,7 +598,7 @@
       const skillHTML = skills.length
         ? `<ul class="skill-list">` + skills.map((s) => {
           const action = bankSkills.has(s)
-            ? `<button type="button" class="btn btn-small" data-practice="${s}">Practice this skill</button>`
+            ? `<button type="button" class="btn btn-small" data-practice="${s}">Practice this skill (Set ${L.bankSets.indexOf(setOf(bestSetFor(s))) + 1})</button>`
             : `<button type="button" class="btn btn-small" data-vocab="1">Vocabulary practice</button>`;
           return `<li><span>${esc(L.skills[s] || s)}</span>${action}</li>`;
         }).join('') + `</ul>`
@@ -563,7 +642,9 @@
         main.querySelector('#detail').scrollIntoView({ block: 'start' });
       }));
       main.querySelectorAll('[data-practice]').forEach((b) => b.addEventListener('click', () => {
-        makeSet(b.dataset.practice);
+        const id = bestSetFor(b.dataset.practice);
+        const st = setState(id);
+        if (!st.active || st.active.checked) startSet(id); else { S.openSet = id; saveBank(); }
         ctx.go('practice', 'independent');
       }));
       main.querySelectorAll('[data-vocab]').forEach((b) => b.addEventListener('click', () => ctx.go('practice', 'vocab-practice')));
@@ -574,8 +655,20 @@
       shell.bindClear(main, store, 'results, practice, and unfinished tests for this lesson', cleared);
     }
 
+    /** The set with the most practice questions for a skill (for "Practice this skill" on Results). */
+    function bestSetFor(skill) {
+      let best = L.bankSets[0];
+      let most = -1;
+      L.bankSets.forEach((set) => {
+        const n = set.ids.filter((id) => bankQ(id).skill === skill).length;
+        if (n > most) { most = n; best = set; }
+      });
+      return best.id;
+    }
+
     function cleared() {
-      S.indep = null;
+      S.bank = {};
+      S.openSet = null;
       S.view = null;
       S.unsaved = null;
       resultsView();

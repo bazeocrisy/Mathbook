@@ -98,15 +98,24 @@ const STATES = [
     await b.js(`${FILL_HELPERS} const box = document.querySelector('#guided-runner') || document.querySelector('#guided-card'); fill(box.querySelector('.q[data-qkey]'), L.guided[0], false);
       box.querySelector('[data-act=check]').click(); box.querySelector('[data-act=hint]').click(); document.querySelector('#guided').scrollIntoView();`);
   }],
+  // Practice bank (Build 2.1 final): Set 2 has the widest controls (block steppers).
   ['independent-set', async () => {
     await fresh(LESSON + '#practice');
-    await b.js(`const s = document.querySelector('#skill-filter'); s.value = 'model'; document.querySelector('#new-set').click(); document.querySelector('#independent').scrollIntoView();`);
+    await b.js(`document.querySelector('[data-open-set="s2"]').click(); document.querySelector('#independent').scrollIntoView();`);
   }],
   ['independent-checked', async () => {
     await fresh(LESSON + '#practice');
-    await b.js(`${FILL_HELPERS} document.querySelector('#new-set').click(); const set = JSON.parse(localStorage.getItem(L.storageKey + ':practice'));
-      const els = document.querySelectorAll('#indep .q[data-qkey]'); set.ids.forEach((id, i) => fill(els[i], L.bank.find((q) => q.id === id), i % 3 !== 0));
+    await b.js(`${FILL_HELPERS} document.querySelector('[data-open-set="s2"]').click();
+      const els = Array.from(document.querySelectorAll('#indep .q[data-qkey]'));
+      els.forEach((el, i) => fill(el, L.bank.find((q) => q.id === el.dataset.qkey.replace('p-', '')), i % 3 !== 0));
       document.querySelector('#check-set').click();`);
+  }],
+  ['practice-my-misses', async () => {
+    await fresh(LESSON + '#practice');
+    await b.js(`${FILL_HELPERS} document.querySelector('[data-open-set="s2"]').click();
+      const els = Array.from(document.querySelectorAll('#indep .q[data-qkey]'));
+      els.forEach((el, i) => fill(el, L.bank.find((q) => q.id === el.dataset.qkey.replace('p-', '')), i % 3 !== 0));
+      document.querySelector('#check-set').click(); document.querySelector('#practice-misses').click();`);
   }],
   ['test-chooser', async () => fresh(LESSON + '#test')],
   ['vocab-test-running', async () => { await fresh(LESSON + '#test'); await b.js(`document.querySelector('[data-start="vocab"]').click();`); await b.wait(200); }],
@@ -238,7 +247,7 @@ t('T05', 'During a test the stage tabs are hidden (lesson content not one click 
 await b.hash('#see'); await b.hash('#test');
 const back2 = await b.js(`return { showsRunner: !!document.querySelector('#test-form'), title: document.querySelector('h1').innerText, canStartMath: !!document.querySelector('[data-start="math"]') }`);
 t('T06', 'Return to Test It after leaving mid-test: can choose either test', back2.canStartMath, back2);
-await b.js('location.reload()'); await b.wait(700);
+await b.reload();
 const afterReload = await b.js(`const b = document.querySelector('[data-start="vocab"]'); return { label: b && b.innerText, answered: JSON.parse(localStorage.getItem(Mathbook.lessons['2-1'].storageKey + ':draft-vocab')).responses };`);
 t('T07', 'Refresh with unfinished test → Resume offered, answers kept', /Resume/.test(afterReload.label || '') && Object.keys(afterReload.answered).length >= 2, { label: afterReload.label, saved: Object.keys(afterReload.answered).length });
 await b.js(`document.querySelector('[data-start="vocab"]').click()`); await b.wait(200);
@@ -268,7 +277,7 @@ if (hasNW) {
   t('N02', 'Spelling test shows no hints and none of the tested words', nwLeak.leaked.length === 0 && nwLeak.hints === 0, nwLeak);
   await b.load(O + LESSON + '#test');
   await b.js(`document.querySelector('[data-start="math"]').click();`); await b.wait(200);
-  await b.js('location.reload()'); await b.wait(700);
+  await b.reload();
   const x = await b.js(`return { lesson: /Resume/.test(document.querySelector('[data-start="math"]').innerText), nw: !!localStorage.getItem('mathbook:v2:number-words:phase-1:draft') };`);
   t('X01', 'Unfinished Lesson 2-1 and Number Words tests coexist', x.lesson && x.nw, x);
 }

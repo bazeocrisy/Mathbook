@@ -7,8 +7,8 @@
 
 | Kind of evidence | What it covers |
 |---|---|
-| **Measured** — `npm run audit` (`tests/audit.mjs`) | 16 screen-states × 9 viewports = **144 screen-states** (the 8 required sizes + 640×360 = 200% page zoom); keyboard focus on 7 screens; root text doubled on 16 states; reduced motion; 18 state-transition / leakage checks |
-| **Automated tests** | 24 unit tests, 83 + 64 browser checks (headless Chrome, site served under `/Mathbook/`) |
+| **Measured** — `npm run audit` (`tests/audit.mjs`) | 17 screen-states × 9 viewports = **153 screen-states** (the 8 required sizes + 640×360 = 200% page zoom), including the practice sets and Practice My Misses; keyboard focus on 7 screens; root text doubled on 16 states; reduced motion; 18 state-transition / leakage checks |
+| **Automated tests** | 25 unit tests, 93 + 64 browser checks (headless Chrome, site served under `/Mathbook/`); browser suites run 3 times in a row with identical results |
 | **Visually inspected** | Screenshots in `docs/audit/after/` — judgments are labeled as visual |
 | **NOT verified** | Real phones/tablets (all device results are **emulated** in desktop Chrome); Safari and Firefox; a real screen reader (NVDA/VoiceOver); classroom-distance reading on a physical display |
 
@@ -18,7 +18,7 @@ One audit measure was refined after the baseline: a checkbox inside a ≥44px cl
 
 | Measure | Baseline | After |
 |---|---|---|
-| Screen-states measured | 99 | 144 |
+| Screen-states measured | 99 | 153 |
 | Horizontal overflow (states) | 3 | **0** |
 | Text spilling out of its box | 23 | **0** |
 | Touch targets < 44px | 185 | **0** |
@@ -38,21 +38,45 @@ Full tables: [`after/measurements.md`](after/measurements.md), comparison: [`aft
 
 | Suite | Command | Result |
 |---|---|---|
-| Unit — Lesson 2-1 math, grading, content (`tests/math.test.js`) | `npm test` | **14 / 14 pass** |
+| Unit — Lesson 2-1 math, grading, content, practice sets (`tests/math.test.js`) | `npm test` | **15 / 15 pass** |
 | Unit — Number Words (`tests/number-words.test.js`) | `npm test` | **10 / 10 pass** |
-| Browser — home + Lesson 2-1 | `npm run test:browser` | **83 / 83 pass** |
+| Browser — home + Lesson 2-1 | `npm run test:browser` | **93 / 93 pass** |
 | Browser — Number Words | `npm run test:browser` | **64 / 64 pass** |
-| **Total** | | **171 / 171 pass, 0 fail** |
+| **Total** | | **182 / 182 pass, 0 fail** |
 
-(Added after the owner's feature review: practice-bank refresh persistence before/after checking, navigation, "new set" freshness; Number Words write-from-memory persistence and wrong-then-right retry.)
+The two browser suites were run three times in a row with identical results (93/93 and 64/64 each time).
 
-## Owner feature review: confirmed findings (not defects in the assigned scope)
+## Owner feature review and approved changes
 
-| ID | Finding | Evidence | Severity / status |
+| ID | Finding (feature review) | Owner decision | Status |
 |---|---|---|---|
-| F-01 | The 50-question bank is **not** organized as five fixed sets of 10. Each set is 10 questions drawn at random from all 50 (or from one skill via the Skill filter), avoiding the previous set's questions. | Code (`makeSet`), browser check "Start a new set gives 10 new questions" | Medium — design choice from Build 1; change only if requested |
-| F-02 | There is **no "retry missed questions"** button for the practice bank. A checked set shows each mistake with the correct answer and explanation; to practice again, the student starts a new set (optionally filtered to the skill). Missed *test* questions do link to "Practice this skill". | Browser finding: no retry control present | Medium — feature gap; not built in this build (scope) |
-| F-03 | A Number Words **practice round** in progress is not saved across a refresh (a new round starts). Say ticks, write-from-memory progress, test drafts, and results are saved. | Code (`S.practice` is in memory); persistence checks for the others | Low |
+| F-01 | The bank was 10 random questions per set, not five fixed sets | Approved: organize into five labeled sets | **Done** — see below |
+| F-02 | No "retry missed questions" for the practice bank | Approved: add **Practice My Misses** | **Done** — see below |
+| F-03 | A Number Words practice round in progress restarts after a refresh (Say ticks, write-from-memory progress, test drafts, and results are saved) | Number Words to stay unchanged | Open, Low — unchanged by request |
+
+### Practice bank: five sets of 10 (F-01)
+
+| Set | Title | Questions (bank ids never changed) | Skills taught |
+|---|---|---|---|
+| 1 | Place and Digit Value | 7 digit-value + 3 which-place | value of a digit; place names |
+| 2 | Base-Ten Models | 4 read-the-blocks + 2 build-with-blocks + 3 place-value charts + "why does 5,012 have no hundreds" | block models; charts; zero placeholder |
+| 3 | Standard Form | 5 expanded→standard + 3 words→standard + 2 which-digit | standard form |
+| 4 | Expanded and Word Form | 5 write expanded + 4 choose word form + 1 type word form | expanded and word form |
+| 5 | Mixed Review and Reasoning | 4 more/less + 2 greatest/smallest + 1 which-place + 2 which-digit + 1 type word form | change one place; reasoning; mixed review |
+
+- Any set can be chosen; nothing is locked. Each attempt shows the set's 10 questions once each, in a new random order.
+- Each set card shows **Not started / In progress / Completed**, the last and best score, and how many misses have been fixed.
+- "Practice this skill" on Results opens the set with the most questions on that skill.
+- Verified: unit test (5 × 10, all 50 exactly once, titles, skills per set, grading); browser: Set 2 contents and uniqueness, must-answer-all, scores and status, new order on "Practice this set again", switching sets keeps answers, **all 5 sets answered through the UI score 10/10**.
+
+### Practice My Misses (F-02)
+
+- After a set is checked, **Practice My Misses (n)** retries only the missed questions, in a new order.
+- The retry starts **unanswered**, with no hints, no correct answers, and no explanations shown until it is checked ("On your own" note shown).
+- After checking: explanations for every question, "*k of n now correct*", and "*the original attempt stays x/10; misses fixed so far: a of b*". It can be repeated on what is still missed.
+- Original attempts are never changed; retries are stored separately and linked to their attempt.
+- Verified in the browser: only the 3 missed questions, nothing revealed before checking, refresh mid-retry keeps questions and answers, 2 of 3 then 3 of 3 fixed, original 7/10 unchanged, results and status survive refresh and navigation.
+- The test harness now waits for the browser's real load event instead of fixed delays (one intermittent failure was traced to a test timing race, not the app).
 
 Test expectations changed only where the content changed on purpose, each with a comment in the test: guided practice 5 → 7 problems; the expanded-form guided item moved from position 2 to 3; teaching script 5 → 6 steps.
 
@@ -97,11 +121,11 @@ Focus mode: while any test runs, the stage tabs are hidden; the only exits are S
 
 | Shared change | Functions at risk | Retested by |
 |---|---|---|
-| `mathbook.css` rewrite (theme, spacing, place labels) | Every screen, every viewport | 144-state audit matrix; screenshots |
-| `questions.js` (place labels, `spell`/`letter` types, visuals) | All 7 existing question types, bank, both tests, results display | Unit grading over bank + 4,000 generated tests; 40 all-correct UI attempts; independent set |
+| `mathbook.css` rewrite (theme, spacing, place labels, set cards) | Every screen, every viewport | 153-state audit matrix; screenshots |
+| `questions.js` (place labels, `spell`/`letter` types, visuals) | All 7 existing question types, bank, both tests, results display | Unit grading over bank + 4,000 generated tests; 40 all-correct UI attempts; all 5 practice sets answered through the UI |
 | `app-shell.js` (navigation, guided runner, test runner) | Stage routing, Back button, guided check/hint/retry, test submit/required/resume | T01–T12; guided + vocabulary practice; resume after refresh; Save and finish later |
-| `lesson-app.js` rebuilt on the shell | Teach/See/Practice/Test/Results | All 80 lesson browser checks |
-| `localStorage` | Saved Lesson 2-1 attempts, practice, drafts | Lesson key **unchanged** (`mathbook:v2:lesson-2-1`); attempt format unchanged (new optional `pauses`); bank ids b01–b50 unchanged; Number Words uses its own prefix; Clear removes only its own program; legacy v1 key never touched |
+| `lesson-app.js` rebuilt on the shell; practice sets + Practice My Misses | Teach/See/Practice/Test/Results; "Practice this skill" from Results | All 93 lesson browser checks |
+| `localStorage` | Saved Lesson 2-1 attempts, practice, drafts | Lesson key **unchanged** (`mathbook:v2:lesson-2-1`); attempt format unchanged (new optional `pauses`); bank ids b01–b50 unchanged; practice sets use a new sub-key `bank-sets` (the earlier `practice` sub-key is left untouched, not deleted); Number Words uses its own prefix; Clear removes only its own program; legacy v1 key never touched |
 
 ## Defect register — resolution
 
@@ -157,6 +181,9 @@ Focus mode: while any test runs, the stage tabs are hidden; the only exits are S
 | Number Words test and results | — | `after/nw-test-running__modern-phone-390x844.png`, `after/nw-results__laptop-1280x720.png`, `after/nw-results__modern-phone-390x844.png` |
 | Lesson 2-1 Math Test after regression, 390×844 | `baseline/math-test-submit-blocked__modern-phone-390x844.png` | `after/math-test-submit-blocked__modern-phone-390x844.png` |
 | Lesson 2-1 Results, 390×844 | `baseline/results__modern-phone-390x844.png` | `after/results__modern-phone-390x844.png` |
+| Practice bank: five sets, Set 2 checked, 1280×720 | — | `after/independent-checked__laptop-1280x720.png` |
+| Practice bank: set grid, 320×568 | — | `after/independent-set__small-phone-320x568.png` |
+| Practice My Misses (retry, unanswered), 390×844 | — | `after/practice-my-misses__modern-phone-390x844.png` |
 
 ## Known limitations and unverified checks
 
@@ -170,4 +197,4 @@ Focus mode: while any test runs, the stage tabs are hidden; the only exits are S
 
 **READY FOR PARENT ACCEPTANCE TESTING**
 
-All automated release-blocking checks pass (171/171), no Critical or High defects remain open, and the remaining limitations are listed above. This is not approval for full student use: real-device testing with the student, a screen-reader pass, and review of the A-07 convention decision are still outstanding.
+All automated release-blocking checks pass (182/182), no Critical or High defects remain open, and the remaining limitations are listed above. This is not approval for full student use: real-device testing with the student, a screen-reader pass, and review of the A-07 convention decision are still outstanding.

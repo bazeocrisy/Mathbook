@@ -163,6 +163,29 @@ test('practice bank: 50 valid questions covering every skill', () => {
   L.bank.forEach((q) => { checkQuestion(q, 'bank'); assert.ok(q.hint, `bank ${q.id} has a hint`); });
 });
 
+test('practice bank: five sets of 10 cover all 50 questions exactly once, in teaching order', () => {
+  assert.deepEqual(L.bankSets.map((s) => s.title), ['Place and Digit Value', 'Base-Ten Models', 'Standard Form', 'Expanded and Word Form', 'Mixed Review and Reasoning']);
+  L.bankSets.forEach((s) => {
+    assert.equal(s.ids.length, 10, s.title);
+    assert.equal(new Set(s.ids).size, 10, `${s.title}: no repeated questions`);
+    assert.ok(s.blurb.length > 10);
+  });
+  const all = L.bankSets.flatMap((s) => s.ids);
+  assert.equal(all.length, 50);
+  assert.equal(new Set(all).size, 50, 'no question in two sets');
+  assert.deepEqual(new Set(all), new Set(L.bank.map((q) => q.id)), 'every bank question is in a set');
+  // Each set holds the skills its title promises.
+  const skillsOf = (i) => new Set(L.bankSets[i].ids.map((id) => L.bank.find((q) => q.id === id).skill));
+  assert.deepEqual(skillsOf(0), new Set(['value', 'place']));
+  assert.ok(L.bankSets[1].ids.every((id) => { const q = L.bank.find((x) => x.id === id); return q.model !== undefined || ['build', 'chart'].includes(q.type) || q.prompt.includes('no hundreds'); }), 'set 2 is models and charts');
+  assert.deepEqual(skillsOf(2), new Set(['standard', 'word', 'place']));
+  assert.ok(L.bankSets[2].ids.every((id) => { const q = L.bank.find((x) => x.id === id); return q.type === 'number'; }), 'set 3 answers are standard-form numbers');
+  assert.deepEqual(skillsOf(3), new Set(['expanded', 'word']));
+  assert.ok(skillsOf(4).has('change') && skillsOf(4).has('compose'), 'set 5 has more/less and greatest/smallest');
+  // Every set's questions are graded correctly (also covered by the bank test above, per question).
+  L.bankSets.forEach((s) => s.ids.forEach((id) => { const q = L.bank.find((x) => x.id === id); assert.equal(Q.grade(q, Q.correctResponse(q)), true, id); }));
+});
+
 test('practice bank answers spot-check (hand-verified)', () => {
   const byPrompt = (p) => L.bank.find((q) => q.prompt === p);
   assert.equal(byPrompt('What is the value of the 8 in 8,341?').answer, 8000);

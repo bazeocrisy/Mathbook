@@ -1,6 +1,6 @@
 | Measure | baseline | after |
 |---|---|---|
-| Screen-states measured | 99 | 144 |
+| Screen-states measured | 99 | 153 |
 | Errors while measuring | 0 | 0 |
 | Horizontal overflow (states) | 3 | 0 |
 | Elements off-screen (states) | 0 | 0 |

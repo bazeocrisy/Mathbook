@@ -46,9 +46,11 @@ export async function startBrowser() {
   let nextId = 0;
   const pending = new Map();
   const errors = [];
+  let loadWaiters = [];
   ws.addEventListener('message', (ev) => {
     const msg = JSON.parse(ev.data);
     if (msg.id && pending.has(msg.id)) { pending.get(msg.id)(msg); pending.delete(msg.id); }
+    if (msg.method === 'Page.loadEventFired') { loadWaiters.forEach((r) => r()); loadWaiters = []; }
     if (msg.method === 'Runtime.exceptionThrown') errors.push(msg.params.exceptionDetails.exception?.description || msg.params.exceptionDetails.text);
     if (msg.method === 'Runtime.consoleAPICalled' && msg.params.type === 'error') errors.push(msg.params.args.map((a) => a.value || a.description).join(' '));
   });
@@ -67,7 +69,27 @@ export async function startBrowser() {
       return r.result.result.value;
     },
     wait: (ms) => new Promise((r) => setTimeout(r, ms)),
-    async load(url) { await send('Page.navigate', { url }); await b.wait(700); },
+    /** Navigate and wait for the real load event (not a fixed delay), then let the page's scripts settle. */
+    async load(url) {
+      const loaded = new Promise((r) => { loadWaiters.push(r); setTimeout(r, 10000); });
+      const res = await send('Page.navigate', { url });
+      // Same-document (hash-only) navigations fire no load event.
+      if (res.result && res.result.loaderId) await loaded;
+      await b.wait(250);
+    },
+    /** Run page code that follows a link (e.g. a click) and wait for the new page's load event. */
+    async navigate(expr) {
+      const loaded = new Promise((r) => { loadWaiters.push(r); setTimeout(r, 10000); });
+      await b.js(expr);
+      await loaded;
+      await b.wait(250);
+    },
+    async reload() {
+      const loaded = new Promise((r) => { loadWaiters.push(r); setTimeout(r, 10000); });
+      await send('Page.reload', {});
+      await loaded;
+      await b.wait(250);
+    },
     async hash(h) { await b.js(`location.hash = '${h}';`); await b.wait(250); },
     async viewport(width, height, mobile = width < 1024) {
       await send('Emulation.setDeviceMetricsOverride', { width, height, deviceScaleFactor: 1, mobile });

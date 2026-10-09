@@ -16,7 +16,7 @@ Every lesson follows the same five stages. Each stage is split into labeled part
 
 1. **Teach It**: mission brief (learning target and big ideas), vocabulary, parent guide (what / what it means / why it works / how to demonstrate / what to ask / how to know), and a Show–Say–Ask teaching script.
 2. **See It**: step-by-step worked examples with base-ten blocks and a place-value chart, build-a-number, change-one-place, groups of ten, biggest/smallest challenge.
-3. **Practice It**: vocabulary practice, guided practice (hints, check, correct, explain), and independent practice from a 50-question bank.
+3. **Practice It**: vocabulary practice, guided practice (hints, check, correct, explain), and independent practice: the 50-question bank in five labeled sets of 10 (any order), with per-set status and scores and **Practice My Misses** to retry only the missed questions.
 4. **Test It**: Vocabulary Test and Math Test, 10 questions each. Focus mode hides the lesson tabs, no hints or feedback, every answer is required, every attempt uses new numbers, and unfinished tests survive a refresh.
 5. **Results**: score, mastery band, explained mistakes, skills to review, and attempt history.
 
@@ -51,7 +51,7 @@ docs/audit/                        Baseline and post-implementation audits with 
 ## Adding a lesson
 
 1. Copy `curriculum/chapter-2/lesson-2-1/` to the new lesson folder.
-2. Edit `lesson.js`: register `Mathbook.lessons['<id>']` with new content and a new `storageKey`.
+2. Edit `lesson.js`: register `Mathbook.lessons['<id>']` with new content and a new `storageKey`. List the practice bank's sets in `bankSets` (each set: `id`, `title`, `blurb`, and 10 question `ids`; every bank question in exactly one set).
 3. In `index.html`, change the `startLesson('<id>', { path })` call. Script paths stay the same at the same folder depth.
 4. On the home page, replace part of the "coming later" row with a link to the new lesson.
 

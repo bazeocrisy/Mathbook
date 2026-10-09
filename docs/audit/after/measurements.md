@@ -1,6 +1,6 @@
 # Audit measurements — after
 
-Generated 2026-10-09T00:07:31.229Z · headless Chrome (emulated viewports) · 144 screen-states
+Generated 2026-10-09T00:36:14.380Z · headless Chrome (emulated viewports) · 153 screen-states
 
 ## Device-state matrix
 
@@ -12,146 +12,155 @@ Columns: horizontal overflow · elements off-screen · text spilling out of its 
 | teach | small-phone 320×568 | no | 0 | 0 | 0 / 0 | 12.24 | 0/181 (7) | 0 | 20 |
 | see-step-1 | small-phone 320×568 | no | 0 | 0 | 0 / 0 | 12.24 | 0/165 (0) | 0 | 12 |
 | see-final-step | small-phone 320×568 | no | 0 | 0 | 0 / 0 | 12.24 | 0/177 (0) | 0 | 12.2 |
-| guided-wrong+hint | small-phone 320×568 | no | 0 | 0 | 0 / 0 | 12.24 | 0/84 (0) | 0 | 7.3 |
-| independent-set | small-phone 320×568 | no | 0 | 0 | 0 / 0 | 12.24 | 0/147 (0) | 0 | 13.5 |
-| independent-checked | small-phone 320×568 | no | 0 | 0 | 0 / 0 | 12.24 | 0/177 (0) | 0 | 17.5 |
+| guided-wrong+hint | small-phone 320×568 | no | 0 | 0 | 0 / 0 | 12.24 | 0/106 (0) | 0 | 9.9 |
+| independent-set | small-phone 320×568 | no | 0 | 0 | 0 / 0 | 12.24 | 0/202 (0) | 0 | 19.3 |
+| independent-checked | small-phone 320×568 | no | 0 | 0 | 0 / 0 | 12.24 | 0/246 (0) | 0 | 24.3 |
+| practice-my-misses | small-phone 320×568 | no | 0 | 0 | 0 / 0 | 12.24 | 0/137 (0) | 0 | 14 |
 | test-chooser | small-phone 320×568 | no | 0 | 0 | 0 / 0 | 12.24 | 0/36 (0) | 0 | 4 |
 | vocab-test-running | small-phone 320×568 | no | 0 | 0 | 0 / 0 | 14.4 | 0/59 (0) | 0 | 7.9 |
-| math-test-submit-blocked | small-phone 320×568 | no | 0 | 0 | 0 / 0 | 12.6 | 0/78 (0) | 0 | 9.1 |
-| results | small-phone 320×568 | no | 0 | 0 | 0 / 0 | 12.24 | 0/130 (0) | 0 | 8.4 |
+| math-test-submit-blocked | small-phone 320×568 | no | 0 | 0 | 0 / 0 | 12.6 | 0/78 (0) | 0 | 9 |
+| results | small-phone 320×568 | no | 0 | 0 | 0 / 0 | 12.24 | 0/130 (0) | 0 | 8.2 |
 | nw-learn | small-phone 320×568 | no | 0 | 0 | 0 / 0 | 12.24 | 0/51 (0) | 0 | 4.1 |
 | nw-cover-write | small-phone 320×568 | no | 0 | 0 | 0 / 0 | 12.24 | 0/46 (1) | 0 | 4.1 |
 | nw-practice-feedback | small-phone 320×568 | no | 0 | 0 | 0 / 0 | 12.24 | 0/44 (0) | 0 | 3.2 |
-| nw-test-running | small-phone 320×568 | no | 0 | 0 | 0 / 0 | 14.4 | 0/46 (0) | 0 | 7.6 |
-| nw-results | small-phone 320×568 | no | 0 | 0 | 0 / 0 | 12.24 | 0/97 (0) | 0 | 5.4 |
+| nw-test-running | small-phone 320×568 | no | 0 | 0 | 0 / 0 | 14.4 | 0/45 (0) | 0 | 7.7 |
+| nw-results | small-phone 320×568 | no | 0 | 0 | 0 / 0 | 12.24 | 0/98 (0) | 0 | 5.4 |
 | home | phone 375×667 | no | 0 | 0 | 0 / 0 | 14.04 | 0/40 (0) | 0 | 4.3 |
 | teach | phone 375×667 | no | 0 | 0 | 0 / 0 | 12.6 | 0/182 (7) | 0 | 14.7 |
 | see-step-1 | phone 375×667 | no | 0 | 0 | 0 / 0 | 12.6 | 0/166 (0) | 0 | 9.2 |
 | see-final-step | phone 375×667 | no | 0 | 0 | 0 / 0 | 12.6 | 0/178 (0) | 0 | 9.4 |
-| guided-wrong+hint | phone 375×667 | no | 0 | 0 | 0 / 0 | 12.6 | 0/81 (0) | 16 | 5.5 |
-| independent-set | phone 375×667 | no | 0 | 0 | 0 / 0 | 12.6 | 0/152 (0) | 16 | 11.6 |
-| independent-checked | phone 375×667 | no | 0 | 0 | 0 / 0 | 12.6 | 0/162 (0) | 16 | 12.9 |
+| guided-wrong+hint | phone 375×667 | no | 0 | 0 | 0 / 0 | 12.6 | 0/107 (0) | 16 | 7.9 |
+| independent-set | phone 375×667 | no | 0 | 0 | 0 / 0 | 12.6 | 0/203 (0) | 16 | 15.7 |
+| independent-checked | phone 375×667 | no | 0 | 0 | 0 / 0 | 12.6 | 0/246 (0) | 16 | 19.4 |
+| practice-my-misses | phone 375×667 | no | 0 | 0 | 0 / 0 | 12.6 | 0/136 (0) | 16 | 10.4 |
 | test-chooser | phone 375×667 | no | 0 | 0 | 0 / 0 | 13.5 | 0/37 (0) | 0 | 3.1 |
 | vocab-test-running | phone 375×667 | no | 0 | 0 | 0 / 0 | 14.4 | 0/60 (0) | 0 | 6.3 |
 | math-test-submit-blocked | phone 375×667 | no | 0 | 0 | 0 / 0 | 12.6 | 0/79 (0) | 0 | 7.4 |
-| results | phone 375×667 | no | 0 | 0 | 0 / 0 | 13.5 | 0/133 (0) | 0 | 6.7 |
+| results | phone 375×667 | no | 0 | 0 | 0 / 0 | 13.5 | 0/129 (0) | 0 | 6.3 |
 | nw-learn | phone 375×667 | no | 0 | 0 | 0 / 0 | 13.5 | 0/52 (0) | 0 | 3.1 |
 | nw-cover-write | phone 375×667 | no | 0 | 0 | 0 / 0 | 13.5 | 0/47 (1) | 12 | 3.2 |
 | nw-practice-feedback | phone 375×667 | no | 0 | 0 | 0 / 0 | 13.5 | 0/45 (0) | 0 | 2.7 |
 | nw-test-running | phone 375×667 | no | 0 | 0 | 0 / 0 | 14.4 | 0/48 (0) | 0 | 6.2 |
-| nw-results | phone 375×667 | no | 0 | 0 | 0 / 0 | 13.5 | 0/99 (0) | 0 | 4.2 |
+| nw-results | phone 375×667 | no | 0 | 0 | 0 / 0 | 13.5 | 0/98 (0) | 0 | 4.2 |
 | home | modern-phone 390×844 | no | 0 | 0 | 0 / 0 | 14.04 | 0/40 (0) | 0 | 3.4 |
 | teach | modern-phone 390×844 | no | 0 | 0 | 0 / 0 | 12.6 | 0/182 (7) | 0 | 11.4 |
 | see-step-1 | modern-phone 390×844 | no | 0 | 0 | 0 / 0 | 12.6 | 0/166 (0) | 0 | 7.2 |
 | see-final-step | modern-phone 390×844 | no | 0 | 0 | 0 / 0 | 12.6 | 0/178 (0) | 0 | 7.3 |
-| guided-wrong+hint | modern-phone 390×844 | no | 0 | 0 | 0 / 0 | 12.6 | 0/85 (0) | 12 | 4.6 |
-| independent-set | modern-phone 390×844 | no | 0 | 0 | 0 / 0 | 12.6 | 0/152 (0) | 12 | 8.5 |
-| independent-checked | modern-phone 390×844 | no | 0 | 0 | 0 / 0 | 12.6 | 0/158 (0) | 12 | 10.4 |
+| guided-wrong+hint | modern-phone 390×844 | no | 0 | 0 | 0 / 0 | 12.6 | 0/103 (0) | 12 | 5.8 |
+| independent-set | modern-phone 390×844 | no | 0 | 0 | 0 / 0 | 12.6 | 0/200 (0) | 12 | 11.6 |
+| independent-checked | modern-phone 390×844 | no | 0 | 0 | 0 / 0 | 12.6 | 0/242 (0) | 12 | 14.2 |
+| practice-my-misses | modern-phone 390×844 | no | 0 | 0 | 0 / 0 | 12.6 | 0/152 (0) | 12 | 8.8 |
 | test-chooser | modern-phone 390×844 | no | 0 | 0 | 0 / 0 | 13.5 | 0/37 (0) | 0 | 2.4 |
-| vocab-test-running | modern-phone 390×844 | no | 0 | 0 | 0 / 0 | 14.4 | 0/60 (0) | 0 | 5 |
-| math-test-submit-blocked | modern-phone 390×844 | no | 0 | 0 | 0 / 0 | 12.6 | 0/79 (0) | 0 | 5.4 |
-| results | modern-phone 390×844 | no | 0 | 0 | 0 / 0 | 13.5 | 0/131 (0) | 0 | 5.1 |
+| vocab-test-running | modern-phone 390×844 | no | 0 | 0 | 0 / 0 | 14.4 | 0/60 (0) | 0 | 4.9 |
+| math-test-submit-blocked | modern-phone 390×844 | no | 0 | 0 | 0 / 0 | 12.6 | 0/79 (0) | 0 | 5.6 |
+| results | modern-phone 390×844 | no | 0 | 0 | 0 / 0 | 13.5 | 0/129 (0) | 0 | 5 |
 | nw-learn | modern-phone 390×844 | no | 0 | 0 | 0 / 0 | 13.5 | 0/52 (0) | 0 | 2.4 |
 | nw-cover-write | modern-phone 390×844 | no | 0 | 0 | 0 / 0 | 13.5 | 0/47 (1) | 10 | 2.5 |
 | nw-practice-feedback | modern-phone 390×844 | no | 0 | 0 | 0 / 0 | 13.5 | 0/45 (0) | 0 | 2.1 |
 | nw-test-running | modern-phone 390×844 | no | 0 | 0 | 0 / 0 | 14.4 | 0/47 (0) | 0 | 4.9 |
-| nw-results | modern-phone 390×844 | no | 0 | 0 | 0 / 0 | 13.5 | 0/101 (0) | 0 | 3.4 |
+| nw-results | modern-phone 390×844 | no | 0 | 0 | 0 / 0 | 13.5 | 0/100 (0) | 0 | 3.4 |
 | home | tablet-portrait 768×1024 | no | 0 | 0 | 0 / 0 | 14.04 | 0/41 (0) | 0 | 2.1 |
 | teach | tablet-portrait 768×1024 | no | 0 | 0 | 0 / 0 | 13.5 | 0/183 (7) | 0 | 5.5 |
 | see-step-1 | tablet-portrait 768×1024 | no | 0 | 0 | 0 / 0 | 14.04 | 0/170 (0) | 0 | 4.4 |
 | see-final-step | tablet-portrait 768×1024 | no | 0 | 0 | 0 / 0 | 14.04 | 0/182 (0) | 0 | 4.5 |
-| guided-wrong+hint | tablet-portrait 768×1024 | no | 0 | 0 | 0 / 0 | 14.04 | 0/87 (0) | 6 | 2.5 |
-| independent-set | tablet-portrait 768×1024 | no | 0 | 0 | 0 / 0 | 14.04 | 0/149 (0) | 6 | 4.5 |
-| independent-checked | tablet-portrait 768×1024 | no | 0 | 0 | 0 / 0 | 14.04 | 0/159 (0) | 6 | 6.2 |
+| guided-wrong+hint | tablet-portrait 768×1024 | no | 0 | 0 | 0 / 0 | 14.04 | 0/108 (0) | 6 | 3.2 |
+| independent-set | tablet-portrait 768×1024 | no | 0 | 0 | 0 / 0 | 14.04 | 0/200 (0) | 6 | 6.3 |
+| independent-checked | tablet-portrait 768×1024 | no | 0 | 0 | 0 / 0 | 14.04 | 0/243 (0) | 6 | 7.7 |
+| practice-my-misses | tablet-portrait 768×1024 | no | 0 | 0 | 0 / 0 | 14.04 | 0/154 (0) | 6 | 4.6 |
 | test-chooser | tablet-portrait 768×1024 | no | 0 | 0 | 0 / 0 | 14.04 | 0/38 (0) | 0 | 1.2 |
 | vocab-test-running | tablet-portrait 768×1024 | no | 0 | 0 | 0 / 0 | 14.4 | 0/61 (0) | 0 | 2.9 |
-| math-test-submit-blocked | tablet-portrait 768×1024 | no | 0 | 0 | 0 / 0 | 14.4 | 0/80 (0) | 0 | 3.4 |
-| results | tablet-portrait 768×1024 | no | 0 | 0 | 0 / 0 | 14.04 | 0/130 (0) | 0 | 2.9 |
+| math-test-submit-blocked | tablet-portrait 768×1024 | no | 0 | 0 | 0 / 0 | 14.4 | 0/80 (0) | 0 | 3.3 |
+| results | tablet-portrait 768×1024 | no | 0 | 0 | 0 / 0 | 14.04 | 0/134 (0) | 0 | 3.1 |
 | nw-learn | tablet-portrait 768×1024 | no | 0 | 0 | 0 / 0 | 14.04 | 0/53 (0) | 0 | 1.5 |
 | nw-cover-write | tablet-portrait 768×1024 | no | 0 | 0 | 0 / 0 | 14.04 | 0/48 (1) | 0 | 1.5 |
 | nw-practice-feedback | tablet-portrait 768×1024 | no | 0 | 0 | 0 / 0 | 14.04 | 0/46 (0) | 0 | 1.3 |
-| nw-test-running | tablet-portrait 768×1024 | no | 0 | 0 | 0 / 0 | 14.4 | 0/50 (0) | 0 | 3.7 |
-| nw-results | tablet-portrait 768×1024 | no | 0 | 0 | 0 / 0 | 14.04 | 0/103 (0) | 0 | 2.2 |
+| nw-test-running | tablet-portrait 768×1024 | no | 0 | 0 | 0 / 0 | 14.4 | 0/49 (0) | 0 | 3.7 |
+| nw-results | tablet-portrait 768×1024 | no | 0 | 0 | 0 / 0 | 14.04 | 0/102 (0) | 0 | 2.1 |
 | home | tablet-landscape 1024×768 | no | 0 | 0 | 0 / 0 | 14.04 | 0/41 (0) | 0 | 2.4 |
 | teach | tablet-landscape 1024×768 | no | 0 | 0 | 0 / 0 | 13.5 | 0/183 (7) | 0 | 6.5 |
 | see-step-1 | tablet-landscape 1024×768 | no | 0 | 0 | 0 / 0 | 14.04 | 0/170 (0) | 0 | 5.6 |
 | see-final-step | tablet-landscape 1024×768 | no | 0 | 0 | 0 / 0 | 14.04 | 0/182 (0) | 0 | 5.7 |
-| guided-wrong+hint | tablet-landscape 1024×768 | no | 0 | 0 | 0 / 0 | 14.04 | 0/82 (0) | 9 | 3.1 |
-| independent-set | tablet-landscape 1024×768 | no | 0 | 0 | 0 / 0 | 14.04 | 0/153 (0) | 9 | 6.2 |
-| independent-checked | tablet-landscape 1024×768 | no | 0 | 0 | 0 / 0 | 14.04 | 0/156 (0) | 9 | 7.2 |
+| guided-wrong+hint | tablet-landscape 1024×768 | no | 0 | 0 | 0 / 0 | 14.04 | 0/104 (0) | 9 | 3.8 |
+| independent-set | tablet-landscape 1024×768 | no | 0 | 0 | 0 / 0 | 14.04 | 0/204 (0) | 9 | 8.4 |
+| independent-checked | tablet-landscape 1024×768 | no | 0 | 0 | 0 / 0 | 14.04 | 0/247 (0) | 9 | 9.8 |
+| practice-my-misses | tablet-landscape 1024×768 | no | 0 | 0 | 0 / 0 | 14.04 | 0/148 (0) | 9 | 5.5 |
 | test-chooser | tablet-landscape 1024×768 | no | 0 | 0 | 0 / 0 | 14.04 | 0/38 (0) | 0 | 1.7 |
 | vocab-test-running | tablet-landscape 1024×768 | no | 0 | 0 | 0 / 0 | 14.4 | 0/61 (0) | 0 | 3.8 |
-| math-test-submit-blocked | tablet-landscape 1024×768 | no | 0 | 0 | 0 / 0 | 14.4 | 0/80 (0) | 0 | 4.5 |
-| results | tablet-landscape 1024×768 | no | 0 | 0 | 0 / 0 | 14.04 | 0/136 (0) | 0 | 4.4 |
+| math-test-submit-blocked | tablet-landscape 1024×768 | no | 0 | 0 | 0 / 0 | 14.4 | 0/80 (0) | 0 | 4.6 |
+| results | tablet-landscape 1024×768 | no | 0 | 0 | 0 / 0 | 14.04 | 0/132 (0) | 0 | 4.1 |
 | nw-learn | tablet-landscape 1024×768 | no | 0 | 0 | 0 / 0 | 14.04 | 0/53 (0) | 0 | 1.8 |
 | nw-cover-write | tablet-landscape 1024×768 | no | 0 | 0 | 0 / 0 | 14.04 | 0/48 (1) | 9 | 1.8 |
 | nw-practice-feedback | tablet-landscape 1024×768 | no | 0 | 0 | 0 / 0 | 14.04 | 0/46 (0) | 0 | 1.7 |
-| nw-test-running | tablet-landscape 1024×768 | no | 0 | 0 | 0 / 0 | 14.4 | 0/50 (0) | 0 | 4.8 |
-| nw-results | tablet-landscape 1024×768 | no | 0 | 0 | 0 / 0 | 14.04 | 0/102 (0) | 0 | 2.8 |
+| nw-test-running | tablet-landscape 1024×768 | no | 0 | 0 | 0 / 0 | 14.4 | 0/47 (0) | 0 | 4.9 |
+| nw-results | tablet-landscape 1024×768 | no | 0 | 0 | 0 / 0 | 14.04 | 0/99 (0) | 0 | 2.8 |
 | home | laptop 1280×720 | no | 0 | 0 | 0 / 0 | 14.04 | 0/41 (0) | 0 | 2.6 |
 | teach | laptop 1280×720 | no | 0 | 0 | 0 / 0 | 13.5 | 0/183 (7) | 0 | 6.9 |
 | see-step-1 | laptop 1280×720 | no | 0 | 0 | 0 / 0 | 14.04 | 0/170 (0) | 0 | 5.9 |
 | see-final-step | laptop 1280×720 | no | 0 | 0 | 0 / 0 | 14.04 | 0/182 (0) | 0 | 6 |
-| guided-wrong+hint | laptop 1280×720 | no | 0 | 0 | 0 / 0 | 14.04 | 0/83 (0) | 9 | 3.4 |
-| independent-set | laptop 1280×720 | no | 0 | 0 | 0 / 0 | 14.04 | 0/149 (0) | 9 | 6.5 |
-| independent-checked | laptop 1280×720 | no | 0 | 0 | 0 / 0 | 14.04 | 0/181 (0) | 9 | 8.7 |
+| guided-wrong+hint | laptop 1280×720 | no | 0 | 0 | 0 / 0 | 14.04 | 0/104 (0) | 9 | 4.1 |
+| independent-set | laptop 1280×720 | no | 0 | 0 | 0 / 0 | 14.04 | 0/200 (0) | 9 | 8.8 |
+| independent-checked | laptop 1280×720 | no | 0 | 0 | 0 / 0 | 14.04 | 0/243 (0) | 9 | 10.4 |
+| practice-my-misses | laptop 1280×720 | no | 0 | 0 | 0 / 0 | 14.04 | 0/153 (0) | 9 | 6.1 |
 | test-chooser | laptop 1280×720 | no | 0 | 0 | 0 / 0 | 14.04 | 0/38 (0) | 0 | 1.8 |
 | vocab-test-running | laptop 1280×720 | no | 0 | 0 | 0 / 0 | 14.4 | 0/61 (0) | 0 | 3.5 |
 | math-test-submit-blocked | laptop 1280×720 | no | 0 | 0 | 0 / 0 | 14.4 | 0/80 (0) | 0 | 4.7 |
-| results | laptop 1280×720 | no | 0 | 0 | 0 / 0 | 14.04 | 0/136 (0) | 0 | 4.8 |
+| results | laptop 1280×720 | no | 0 | 0 | 0 / 0 | 14.04 | 0/132 (0) | 0 | 4.3 |
 | nw-learn | laptop 1280×720 | no | 0 | 0 | 0 / 0 | 14.04 | 0/53 (0) | 0 | 1.9 |
 | nw-cover-write | laptop 1280×720 | no | 0 | 0 | 0 / 0 | 14.04 | 0/48 (1) | 9 | 2 |
 | nw-practice-feedback | laptop 1280×720 | no | 0 | 0 | 0 / 0 | 14.04 | 0/46 (0) | 0 | 1.8 |
 | nw-test-running | laptop 1280×720 | no | 0 | 0 | 0 / 0 | 14.4 | 0/50 (0) | 0 | 5.2 |
-| nw-results | laptop 1280×720 | no | 0 | 0 | 0 / 0 | 14.04 | 0/99 (0) | 0 | 3 |
+| nw-results | laptop 1280×720 | no | 0 | 0 | 0 / 0 | 14.04 | 0/102 (0) | 0 | 3 |
 | home | desktop 1440×900 | no | 0 | 0 | 0 / 0 | 14.04 | 0/41 (0) | 0 | 2.1 |
 | teach | desktop 1440×900 | no | 0 | 0 | 0 / 0 | 13.5 | 0/183 (7) | 0 | 5.5 |
 | see-step-1 | desktop 1440×900 | no | 0 | 0 | 0 / 0 | 14.04 | 0/170 (0) | 0 | 4.7 |
 | see-final-step | desktop 1440×900 | no | 0 | 0 | 0 / 0 | 14.04 | 0/182 (0) | 0 | 4.8 |
-| guided-wrong+hint | desktop 1440×900 | no | 0 | 0 | 0 / 0 | 14.04 | 0/82 (0) | 7 | 2.6 |
-| independent-set | desktop 1440×900 | no | 0 | 0 | 0 / 0 | 14.04 | 0/153 (0) | 7 | 5.3 |
-| independent-checked | desktop 1440×900 | no | 0 | 0 | 0 / 0 | 14.04 | 0/178 (0) | 7 | 6.3 |
+| guided-wrong+hint | desktop 1440×900 | no | 0 | 0 | 0 / 0 | 14.04 | 0/105 (0) | 7 | 3.4 |
+| independent-set | desktop 1440×900 | no | 0 | 0 | 0 / 0 | 14.04 | 0/205 (0) | 7 | 7.2 |
+| independent-checked | desktop 1440×900 | no | 0 | 0 | 0 / 0 | 14.04 | 0/247 (0) | 7 | 8.5 |
+| practice-my-misses | desktop 1440×900 | no | 0 | 0 | 0 / 0 | 14.04 | 0/168 (0) | 7 | 5.1 |
 | test-chooser | desktop 1440×900 | no | 0 | 0 | 0 / 0 | 14.04 | 0/38 (0) | 0 | 1.4 |
-| vocab-test-running | desktop 1440×900 | no | 0 | 0 | 0 / 0 | 14.4 | 0/61 (0) | 0 | 2.9 |
+| vocab-test-running | desktop 1440×900 | no | 0 | 0 | 0 / 0 | 14.4 | 0/61 (0) | 0 | 2.8 |
 | math-test-submit-blocked | desktop 1440×900 | no | 0 | 0 | 0 / 0 | 14.4 | 0/80 (0) | 0 | 3.7 |
-| results | desktop 1440×900 | no | 0 | 0 | 0 / 0 | 14.04 | 0/136 (0) | 0 | 3.6 |
+| results | desktop 1440×900 | no | 0 | 0 | 0 / 0 | 14.04 | 0/130 (0) | 0 | 3.4 |
 | nw-learn | desktop 1440×900 | no | 0 | 0 | 0 / 0 | 14.04 | 0/53 (0) | 0 | 1.6 |
 | nw-cover-write | desktop 1440×900 | no | 0 | 0 | 0 / 0 | 14.04 | 0/48 (1) | 0 | 1.6 |
 | nw-practice-feedback | desktop 1440×900 | no | 0 | 0 | 0 / 0 | 14.04 | 0/46 (0) | 0 | 1.5 |
 | nw-test-running | desktop 1440×900 | no | 0 | 0 | 0 / 0 | 14.4 | 0/49 (0) | 0 | 4.1 |
-| nw-results | desktop 1440×900 | no | 0 | 0 | 0 / 0 | 14.04 | 0/103 (0) | 0 | 2.4 |
+| nw-results | desktop 1440×900 | no | 0 | 0 | 0 / 0 | 14.04 | 0/102 (0) | 0 | 2.4 |
 | home | large 1920×1080 | no | 0 | 0 | 0 / 0 | 14.04 | 0/41 (0) | 0 | 1.7 |
 | teach | large 1920×1080 | no | 0 | 0 | 0 / 0 | 13.5 | 0/183 (7) | 0 | 4.6 |
 | see-step-1 | large 1920×1080 | no | 0 | 0 | 0 / 0 | 14.04 | 0/170 (0) | 0 | 3.9 |
 | see-final-step | large 1920×1080 | no | 0 | 0 | 0 / 0 | 14.04 | 0/182 (0) | 0 | 4 |
-| guided-wrong+hint | large 1920×1080 | no | 0 | 0 | 0 / 0 | 14.04 | 0/86 (0) | 6 | 2.4 |
-| independent-set | large 1920×1080 | no | 0 | 0 | 0 / 0 | 14.04 | 0/150 (0) | 6 | 4.4 |
-| independent-checked | large 1920×1080 | no | 0 | 0 | 0 / 0 | 14.04 | 0/169 (0) | 6 | 5.2 |
+| guided-wrong+hint | large 1920×1080 | no | 0 | 0 | 0 / 0 | 14.04 | 0/108 (0) | 6 | 2.8 |
+| independent-set | large 1920×1080 | no | 0 | 0 | 0 / 0 | 14.04 | 0/201 (0) | 6 | 5.9 |
+| independent-checked | large 1920×1080 | no | 0 | 0 | 0 / 0 | 14.04 | 0/247 (0) | 6 | 7 |
+| practice-my-misses | large 1920×1080 | no | 0 | 0 | 0 / 0 | 14.04 | 0/152 (0) | 6 | 4 |
 | test-chooser | large 1920×1080 | no | 0 | 0 | 0 / 0 | 14.04 | 0/38 (0) | 0 | 1.2 |
 | vocab-test-running | large 1920×1080 | no | 0 | 0 | 0 / 0 | 14.4 | 0/61 (0) | 0 | 2.3 |
 | math-test-submit-blocked | large 1920×1080 | no | 0 | 0 | 0 / 0 | 14.4 | 0/80 (0) | 0 | 3.1 |
-| results | large 1920×1080 | no | 0 | 0 | 0 / 0 | 14.04 | 0/132 (0) | 0 | 2.8 |
+| results | large 1920×1080 | no | 0 | 0 | 0 / 0 | 14.04 | 0/134 (0) | 0 | 3 |
 | nw-learn | large 1920×1080 | no | 0 | 0 | 0 / 0 | 14.04 | 0/53 (0) | 0 | 1.3 |
 | nw-cover-write | large 1920×1080 | no | 0 | 0 | 0 / 0 | 14.04 | 0/48 (1) | 0 | 1.3 |
 | nw-practice-feedback | large 1920×1080 | no | 0 | 0 | 0 / 0 | 14.04 | 0/46 (0) | 0 | 1.2 |
-| nw-test-running | large 1920×1080 | no | 0 | 0 | 0 / 0 | 14.4 | 0/51 (0) | 0 | 3.4 |
-| nw-results | large 1920×1080 | no | 0 | 0 | 0 / 0 | 14.04 | 0/100 (0) | 0 | 2 |
+| nw-test-running | large 1920×1080 | no | 0 | 0 | 0 / 0 | 14.4 | 0/48 (0) | 0 | 3.5 |
+| nw-results | large 1920×1080 | no | 0 | 0 | 0 / 0 | 14.04 | 0/99 (0) | 0 | 2 |
 | home | zoom-200% 640×360 | no | 0 | 0 | 0 / 0 | 14.04 | 0/41 (0) | 0 | 6.4 |
 | teach | zoom-200% 640×360 | no | 0 | 0 | 0 / 0 | 13.5 | 0/183 (7) | 0 | 18.8 |
 | see-step-1 | zoom-200% 640×360 | no | 0 | 0 | 0 / 0 | 13.5 | 0/170 (0) | 0 | 14.5 |
 | see-final-step | zoom-200% 640×360 | no | 0 | 0 | 0 / 0 | 13.5 | 0/182 (0) | 0 | 14.7 |
-| guided-wrong+hint | zoom-200% 640×360 | no | 0 | 0 | 0 / 0 | 13.5 | 0/83 (0) | 0 | 7.2 |
-| independent-set | zoom-200% 640×360 | no | 0 | 0 | 0 / 0 | 13.5 | 0/149 (0) | 0 | 17.1 |
-| independent-checked | zoom-200% 640×360 | no | 0 | 0 | 0 / 0 | 13.5 | 0/164 (0) | 0 | 18.6 |
+| guided-wrong+hint | zoom-200% 640×360 | no | 0 | 0 | 0 / 0 | 13.5 | 0/108 (0) | 0 | 10.1 |
+| independent-set | zoom-200% 640×360 | no | 0 | 0 | 0 / 0 | 13.5 | 0/204 (0) | 0 | 23.4 |
+| independent-checked | zoom-200% 640×360 | no | 0 | 0 | 0 / 0 | 13.5 | 0/243 (0) | 0 | 27.1 |
+| practice-my-misses | zoom-200% 640×360 | no | 0 | 0 | 0 / 0 | 13.5 | 0/163 (0) | 0 | 14.9 |
 | test-chooser | zoom-200% 640×360 | no | 0 | 0 | 0 / 0 | 13.5 | 0/38 (0) | 0 | 4.7 |
-| vocab-test-running | zoom-200% 640×360 | no | 0 | 0 | 0 / 0 | 14.4 | 0/61 (0) | 0 | 8.7 |
-| math-test-submit-blocked | zoom-200% 640×360 | no | 0 | 0 | 0 / 0 | 14.4 | 0/80 (0) | 0 | 11.4 |
-| results | zoom-200% 640×360 | no | 0 | 0 | 0 / 0 | 13.5 | 0/136 (0) | 0 | 10.6 |
+| vocab-test-running | zoom-200% 640×360 | no | 0 | 0 | 0 / 0 | 14.4 | 0/61 (0) | 0 | 8.8 |
+| math-test-submit-blocked | zoom-200% 640×360 | no | 0 | 0 | 0 / 0 | 14.4 | 0/80 (0) | 0 | 11.3 |
+| results | zoom-200% 640×360 | no | 0 | 0 | 0 / 0 | 13.5 | 0/132 (0) | 0 | 9.5 |
 | nw-learn | zoom-200% 640×360 | no | 0 | 0 | 0 / 0 | 13.5 | 0/53 (0) | 0 | 4.7 |
 | nw-cover-write | zoom-200% 640×360 | no | 0 | 0 | 0 / 0 | 13.5 | 0/48 (1) | 0 | 5.1 |
 | nw-practice-feedback | zoom-200% 640×360 | no | 0 | 0 | 0 / 0 | 13.5 | 0/46 (0) | 0 | 4 |
-| nw-test-running | zoom-200% 640×360 | no | 0 | 0 | 0 / 0 | 14.4 | 0/51 (0) | 0 | 10.6 |
-| nw-results | zoom-200% 640×360 | no | 0 | 0 | 0 / 0 | 13.5 | 0/102 (0) | 0 | 6.2 |
+| nw-test-running | zoom-200% 640×360 | no | 0 | 0 | 0 / 0 | 14.4 | 0/49 (0) | 0 | 10.6 |
+| nw-results | zoom-200% 640×360 | no | 0 | 0 | 0 / 0 | 13.5 | 0/103 (0) | 0 | 6.3 |
 
 ## Keyboard focus (1280×720, 45 Tab presses per screen)
 
@@ -182,9 +191,9 @@ Represent 4-Digit Numbers
 | home | modern-phone 390×844 | no | 0 | h4 "Represent 4-Digit Number"; p "Thousands, hundreds, ten"; h4 "Lessons 2-2 to 2-11"; p "Being prepared. They wil"; h4 "Other chapters"; p "More chapters will be ad" |
 | teach | modern-phone 390×844 | **YES** | 0 | .pv-digit.place-thousands.is-on "2"; .pv-digit.place-tens "3"; .pv-digit.place-ones "7"; .pv-value.place-thousands.is-on "2,000"; .pv-value.place-hundreds "100"; .pv-value.place-tens "30" |
 | see-step-1 | modern-phone 390×844 | no | 0 | .pv-value.place-thousands "2,000"; figcaption "2 thousands = 2,000"; figcaption "1 hundred = 100"; figcaption "7 ones = 7"; .pv-digit.place-thousands "8"; .pv-digit.place-hundreds "6" |
-| independent-set | modern-phone 390×844 | no | 0 | .dot "10"; span "The Choose…sizevalueshap" |
-| vocab-test-running | modern-phone 390×844 | no | 0 | span "The Choose…sizecolorvalu"; span "In 6,941, the 4 is in th" |
-| results | modern-phone 390×844 | no | 0 | 0 |
+| independent-set | modern-phone 390×844 | no | 0 | .dot "10" |
+| vocab-test-running | modern-phone 390×844 | no | 0 | span "In 3,751, the 3 is in th"; span "The Choose…shapecolorsiz" |
+| results | modern-phone 390×844 | no | 0 | .blocks-label "Hun­dreds"; .blocks-label "Ones" |
 | nw-learn | modern-phone 390×844 | no | 0 | 0 |
 | nw-test-running | modern-phone 390×844 | no | 0 | 0 |
 

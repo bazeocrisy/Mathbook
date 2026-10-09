@@ -323,6 +323,17 @@ body.is-testing .test-banner { display: block; background: rgba(10, 15, 46, 0.94
 .indep-controls select { font: inherit; padding: 0.55rem 0.7rem; border: 2px solid #b5a8e8; border-radius: 12px; min-height: 48px; max-width: 100%; background: #fff; color: var(--ink); }
 .empty { color: var(--muted); background: #f6f5ff; border-radius: 14px; padding: 1rem; text-align: center; }
 .set-score { background: var(--primary-soft); border-radius: 14px; padding: 0.8rem 1rem; font-size: 1.05rem; margin-bottom: 1rem; }
+.set-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 230px), 1fr)); gap: 0.8rem; margin: 0.9rem 0 1.2rem; }
+.set-card { border: 2px solid var(--line); border-radius: 18px; padding: 0.9rem 1rem; background: #fbfbff; display: flex; flex-direction: column; align-items: flex-start; min-width: 0; }
+.set-card.is-open { border-color: var(--primary); box-shadow: 0 0 0 4px var(--primary-soft); }
+.set-card h3 { margin: 0.1rem 0 0.3rem; }
+.set-card p { margin: 0.25rem 0; font-size: 0.95rem; }
+.set-card .btn { margin-top: auto; }
+.set-status { margin-top: 0.5rem !important; }
+.set-scores { color: var(--muted); }
+.eyebrow-dark { text-transform: uppercase; letter-spacing: 0.08em; font-weight: 800; font-size: 0.78rem; color: var(--student); margin: 0; }
+.set-new.badge-m { background: #eef0f6; color: #3d4260; border: 1px solid #d4d7e5; }
+.set-title { margin-top: 0.4rem; font-size: 1.2rem; }
 .guided-shell { border: 1px solid var(--line); border-radius: 18px; padding: 1rem 1.05rem; background: #fff; }
 
 /* ---------- Test ---------- */

@@ -355,6 +355,21 @@
     make.compose([2, 8, 4, 1], 'smallest'), make.compose([3, 9, 5, 7], 'greatest')
   ].map((q, i) => Object.assign(q, { id: 'b' + String(i + 1).padStart(2, '0') }));
 
+  // ---------- The bank as five sets of 10, in teaching order (ids above never change) ----------
+  // Every bank question is in exactly one set (checked by tests/math.test.js).
+  const bankSets = [
+    { id: 's1', title: 'Place and Digit Value', blurb: 'Name the place of a digit and tell how much it is worth.',
+      ids: ['b01', 'b02', 'b03', 'b04', 'b05', 'b06', 'b07', 'b08', 'b09', 'b10'] },
+    { id: 's2', title: 'Base-Ten Models', blurb: 'Read and build numbers with base-ten blocks and place-value charts, including zeros.',
+      ids: ['b39', 'b40', 'b41', 'b42', 'b43', 'b44', 'b17', 'b18', 'b19', 'b16'] },
+    { id: 's3', title: 'Standard Form', blurb: 'Write numbers with digits from expanded form and word form.',
+      ids: ['b25', 'b26', 'b27', 'b28', 'b29', 'b30', 'b31', 'b32', 'b12', 'b13'] },
+    { id: 's4', title: 'Expanded and Word Form', blurb: 'Write numbers as the sum of their digit values and in words.',
+      ids: ['b20', 'b21', 'b22', 'b23', 'b24', 'b33', 'b34', 'b35', 'b36', 'b37'] },
+    { id: 's5', title: 'Mixed Review and Reasoning', blurb: '10, 100, or 1,000 more or less, greatest and smallest numbers, and mixed place-value questions.',
+      ids: ['b45', 'b46', 'b47', 'b48', 'b49', 'b50', 'b11', 'b14', 'b15', 'b38'] }
+  ];
+
   // ---------- Guided practice (parent and student together) ----------
 
   // One guided problem for every objective that is assessed.
@@ -491,6 +506,7 @@
     },
     guided,
     bank,
+    bankSets,
     vocabPractice,
     tests: {
       vocab: { id: 'vocab', title: 'Vocabulary Test', blurb: 'Math words, number forms, base-ten blocks, and place names.', generate: vocabTest },

@@ -51,7 +51,7 @@ try {
     locked: document.querySelectorAll('.lesson-row.is-locked').length, lockedLinks: document.querySelectorAll('a.lesson-row.is-locked').length,
     p4: /2,137 — two thousand, one hundred thirty-seven/.test(document.body.innerText) };`);
   check('Program page: Phase 1 open; Phases 2–4 shown as locked outlines (not links)', overview.open && overview.locked === 3 && overview.lockedLinks === 0 && overview.p4, overview);
-  await js(`document.querySelector('a.lesson-row[href="phase-1/"]').click();`); await wait(700);
+  await b.navigate(`document.querySelector('a.lesson-row[href="phase-1/"]').click();`);
   check('Phase 1 opens at Learn under /Mathbook/', await js(`return location.pathname === '/Mathbook/number-words/phase-1/' && document.querySelector('[aria-current=step]').dataset.stage === 'learn'`));
 
   // ----- Learn -----
@@ -70,7 +70,7 @@ try {
   // ----- Say -----
   await hash('#say');
   await js(`document.querySelector('[data-said="two"]').click(); document.querySelector('[data-said="eight"]').click();`);
-  await js('location.reload()'); await wait(700);
+  await b.reload();
   const say = await js(`return { count: document.querySelector('#say-count').textContent, two: document.querySelector('[data-said="two"]').checked, rows: document.querySelectorAll('.say-row').length };`);
   check('Say: 11 words; ticks are saved across refresh', say.rows === 11 && say.two && say.count === '2 of 11 done', say);
 
@@ -102,7 +102,7 @@ try {
   check('Check: retry accepts "  EIGHT " (capitals and spaces ignored) and records success', /Correct/.test(lcwc.right) && lcwc.stored.eight.tries === 2 && lcwc.stored.eight.correct && lcwc.done, lcwc);
   await b.shot(path.join(SHOTS, 'nw-write-desktop.png'));
 
-  await js('location.reload()'); await wait(700);
+  await b.reload();
   const writtenSaved = await js(`return { done: document.querySelector('[data-wi="8"]').classList.contains('is-done'), stored: JSON.parse(localStorage.getItem('${KEY}:written')).eight };`);
   check('Look-Cover-Write: "written from memory" progress survives a refresh', writtenSaved.done && writtenSaved.stored.correct, writtenSaved);
 
@@ -127,7 +127,7 @@ try {
     }
     return { type, wrongOk: !!wrongOk, rightOk: !!rightOk, dotDone: box.querySelector('.dot.is-done') !== null };`);
   check('Practice: a wrong answer gets "Not yet" feedback, a retry on the same item is marked correct', retry.wrongOk && retry.rightOk && retry.dotDone, retry);
-  await js('location.reload()'); await wait(700); await hash('#practice');
+  await b.reload(); await hash('#practice');
   const practice = await js(`${FILL_HELPERS}
     const box = document.querySelector('#practice-runner');
     const types = new Set(); let ok = 0;
@@ -197,7 +197,7 @@ try {
   check('"Practice missed words" opens a practice round of just those words', focus.hash === '#practice' && eight.last.missed.every((w) => focus.banner.includes(w)), { focus, missed: eight.last.missed });
 
   // Persistence and coverage over attempts
-  await js('location.reload()'); await wait(700); await hash('#results');
+  await b.reload(); await hash('#results');
   const hist = await js(`return document.querySelectorAll('.history tbody tr').length;`);
   check('Results persist after refresh (3 attempts)', hist === 3, hist);
   const all = await js(`return JSON.parse(localStorage.getItem('${KEY}:attempts'));`);
