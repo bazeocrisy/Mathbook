@@ -8,7 +8,7 @@
 | Kind of evidence | What it covers |
 |---|---|
 | **Measured** — `npm run audit` (`tests/audit.mjs`) | 16 screen-states × 9 viewports = **144 screen-states** (the 8 required sizes + 640×360 = 200% page zoom); keyboard focus on 7 screens; root text doubled on 16 states; reduced motion; 18 state-transition / leakage checks |
-| **Automated tests** | 24 unit tests, 80 + 62 browser checks (headless Chrome, site served under `/Mathbook/`) |
+| **Automated tests** | 24 unit tests, 83 + 64 browser checks (headless Chrome, site served under `/Mathbook/`) |
 | **Visually inspected** | Screenshots in `docs/audit/after/` — judgments are labeled as visual |
 | **NOT verified** | Real phones/tablets (all device results are **emulated** in desktop Chrome); Safari and Firefox; a real screen reader (NVDA/VoiceOver); classroom-distance reading on a physical display |
 
@@ -40,9 +40,19 @@ Full tables: [`after/measurements.md`](after/measurements.md), comparison: [`aft
 |---|---|---|
 | Unit — Lesson 2-1 math, grading, content (`tests/math.test.js`) | `npm test` | **14 / 14 pass** |
 | Unit — Number Words (`tests/number-words.test.js`) | `npm test` | **10 / 10 pass** |
-| Browser — home + Lesson 2-1 | `npm run test:browser` | **80 / 80 pass** |
-| Browser — Number Words | `npm run test:browser` | **62 / 62 pass** |
-| **Total** | | **166 / 166 pass, 0 fail** |
+| Browser — home + Lesson 2-1 | `npm run test:browser` | **83 / 83 pass** |
+| Browser — Number Words | `npm run test:browser` | **64 / 64 pass** |
+| **Total** | | **171 / 171 pass, 0 fail** |
+
+(Added after the owner's feature review: practice-bank refresh persistence before/after checking, navigation, "new set" freshness; Number Words write-from-memory persistence and wrong-then-right retry.)
+
+## Owner feature review: confirmed findings (not defects in the assigned scope)
+
+| ID | Finding | Evidence | Severity / status |
+|---|---|---|---|
+| F-01 | The 50-question bank is **not** organized as five fixed sets of 10. Each set is 10 questions drawn at random from all 50 (or from one skill via the Skill filter), avoiding the previous set's questions. | Code (`makeSet`), browser check "Start a new set gives 10 new questions" | Medium — design choice from Build 1; change only if requested |
+| F-02 | There is **no "retry missed questions"** button for the practice bank. A checked set shows each mistake with the correct answer and explanation; to practice again, the student starts a new set (optionally filtered to the skill). Missed *test* questions do link to "Practice this skill". | Browser finding: no retry control present | Medium — feature gap; not built in this build (scope) |
+| F-03 | A Number Words **practice round** in progress is not saved across a refresh (a new round starts). Say ticks, write-from-memory progress, test drafts, and results are saved. | Code (`S.practice` is in memory); persistence checks for the others | Low |
 
 Test expectations changed only where the content changed on purpose, each with a comment in the test: guided practice 5 → 7 problems; the expanded-form guided item moved from position 2 to 3; teaching script 5 → 6 steps.
 
@@ -160,4 +170,4 @@ Focus mode: while any test runs, the stage tabs are hidden; the only exits are S
 
 **READY FOR PARENT ACCEPTANCE TESTING**
 
-All automated release-blocking checks pass (166/166), no Critical or High defects remain open, and the remaining limitations are listed above. This is not approval for full student use: real-device testing with the student, a screen-reader pass, and review of the A-07 convention decision are still outstanding.
+All automated release-blocking checks pass (171/171), no Critical or High defects remain open, and the remaining limitations are listed above. This is not approval for full student use: real-device testing with the student, a screen-reader pass, and review of the A-07 convention decision are still outstanding.

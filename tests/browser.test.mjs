@@ -176,6 +176,39 @@ try {
     return { n: s.ids.length, all: s.ids.every((id) => L.bank.find((q) => q.id === id).skill === 'expanded'), bank: L.bank.length };`);
   check('Independent: skill filter builds a skill-only set; bank still has 50', skillSet.all && skillSet.n === 5 && skillSet.bank === 50, skillSet);
 
+  // Saved progress for the practice bank: unfinished answers and checked results survive a refresh.
+  const before = await js(`${FILL_HELPERS}
+    document.querySelector('#skill-filter').value = 'all'; document.querySelector('#new-set').click();
+    const set = JSON.parse(localStorage.getItem(L.storageKey + ':practice'));
+    const els = document.querySelectorAll('#indep .q[data-qkey]');
+    set.ids.slice(0, 4).forEach((id, i) => fill(els[i], L.bank.find((q) => q.id === id), i !== 1));
+    return set.ids;`);
+  await js('location.reload()'); await wait(700);
+  const restored = await js(`${FILL_HELPERS}
+    const set = JSON.parse(localStorage.getItem(L.storageKey + ':practice'));
+    const els = document.querySelectorAll('#indep .q[data-qkey]');
+    const answered = set.ids.filter((id, i) => Q.isAnswered(L.bank.find((q) => q.id === id), Q.read(els[i], L.bank.find((q) => q.id === id)))).length;
+    return { sameSet: JSON.stringify(set.ids), answered, shown: els.length };`);
+  check('Practice bank: unfinished set and its 4 answers survive a refresh', restored.sameSet === JSON.stringify(before) && restored.answered === 4 && restored.shown === 10, restored);
+  const checkedRefresh = await js(`${FILL_HELPERS}
+    const set = JSON.parse(localStorage.getItem(L.storageKey + ':practice'));
+    const els = document.querySelectorAll('#indep .q[data-qkey]');
+    set.ids.slice(4).forEach((id, i) => fill(els[i + 4], L.bank.find((q) => q.id === id), true));
+    document.querySelector('#check-set').click();
+    return document.querySelector('.set-score').innerText;`);
+  await js('location.reload()'); await wait(700);
+  await hash('#teach'); await hash('#practice');
+  const afterChecked = await js(`return { score: document.querySelector('.set-score')?.innerText, wrong: document.querySelectorAll('#indep .feedback-no').length, ok: document.querySelectorAll('#indep .feedback-ok').length,
+    why: document.querySelectorAll('#indep .feedback-no').length && /Correct answer:[\\s\\S]*Why:/.test(document.querySelector('#indep .feedback-no').innerText),
+    disabled: Array.from(document.querySelectorAll('#indep input')).every((i) => i.disabled) };`);
+  check('Practice bank: checked results (9 of 10, explanations) survive refresh and navigation; answers locked', /9 of 10 correct/.test(checkedRefresh) && /9 of 10 correct/.test(afterChecked.score || '') && afterChecked.wrong === 1 && afterChecked.ok === 9 && afterChecked.why && afterChecked.disabled, { checkedRefresh, afterChecked });
+  const retry = await js(`return { retryMissedButton: !!Array.from(document.querySelectorAll('#indep button')).find((b) => /missed|retry|again/i.test(b.innerText)) };`);
+  // Informational only (not counted as a check): reported to the owner as a feature gap.
+  console.log(`ℹ Finding: "retry missed bank questions" control present = ${retry.retryMissedButton}`);
+  const nextSet = await js(`const prev = JSON.parse(localStorage.getItem(Mathbook.lessons['2-1'].storageKey + ':practice')).ids; document.querySelector('#new-set').click();
+    const now = JSON.parse(localStorage.getItem(Mathbook.lessons['2-1'].storageKey + ':practice')).ids; return { overlap: now.filter((id) => prev.includes(id)).length, n: now.length };`);
+  check('Practice bank: "Start a new set" gives 10 new questions (none repeated from the last set when possible)', nextSet.n === 10 && nextSet.overlap === 0, nextSet);
+
   // ----- Test It: focus mode, required answers, switching tests -----
   await hash('#test');
   await js(`document.querySelector('[data-start="math"]').click();`);

@@ -102,8 +102,32 @@ try {
   check('Check: retry accepts "  EIGHT " (capitals and spaces ignored) and records success', /Correct/.test(lcwc.right) && lcwc.stored.eight.tries === 2 && lcwc.stored.eight.correct && lcwc.done, lcwc);
   await b.shot(path.join(SHOTS, 'nw-write-desktop.png'));
 
-  // ----- Guided practice -----
+  await js('location.reload()'); await wait(700);
+  const writtenSaved = await js(`return { done: document.querySelector('[data-wi="8"]').classList.contains('is-done'), stored: JSON.parse(localStorage.getItem('${KEY}:written')).eight };`);
+  check('Look-Cover-Write: "written from memory" progress survives a refresh', writtenSaved.done && writtenSaved.stored.correct, writtenSaved);
+
+  // ----- Guided practice: wrong, then retry the same item correctly -----
   await hash('#practice');
+  const retry = await js(`${FILL_HELPERS}
+    const box = document.querySelector('#practice-runner');
+    const el = box.querySelector('.q[data-qkey]');
+    const id = el.dataset.qkey.replace('nwp-', '');
+    // Recreate the item's answer from what is on screen: type spell/letter by reading the stored round is not exposed, so use the DOM.
+    const type = el.className.match(/q-type-(\\w+)/)[1];
+    const fire = (t) => t.dispatchEvent(new Event('input', { bubbles: true }));
+    let wrongOk, rightOk;
+    if (type === 'mc') {
+      const radios = Array.from(el.querySelectorAll('input[type=radio]'));
+      for (const r of radios) { r.click(); box.querySelector('[data-act=check]').click(); const t = box.querySelector('.result-box').innerText; if (/Not yet/.test(t)) wrongOk = true; if (/Correct/.test(t)) { rightOk = true; break; } }
+    } else {
+      const inp = el.querySelector('.q-input, .letter-input'); inp.value = 'q'; fire(inp);
+      box.querySelector('[data-act=check]').click(); wrongOk = /Not yet/.test(box.querySelector('.result-box').innerText);
+      box.querySelector('[data-act=reveal]').click(); const ans = box.querySelector('.result-box').innerText.match(/Answer:\\s*(\\S+)/)[1];
+      inp.value = ans; fire(inp); box.querySelector('[data-act=check]').click(); rightOk = /Correct/.test(box.querySelector('.result-box').innerText);
+    }
+    return { type, wrongOk: !!wrongOk, rightOk: !!rightOk, dotDone: box.querySelector('.dot.is-done') !== null };`);
+  check('Practice: a wrong answer gets "Not yet" feedback, a retry on the same item is marked correct', retry.wrongOk && retry.rightOk && retry.dotDone, retry);
+  await js('location.reload()'); await wait(700); await hash('#practice');
   const practice = await js(`${FILL_HELPERS}
     const box = document.querySelector('#practice-runner');
     const types = new Set(); let ok = 0;
