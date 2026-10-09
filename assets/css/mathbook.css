@@ -89,7 +89,7 @@ section, .card, [id] { scroll-margin-top: calc(var(--bar-h) + 16px); }
 .crumbs { font-weight: 600; color: var(--on-space-muted); font-size: 0.9rem; }
 .topbar-right { margin-left: auto; display: flex; align-items: center; gap: 0.5rem; }
 .lesson-pill { background: rgba(255, 255, 255, 0.12); color: #fff; padding: 0.25rem 0.8rem; border-radius: 999px; font-weight: 800; font-size: 0.85rem; letter-spacing: 0.03em; }
-.home-link { color: #fff; font-weight: 700; text-decoration: none; padding: 0.4rem 0.9rem; border-radius: 999px; border: 1px solid rgba(255, 255, 255, 0.3); min-height: 44px; display: inline-flex; align-items: center; }
+.home-link { color: #fff; font-weight: 700; text-decoration: none; padding: 0.4rem 0.9rem; border-radius: 999px; border: 1px solid rgba(255, 255, 255, 0.3); min-height: 48px; display: inline-flex; align-items: center; }
 .home-link:hover { background: rgba(255, 255, 255, 0.1); }
 
 /* ---------- Stage navigation ("mission steps") ---------- */
@@ -144,7 +144,7 @@ body.is-testing .test-banner { display: block; background: rgba(10, 15, 46, 0.94
 .btn-star { background: var(--star); color: #1a1446; box-shadow: 0 0 22px rgba(255, 215, 106, 0.35); }
 .btn-star:hover { background: #ffe28f; }
 .btn-danger { background: var(--no); color: #fff; }
-.btn-small { min-height: 44px; padding: 0.45rem 0.9rem; font-size: 0.92rem; background: var(--primary-soft); color: var(--primary); }
+.btn-small { min-height: 48px; padding: 0.45rem 0.9rem; font-size: 0.92rem; background: var(--primary-soft); color: var(--primary); }
 .btn-big { font-size: 1.12rem; padding: 0.9rem 1.6rem; }
 /* Disabled controls stay readable (≥ 4.5:1) instead of fading out. */
 .btn:disabled { opacity: 1; cursor: not-allowed; background: #eceef5; color: #545a75; border-color: #d4d7e5; box-shadow: none; }
@@ -512,15 +512,6 @@ a.lesson-row:hover { border-color: var(--primary); box-shadow: 0 0 0 4px var(--p
 }
 
 /* ---------- See It wizard: one step at a time ---------- */
-.wiz-steps ol { list-style: none; margin: 0.6rem 0 0; padding: 0; display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 0.5rem; }
-.wiz-step { font: inherit; width: 100%; min-height: 64px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 0.2rem; padding: 0.45rem 0.3rem; border-radius: 16px; border: 2px solid rgba(255, 255, 255, 0.3); background: rgba(255, 255, 255, 0.08); color: #fff; cursor: pointer; text-align: center; }
-.wiz-step:hover:not(:disabled) { background: rgba(255, 255, 255, 0.16); }
-.wiz-n { display: inline-grid; place-items: center; width: 2rem; height: 2rem; border-radius: 50%; background: rgba(255, 255, 255, 0.15); font-weight: 900; }
-.wiz-t { font-weight: 700; font-size: 0.85rem; line-height: 1.15; }
-.wiz-step.is-current { background: var(--star); color: #1a1446; border-color: var(--star); }
-.wiz-step.is-current .wiz-n { background: #1a1446; color: var(--star); }
-.wiz-step.is-done .wiz-n { background: #4cc38a; color: #08311c; }
-.wiz-step.is-locked, .wiz-step:disabled { opacity: 1; cursor: not-allowed; color: #aab3d9; border-style: dashed; background: transparent; }
 .wiz-card { margin-top: 1rem; }
 .wiz-count { text-transform: uppercase; letter-spacing: 0.08em; font-weight: 800; font-size: 0.8rem; color: var(--student); margin: 0; }
 .wiz-card h2 { font-size: clamp(1.5rem, 4vw, 2rem); margin: 0.2rem 0 0.4rem; }
@@ -532,12 +523,59 @@ a.lesson-row:hover { border-color: var(--primary); box-shadow: 0 0 0 4px var(--p
 a.btn.is-disabled { background: #eceef5; color: #545a75; pointer-events: none; }
 .wiz-locked-note { text-align: right; color: var(--on-space-muted); font-weight: 700; margin: 0.4rem 0 0; }
 @media (max-width: 760px) {
-  .wiz-t { font-size: 0.7rem; }
-  .wiz-steps ol { gap: 0.25rem; }
-  .wiz-n { width: 1.7rem; height: 1.7rem; }
   .wiz-locked-note { text-align: center; }
 }
-@media (max-width: 400px) {
-  .wiz-t { display: none; }
-  .wiz-step { min-height: 52px; }
+
+/* ---------- Guided navigation: menus of big choices, one activity at a time ---------- */
+.stage.stage-menu { max-width: 960px; }
+.stage.stage-activity { max-width: 800px; }
+.menu-hero { padding-bottom: 0.4rem; }
+.menu-hero .lead { font-size: 1.25rem; font-weight: 700; color: #fff; margin-top: 0.4rem; }
+.choice-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1rem; margin: 1.2rem 0; }
+.choice-grid-one { grid-template-columns: minmax(0, 1fr); max-width: 40rem; }
+.choice-card { position: relative; display: flex; align-items: center; gap: 1rem; min-height: 112px; padding: 1.1rem 1.3rem; border-radius: var(--radius); background: var(--card); color: var(--ink); text-decoration: none; border: 3px solid transparent; box-shadow: var(--shadow); min-width: 0; }
+.choice-card:hover { border-color: #c9bdf5; }
+.choice-card:focus-visible { outline: 4px solid var(--star); outline-offset: 3px; }
+.choice-card.is-recommended { border-color: var(--star); }
+.choice-icon { flex: 0 0 auto; display: grid; place-items: center; width: 3.4rem; height: 3.4rem; border-radius: 50%; background: var(--student-soft); color: var(--student); font-size: 1.6rem; font-weight: 900; line-height: 1; }
+.choice-num { font-size: 1.05rem; }
+.choice-text { display: flex; flex-direction: column; gap: 0.15rem; min-width: 0; }
+.choice-title { font-size: 1.35rem; font-weight: 800; color: var(--heading); line-height: 1.2; }
+.choice-desc { font-size: 1rem; color: var(--muted); }
+.choice-tag { position: absolute; top: -0.75rem; right: 1rem; background: var(--star); color: #1a1446; font-weight: 800; font-size: 0.85rem; padding: 0.15rem 0.7rem; border-radius: 999px; }
+.parent-link { margin: 0.6rem 0 0; color: var(--on-space-muted); }
+.parent-link a { color: #fff; font-weight: 700; display: inline-flex; align-items: center; min-height: 48px; }
+.parent-link .muted { color: var(--on-space-muted); }
+.coming-later { color: var(--on-space-muted); margin: 0.2rem 0 0; }
+/* Home */
+.home-hero.home-hero-small { padding: clamp(1.2rem, 4vw, 2.2rem) 0 0.4rem; grid-template-columns: minmax(0, 1fr) minmax(0, 220px); }
+.home-hero-small h1 { font-size: clamp(1.9rem, 5vw, 2.6rem); }
+.home-hero-small .lead { color: #fff; font-weight: 700; }
+.home-hero-small .hero-art { max-width: 220px; }
+.continue-one { margin: 0.6rem 0 0.4rem; }
+.continue-what { color: var(--on-space-muted); margin: 0.4rem 0 0; }
+/* One question at a time */
+.q-count { text-transform: uppercase; letter-spacing: 0.08em; font-weight: 800; font-size: 0.85rem; color: var(--student); margin: 0 0 0.6rem; }
+.activity-card { margin-top: 1rem; }
+.one-q-nav { margin-top: 1.2rem; }
+.ex-nav { display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; flex-wrap: wrap; margin-bottom: 0.8rem; }
+.ex-count { font-weight: 800; color: var(--heading); }
+.wiz-menu { display: flex; justify-content: center; margin-top: 1rem; }
+.done-card { text-align: center; }
+.done-title { font-size: 1.4rem; font-weight: 800; color: var(--heading); margin: 0 0 1rem; }
+.done-card .actions { justify-content: center; }
+/* Grown-up help, folded away from the child's work */
+.parent-help { margin: 1rem 0; background: var(--parent-soft); border: 1px solid var(--parent-line); border-left: 8px solid #d98a1e; border-radius: 16px; padding: 0 1rem; color: var(--ink); }
+.parent-help > summary { cursor: pointer; font-weight: 800; color: var(--parent); min-height: 48px; display: flex; align-items: center; }
+.parent-help[open] { padding-bottom: 0.8rem; }
+.test-run { margin-top: 1rem; }
+.test-exit { margin-top: 0.8rem; text-align: center; }
+@media (max-width: 700px) {
+  .choice-grid { grid-template-columns: minmax(0, 1fr); }
+  .choice-card { min-height: 92px; padding: 0.9rem 1rem; }
+  .home-hero.home-hero-small { grid-template-columns: minmax(0, 1fr) 110px; gap: 0.6rem; }
+  .ex-nav .btn { flex: 1 1 auto; }
+  .ex-count, .demo-controls .step-count { order: -1; flex-basis: 100%; text-align: center; }
+  .home-link { white-space: nowrap; padding: 0.4rem 0.75rem; }
+  .topbar-in .lesson-pill { display: none; }
 }

@@ -31,10 +31,17 @@ async function takeSpellingTest(n, format = (w) => w) {
   await wait(200);
   return js(`
     const d = JSON.parse(localStorage.getItem('${KEY}:draft'));
-    const els = document.querySelectorAll('#test-form .q[data-qkey]');
     const fmt = ${format.toString()};
-    d.questions.forEach((q, i) => { const inp = els[i].querySelector('.q-input'); inp.value = i < ${n} ? fmt(q.answer) : q.answer + 'x'; inp.dispatchEvent(new Event('input', { bubbles: true })); });
-    document.querySelector('#test-form button[type=submit]').click();
+    // One question at a time: answer, Next, … then Finish Test on the review screen. A resumed test may open anywhere: rewind first.
+    if (!document.querySelector('.test-one')) document.querySelector('[data-nav="prev"]').click();
+    while (!/Question 1 of/.test(document.querySelector('.q-count').textContent)) document.querySelector('[data-nav="prev"]').click();
+    for (let guard = 0; guard < 30 && document.querySelector('.test-one .q-input'); guard++) {
+      const i = Number(document.querySelector('.q-count').textContent.match(/Question (\\d+)/)[1]) - 1;
+      const q = d.questions[i]; const inp = document.querySelector('.test-one .q-input');
+      inp.value = i < ${n} ? fmt(q.answer) : q.answer + 'x'; inp.dispatchEvent(new Event('input', { bubbles: true }));
+      document.querySelector('[data-nav="next"]').click();
+    }
+    document.querySelector('[data-finish]').click();
     await new Promise((r) => setTimeout(r, 400));
     const a = JSON.parse(localStorage.getItem('${KEY}:attempts'));
     return { hash: location.hash, last: a[a.length - 1], all: a, text: document.querySelector('.result-detail')?.innerText || '' };`);
@@ -125,8 +132,8 @@ try {
       box.querySelector('[data-act=reveal]').click(); const ans = box.querySelector('.result-box').innerText.match(/Answer:\\s*(\\S+)/)[1];
       inp.value = ans; fire(inp); box.querySelector('[data-act=check]').click(); rightOk = /Correct/.test(box.querySelector('.result-box').innerText);
     }
-    return { type, wrongOk: !!wrongOk, rightOk: !!rightOk, dotDone: box.querySelector('.dot.is-done') !== null };`);
-  check('Practice: a wrong answer gets "Not yet" feedback, a retry on the same item is marked correct', retry.wrongOk && retry.rightOk && retry.dotDone, retry);
+    return { type, wrongOk: !!wrongOk, rightOk: !!rightOk, count: box.querySelector('.q-count').textContent, dots: box.querySelectorAll('.dot').length };`);
+  check('Practice: one item at a time ("Question 1 of 8"); a wrong answer gets "Not yet", a retry on the same item is marked correct', retry.wrongOk && retry.rightOk && retry.count === 'Question 1 of 8' && retry.dots === 0, retry);
   await b.reload(); await hash('#practice');
   const practice = await js(`${FILL_HELPERS}
     const box = document.querySelector('#practice-runner');
@@ -148,8 +155,8 @@ try {
       }
       if (i < 7) box.querySelector('[data-act=next]').click();
     }
-    return { types: [...types], ok, dots: box.querySelectorAll('.dot').length };`);
-  check('Practice: 8 items mixing typed word, multiple choice, and missing letter', practice.dots === 8 && ['spell', 'mc', 'letter'].every((t) => practice.types.includes(t)), practice);
+    return { types: [...types], ok, count: box.querySelector('.q-count').textContent };`);
+  check('Practice: 8 items mixing typed word, multiple choice, and missing letter', practice.count === 'Question 8 of 8' && ['spell', 'mc', 'letter'].every((t) => practice.types.includes(t)), practice);
   check('Practice: wrong → feedback, hint, show answer all work', practice.ok === 3, practice);
   await b.shot(path.join(SHOTS, 'nw-practice-desktop.png'));
 
@@ -161,14 +168,16 @@ try {
     const text = document.querySelector('#stage').innerText.toLowerCase();
     const html = document.querySelector('#stage').innerHTML.toLowerCase().replace(/data-[a-z]+="[^"]*"/g, '');
     const leaked = d.questions.filter((q) => new RegExp('\\\\b' + q.answer + '\\\\b').test(text));
-    document.querySelector('#test-form button[type=submit]').click();
+    const shown = document.querySelectorAll('.test-one .q[data-qkey]').length;
+    for (let i = 0; i < 10; i++) document.querySelector('[data-nav="next"]').click();
+    document.querySelector('[data-finish]').click();
     await new Promise((r) => setTimeout(r, 200));
-    return { n: d.questions.length, types: [...new Set(d.questions.map((q) => q.type))], hints: document.querySelectorAll('#stage [data-act=hint], #stage .hint-box').length,
+    return { n: d.questions.length, shown, types: [...new Set(d.questions.map((q) => q.type))], hints: document.querySelectorAll('#stage [data-act=hint], #stage .hint-box').length,
       leaked: leaked.map((q) => q.answer), tabsHidden: getComputedStyle(document.querySelector('.stagebar')).display === 'none',
-      err: document.querySelector('#test-form .error-box').innerText, saved: (JSON.parse(localStorage.getItem('${KEY}:attempts')) || []).length, omitted: d.omitted, assessed: d.assessed };`);
-  check('Spelling test: 10 typed-word questions, no hints, focus mode', running.n === 10 && running.types.join() === 'spell' && running.hints === 0 && running.tabsHidden, running);
+      err: document.querySelector('main .error-box').innerText, finishShown: !!document.querySelector('[data-finish]'), saved: (JSON.parse(localStorage.getItem('${KEY}:attempts')) || []).length, omitted: d.omitted, assessed: d.assessed };`);
+  check('Spelling test: 10 typed-word questions, no hints, focus mode', running.n === 10 && running.shown === 1 && running.types.join() === 'spell' && running.hints === 0 && running.tabsHidden, running);
   check('Spelling test: no tested word appears anywhere on the page', running.leaked.length === 0, running.leaked);
-  check('Spelling test: cannot submit until all 10 are answered', /answer every question/i.test(running.err) && running.saved === 0, running);
+  check('Spelling test: one word at a time; Finish Test refuses until all 10 are answered', /still need answers/i.test(running.err) && running.finishShown && running.saved === 0, running);
   check('Spelling test: 10 different words assessed; 1 left out', new Set(running.assessed).size === 10 && running.omitted.length === 1 && !running.assessed.includes(running.omitted[0]), running);
   await b.viewport(390, 844, true);
   await b.shot(path.join(SHOTS, 'nw-test-phone.png'));
@@ -209,14 +218,15 @@ try {
   await js(`document.querySelector('[data-start="math"]').click();`); await wait(200);
   await b.load(O + NW + '#test');
   await js(`document.querySelector('[data-start]').click();`); await wait(200);
-  await js(`const i = document.querySelector('#test-form .q-input'); i.value = 'one'; i.dispatchEvent(new Event('input', { bubbles: true }));`);
+  await js(`const i = document.querySelector('.test-one .q-input'); i.value = 'one'; i.dispatchEvent(new Event('input', { bubbles: true }));`);
   await b.load(O + BASE + 'curriculum/chapter-2/lesson-2-1/#test');
   const sep = await js(`return { lessonResume: document.querySelector('[data-start="math"]').innerText, lessonAttempts: localStorage.getItem('mathbook:v2:lesson-2-1:attempts'),
     nwDraft: !!localStorage.getItem('${KEY}:draft'), lessonKeys: Object.keys(localStorage).filter((k) => k.includes('lesson-2-1')), nwKeys: Object.keys(localStorage).filter((k) => k.includes('number-words')) };`);
-  check('Unfinished Lesson 2-1 and Number Words tests coexist without interfering', /Resume/.test(sep.lessonResume) && sep.nwDraft && sep.lessonAttempts === null && sep.nwKeys.every((k) => k.startsWith(KEY)), sep);
+  check('Unfinished Lesson 2-1 and Number Words tests coexist without interfering', /Keep going/.test(sep.lessonResume) && sep.nwDraft && sep.lessonAttempts === null && sep.nwKeys.every((k) => k.startsWith(KEY)), sep);
   await b.load(O + BASE);
-  const home = await js(`return { items: Array.from(document.querySelectorAll('#continue-list a')).map((a) => a.textContent), badge: document.querySelector('#status-nw-1').textContent };`);
-  check('Home: lists both unfinished tests; Number Words badge shows its own result', home.items.some((t) => /Lesson 2-1 Math Test/.test(t)) && home.items.some((t) => /Number Words spelling test \(1 of 10 answered\)/.test(t)) && /Spelling: 9\/10 · Mastered/.test(home.badge), home);
+  const home = await js(`return { buttons: document.querySelectorAll('#continue a').length, href: document.querySelector('#continue-link').getAttribute('href'), what: document.querySelector('#continue-what').textContent };`);
+  // The Lesson 2-1 Math Test was opened but nothing answered, so it does not count; the spelling test (1 answered) does.
+  check('Home: one Continue button, for the spelling test with an answer (the untouched math test does not count)', home.buttons === 1 && home.href === 'number-words/phase-1/#test' && /Spelling test: 1 of 10 answered/.test(home.what), home);
 
   // Clear only Number Words
   await b.load(O + NW + '#results');
