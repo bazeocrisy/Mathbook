@@ -9,6 +9,11 @@ Live site: https://bazeocrisy.github.io/Mathbook/
 - **Home** (`index.html`): "What would you like to do?" with two choices (Math Lessons, Number Words) and one **Continue where I left off** button, shown only for unfinished work with real progress (a test or practice set with at least one answer, or Learn part-way done).
 - **Math Lessons** (`math/`): the list of lessons. Each lesson opens its Lesson Menu.
 - **Grade 3 · Chapter 2 · Lesson 2-1** (`curriculum/chapter-2/lesson-2-1/`): Represent 4-Digit Numbers.
+- **Grade 3 · Chapter 2 · Lesson 2-2** (`curriculum/chapter-2/lesson-2-2/`): Round Multi-Digit Numbers — nearest 10 and 100 with number lines and place value, explaining, working backward, select-all, and estimate vs. exact money totals. 12 practice questions (Practice Together with hints, or On My Own) and a separate 12-question Rounding Test with matching coverage.
+
+## Approved template
+
+Section 2-1 is the approved lesson template: **commit `b826b91`** (merge of PR #6, deployed and owner-reviewed). New lessons reuse its menus, Learn (Example → Your Turn), Practice, Take a Test, My Results, and Parent Guide without changing 2-1.
 - **Number Words** (`number-words/`): Read It, Say It, Spell It, Write It. Phase 1 (0–10) is complete; Phases 2–4 are outlines only.
 
 ## Lesson structure
@@ -42,6 +47,7 @@ assets/js/number-words-app.js      Number Words phase engine (reusable for every
 curriculum/chapter-2/lesson-2-1/
   index.html                       Lesson page (loads the scripts above)
   lesson.js                        Lesson content only
+curriculum/chapter-2/lesson-2-2/   Same layout: Round Multi-Digit Numbers
 number-words/
   index.html                       Program overview (phases)
   program.js                       Curriculum data: Phase 1 words and tips; Phases 2–4 outline
@@ -58,7 +64,13 @@ docs/audit/                        Baseline and post-implementation audits with 
 4. In `math/index.html`, add a `choice-card` link to `../curriculum/.../lesson-x-y/#menu`. The Lesson Menu, Learn wizard, Practice choices, tests, and results come from the shared engine; nothing about navigation is lesson-specific.
 5. On the home page, add the new lesson's storage keys to the Continue check if it should count as unfinished work.
 
-Question types available to any lesson: `mc`, `select`, `number`, `expanded`, `words`, `chart`, `build`, `spell`, `letter` (see `assets/js/questions.js`).
+Question types available to any lesson: `mc`, `select`, `number`, `expanded`, `words`, `chart`, `build`, `spell`, `letter`, and `parts` (several small answers graded together: numbers, "any number that rounds to…", one choice, or select-all; optional blank number line) — see `assets/js/questions.js`.
+
+A lesson can also provide, as data instead of code:
+- Learn steps of `kind: 'slides'` (an array of HTML parts shown one at a time in the Example phase) with a `check(rng)` for Your Turn;
+- `parentLearn` (goal, words, demonstrate, ask, checklist) for a shared Parent Guide layout;
+- `seeIt.reflection` (a talk-about-it question on the Learn completion screen, never graded).
+Practice shows only the activities a lesson defines (`vocabPractice`, `guided`, `bankSets`). Number lines come from `Mathbook.pv.numberLineHTML` / `roundLineHTML`.
 
 ## Adding a Number Words phase
 
@@ -70,7 +82,7 @@ Question types available to any lesson: `mc`, `select`, `number`, `expanded`, `w
 Requires Node 18+ (no packages to install) and Chrome or Edge for browser tests.
 
 ```
-npm test               # unit tests: every number 0–9,999, all 50 bank questions, thousands of generated tests, Number Words
+npm test               # unit tests: every number 0–9,999, all 50 bank questions, thousands of generated tests, rounding (2-2), Number Words
 npm run test:browser   # end-to-end in headless Chrome/Edge, served under /Mathbook/ like GitHub Pages
 npm run audit -- after # Build 2.1 device-state audit (written for the old stage-bar layout; not yet updated)
 ```

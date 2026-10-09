@@ -24,7 +24,6 @@
     { id: 'test', label: 'Take a Test' },
     { id: 'results', label: 'My Results' }
   ];
-  const SET_SIZE = 10;
   const SHORT = ['Th', 'H', 'T', 'O']; // column labels for compact charts
 
   function mastery(pct) {
@@ -79,13 +78,13 @@
     const store = shell.makeStore(L.storageKey);
     const S = {
       see: { ex: 0, step: 0 },
-      builder: digitsOf(L.seeIt.builderStart),
+      builder: digitsOf(L.seeIt.builderStart || 0),
       change: L.seeIt.changeStart,
       guidedPos: { i: 0 },
       guidedStates: {},
       vocabPos: { i: 0 },
       vocabStates: {},
-      vocabItems: L.vocabPractice(shell.newSeed()),
+      vocabItems: L.vocabPractice ? L.vocabPractice(shell.newSeed()) : [],
       bank: store.get('bank-sets', {}),
       openSet: store.get('bank-open', null),
       activeTest: null,
@@ -144,6 +143,7 @@
 
     // ===== Parent Guide (was Teach It) =====
     function teachView() {
+      if (L.parentLearn) return parentLearnView();
       const vocab = L.vocabulary.map((v) =>
         `<div class="vocab-card"><h3>${esc(v.term)}</h3><p>${esc(v.meaning)}.</p>` +
         (v.chart ? chartHTML(v.chart, { small: true }) + `<p class="q-help">Th = thousands, H = hundreds, T = tens, O = ones</p>` : `<p class="vocab-example">${esc(v.example)}</p>`) + `</div>`).join('');
@@ -183,6 +183,24 @@
         demoSteps(L.seeIt.examples[0]).map((s) => `<li>${esc(s.ask.replace(/^Ask: /, ''))}</li>`).join('') +
         `<li>Each Learn step ends with a short check. If your student misses it twice, the answer is explained and a new question appears.</li></ul></div>` +
         `<div class="callout callout-warn"><h3>Watch for these mistakes</h3><ul>${L.mistakes.map((m) => `<li>${esc(m)}</li>`).join('')}</ul></div></section>` +
+        menuNav();
+    }
+
+    /** Parent Learn from lesson data: goal, words, demonstration, questions to ask, mistakes, and a checklist for the Learn steps. */
+    function parentLearnView() {
+      const p = L.parentLearn;
+      const list = (items) => `<ul>${items.map((x) => `<li>${esc(x)}</li>`).join('')}</ul>`;
+      main.innerHTML =
+        ctx.hero(eyebrow('teach'), 'Parent Guide', esc(L.subtitle), [
+          { id: 'goal', label: 'A · Goal' }, { id: 'words', label: 'B · Math words' },
+          { id: 'demo', label: 'C · Demonstrate' }, { id: 'check', label: 'D · Questions, mistakes, checklist' }]) +
+        `<section class="card card-parent" id="goal">${head('A', 'Goal', 'parent')}<p class="objective">${esc(L.objective)}</p>${list(p.goal)}</section>` +
+        `<section class="card card-parent" id="words">${head('B', 'Math words', 'parent')}<dl class="pl-words">` +
+        p.words.map((w) => `<div><dt>${esc(w.term)}</dt><dd>${esc(w.meaning)}${w.example ? ` <span class="muted">Example: ${esc(w.example)}</span>` : ''}</dd></div>`).join('') + `</dl></section>` +
+        `<section class="card card-parent" id="demo">${head('C', 'Demonstrate', 'parent')}${p.demoVisual || ''}<ol>${p.demonstrate.map((x) => `<li>${esc(x)}</li>`).join('')}</ol></section>` +
+        `<section class="card card-parent" id="check">${head('D', 'Questions, mistakes, and checklist', 'parent')}` +
+        `<h3>Ask</h3>${list(p.ask)}<div class="callout callout-warn"><h3>Watch for these mistakes</h3>${list(L.mistakes)}</div>` +
+        `<h3>Checklist: the five Learn steps</h3><ol class="checks">${p.checklist.map((x) => `<li>${esc(x)}</li>`).join('')}</ol></section>` +
         menuNav();
     }
 
@@ -256,6 +274,13 @@
       }
 
       function demoHTML(step) {
+        if (step.kind === 'slides') {
+          const n = step.slides.length;
+          return `<div id="slide-body" class="demo-body slide-body"></div>` + (n > 1
+            ? `<div class="demo-controls"><button type="button" class="btn btn-ghost" id="slide-prev">◀ Back a part</button>` +
+              `<span class="step-count" id="slide-count" aria-live="polite"></span>` +
+              `<button type="button" class="btn btn-ghost" id="slide-next">Next part ▶</button></div>` : '');
+        }
         if (step.kind === 'examples') {
           const ex = L.seeIt.examples;
           return `<div class="ex-nav"><button type="button" class="btn btn-ghost" id="ex-prev">◀ Previous Example</button>` +
@@ -295,6 +320,26 @@
       }
 
       function bindDemo(step) {
+        if (step.kind === 'slides') {
+          W.slide = W.slide || {};
+          const n = step.slides.length;
+          const draw = () => {
+            const k = Math.min(Math.max(0, W.slide[step.id] || 0), n - 1);
+            W.slide[step.id] = k;
+            main.querySelector('#slide-body').innerHTML = step.slides[k];
+            if (n > 1) {
+              main.querySelector('#slide-count').textContent = `Part ${k + 1} of ${n}`;
+              main.querySelector('#slide-prev').disabled = k === 0;
+              main.querySelector('#slide-next').disabled = k === n - 1;
+            }
+            save();
+          };
+          if (n > 1) {
+            main.querySelector('#slide-prev').addEventListener('click', () => { W.slide[step.id] -= 1; draw(); });
+            main.querySelector('#slide-next').addEventListener('click', () => { W.slide[step.id] += 1; draw(); });
+          }
+          draw();
+        }
         if (step.kind === 'examples') {
           const ex = L.seeIt.examples;
           const body = main.querySelector('#demo-body');
@@ -375,7 +420,7 @@
         if (c.solved) msg = `<div class="feedback feedback-ok"><p><b>✓ ${c.tries <= 1 ? 'Correct!' : 'You got it!'}</b> ${esc(q.explanation)}</p></div>`;
         else if (c.revealed) msg = `<div class="feedback feedback-info"><p><b>The answer is ${esc(Q.correctText(q))}.</b> ${esc(q.explanation)}</p><p>Now try a new one like it.</p></div>`;
         else if (c.retry) {
-          const tip = q.type === 'expanded' ? Q.expandedTip(c.response, q.answer) + ' ' : '';
+          const tip = q.type === 'expanded' ? Q.expandedTip(c.response, q.answer) + ' ' : q.type === 'parts' ? Q.partsTip(q, c.response) + ' ' : '';
           msg = `<div class="feedback feedback-no"><p><b>Not quite.</b> ${esc(tip + (q.hint || 'See the example again if you need help.'))}</p></div>`;
         }
         let action;
@@ -453,6 +498,8 @@
       if (arg === 'done' && steps.every((s) => W.done[s.id])) {
         main.innerHTML = ctx.hero(lessonEyebrow(), 'You finished learning!', 'Great work. Now try some practice problems.') +
           `<section class="card done-card"><p class="done-title">You finished all ${steps.length} steps.</p>` +
+          (L.seeIt.reflection ? `<div class="reflect"><p class="reflect-title">Think and talk</p><p>${esc(L.seeIt.reflection.prompt)}</p>` +
+            (L.seeIt.reflection.idea ? `<details class="parent-help"><summary>Parent Help</summary><p>${esc(L.seeIt.reflection.idea)}</p></details>` : '') + `</div>` : '') +
           `<div class="actions"><a class="btn btn-primary btn-big" href="#practice">Start Practice</a>` +
           `<a class="btn btn-ghost btn-big" href="#menu">Lesson Menu</a>` +
           `<button type="button" class="btn btn-ghost" id="learn-again">Go through Learn again</button></div></section>`;
@@ -467,16 +514,18 @@
     //   #practice  choices · #practice/words  Math Words · #practice/together  Practice Together
     //   #practice/own  On My Own (choose a set) · #practice/s1 … s5  one set, one question at a time
     function practiceView(c, arg) {
-      if (arg === 'words') return mathWordsView();
+      if (arg === 'words' && L.vocabPractice) return mathWordsView();
       if (arg === 'together') return togetherView();
       if (arg === 'own') return ownView();
       if (arg && setOf(arg)) return setView(arg);
       main.innerHTML =
         ctx.hero(lessonEyebrow(), 'Practice', 'Choose how you want to practice.') +
         `<nav class="choice-grid" aria-label="Practice activities">` +
-        choiceCard('#practice/words', 'Math Words', 'Practice the math words with hints.', 'Ab') +
-        choiceCard('#practice/together', 'Practice Together', 'Solve problems with a grown-up. Hints and help are on.', '👥', 'icon-text') +
-        choiceCard('#practice/own', 'On My Own', `Choose a set of ${SET_SIZE}. Answer every question, then check your work.`, '★') +
+        (L.vocabPractice ? choiceCard('#practice/words', 'Math Words', 'Practice the math words with hints.', 'Ab') : '') +
+        (L.guided ? choiceCard('#practice/together', 'Practice Together', 'Solve problems with a grown-up. Hints and help are on.', '👥', 'icon-text') : '') +
+        (L.bankSets ? choiceCard('#practice/own', 'On My Own', L.bankSets.length > 1
+          ? `Choose a set of ${L.bankSets[0].ids.length}. Answer every question, then check your work.`
+          : `Answer all ${L.bankSets[0].ids.length} questions, then check your work.`, '★') : '') +
         `</nav>` + menuNav();
     }
 
@@ -738,7 +787,7 @@
         ctx.hero(eyebrow('test'), 'Take a Test', 'Which test would you like to take?') +
         `<div class="test-grid">${cards}</div>` +
         `<details class="parent-help"><summary>Parent Help</summary><ul class="rules">` +
-        `<li>Each test has 10 questions, shown one at a time. Every question must be answered before pressing <b>Finish Test</b>.</li>` +
+        `<li>Each test has ${Object.values(L.tests).map((x) => x.questions || 10).join(' or ')} questions, shown one at a time. Every question must be answered before pressing <b>Finish Test</b>.</li>` +
         `<li>No hints and no answer feedback until the test is finished.</li>` +
         `<li>To stop early, press <b>Save and finish later</b>. Answers are kept.</li>` +
         `<li>You may read the directions aloud. Do not explain the math during the test.</li>` +

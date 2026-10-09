@@ -101,7 +101,7 @@ try {
     lessons: Array.from(document.querySelectorAll('.choice-card')).map((a) => a.innerText.replace(/\\s+/g, ' ').trim() + ' → ' + a.getAttribute('href')),
     back: Array.from(document.querySelectorAll('a')).filter((a) => /Back to Home/.test(a.textContent)).map((a) => a.getAttribute('href')),
     later: document.querySelector('.coming-later')?.tagName, laterLinks: document.querySelectorAll('.coming-later a, .coming-later button').length };`);
-  check('Math Lessons: its own screen with Lesson 2-1 and Back to Home', math.path === '/Mathbook/math/' && math.h1 === 'Math Lessons' && math.lessons.length === 1 && /2-1/.test(math.lessons[0]) && /#menu$/.test(math.lessons[0]) && math.back[0] === '../', math);
+  check('Math Lessons: its own screen with Lessons 2-1 and 2-2 and Back to Home', math.path === '/Mathbook/math/' && math.h1 === 'Math Lessons' && math.lessons.length === 2 && /2-1/.test(math.lessons[0]) && /#menu$/.test(math.lessons[0]) && /2-2 Round Multi-Digit Numbers/.test(math.lessons[1]) && math.back[0] === '../', math);
   check('Math Lessons: unavailable lessons are an unobtrusive note, not interactive', math.later === 'P' && math.laterLinks === 0, math);
   await b.navigate(`document.querySelector('.choice-card').click();`);
 
