@@ -262,7 +262,7 @@
   const DEMO = [312, 465, 674, 231, 526, 274, 247, 352, 326, 750, 325, 375, 450, 284, 517, 640, 389, 560, 213, 820, 394, 455, 29, 205];
   // Compatible pairs that Your Turn never produces: practice and test (650/425, 225/350, 825/375, 475/250),
   // the slides (525/275, 250/350, 750/325, 375/450) and the book's own pair 575/125 (review N-04).
-  const USED_PAIRS = [[650, 425], [225, 350], [825, 375], [475, 250], [525, 275], [250, 350], [750, 325], [375, 450], [575, 125]];
+  const USED_PAIRS = [[650, 425], [225, 350], [825, 375], [475, 250], [525, 275], [250, 350], [750, 325], [375, 450], [575, 125], [250, 325]];
   const pairUsed = (x, y) => USED_PAIRS.some(([p, q]) => (p === x && q === y) || (p === y && q === x));
 
   /** A 3-digit number (min–max) that is not a demo number and passes ok(n). */

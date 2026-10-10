@@ -750,7 +750,7 @@ a.btn.is-disabled { background: #eceef5; color: #545a75; pointer-events: none; }
 .q-choices.is-compact { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 .q-choices.is-compact.is-three { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 .q-choices.is-compact .choice { min-height: 52px; font-weight: 800; font-size: 1.1rem; padding: 0.5rem 0.7rem; gap: 0.5rem; }
-@media (min-width: 560px) { .q-choices.is-compact:not(.is-three):not(.is-sym) { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+@media (min-width: 800px) { .q-choices.is-compact:not(.is-three):not(.is-sym) { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
 /* Comparison symbol picker */
 .sym-line { display: flex; align-items: center; gap: 0.7rem; flex-wrap: wrap; font-size: 1.5rem; font-weight: 900; color: var(--heading); margin: 0.3rem 0 0.6rem; }
 .sym-circle { display: inline-grid; place-items: center; width: 3rem; height: 3rem; border-radius: 50%; border: 3px solid var(--primary); background: #fff; color: var(--primary); font-size: 1.6rem; }
