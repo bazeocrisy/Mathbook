@@ -17,7 +17,7 @@ module.exports = {
   teach: [
     '**Partial sums:** add hundreds + hundreds, tens + tens, ones + ones. Then add the three partial sums. Write them in a row or in a column.',
     '**Adjust addends:** if a number is close to a ten or hundred (like 259 or 299), take a little from the other addend and give it to that number.',
-    'If you change only one addend, undo it at the end: 340 + 457 = 797 is 4 too many, so 793.',
+    'If you change only one addend, undo it at the end. For 336 + 457, change 336 to 340: 340 + 457 = 797. That is 4 too many, so the sum is 793.',
     'Let your child choose. Any correct strategy is fine. Ask which one felt easier and why.',
     'In stories, read the question first and cross out numbers you do not need.',
   ],
@@ -60,7 +60,7 @@ module.exports = {
   answers: {
     together: [
       { a: ['Partial sums: 500 + 200 = 700; 30 + 40 = 70; 8 + 6 = 14; 700 + 70 + 14 = **784**', 'Adjust: 538 + 246 → 540 + 244 = **784**'], note: 'Any correct adjustment is fine (e.g., 534 + 250 = 784).' },
-      { a: ['**Yes, both work.** Adjusting: 455 + 240 = 695. Partial sums: 600 + 80 + 15 = 695. Sum: **695**'], note: 'Both strategies keep every hundred, ten, and one, so they give the same sum.' },
+      { a: ['**Yes, both work.** Adjusting: 455 + 240 = 695. Partial sums: 600 + 80 + 15 = 695. Sum: **695**'], note: 'Partial sums adds every place. Adjusting moves 2 from one addend to the other, so the total does not change.' },
       { a: ['274 + 419 = **693** vegetables. The **300** is not needed.'] },
     ],
     own: [

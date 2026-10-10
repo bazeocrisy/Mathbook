@@ -82,9 +82,9 @@ module.exports = {
   ],
   answers: {
     together: [
-      { a: ['**342 + ? = 584**. Count up: 342 → 384 (+42) → 584 (+200). Answer: **242**'], note: 'Also accept ? + 342 = 584. Any correct counting-up jumps are fine.' },
+      { a: ['**342 + ? = 584**. Count up: 342 → 384 (+42) → 584 (+200). Answer: **242**'], note: 'Also accept ? + 342 = 584. Taught route: 342 → 350 (+8) → 400 (+50) → 584 (+184) = 242. Any correct jumps are fine.' },
       { a: ['Whole bar: **500**. Part bar: **263**. ?: pages left.', '263 + ? = 500. 263 → 270 (+7) → 300 (+30) → 500 (+200). **237** pages'] },
-      { a: ['Think 315 + ? = 728: what do you add to 315 to get 728? Count up: 315 → 328 (+13) → 728 (+400). Answer: **413**'], note: 'Accept any explanation that turns the subtraction into “part + ? = whole.”' },
+      { a: ['Think 315 + ? = 728: what do you add to 315 to get 728? Count up: 315 → 328 (+13) → 728 (+400). Answer: **413**'], note: 'Taught route: 315 → 320 (+5) → 400 (+80) → 728 (+328) = 413. Accept any explanation that turns the subtraction into “part + ? = whole.”' },
     ],
     own: [
       { a: ['413 + ? = 847 → **434**'], note: 'Items 1–3: also accept ? + 413 = 847, etc.' },

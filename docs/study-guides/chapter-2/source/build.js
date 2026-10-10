@@ -28,7 +28,7 @@ function runs(str, opt = {}) {
   for (const p of parts) {
     if (p.startsWith('**')) out.push(new TextRun({ text: p.slice(2, -2), bold: true, font: FONT, size: opt.size, italics: opt.italics }));
     else if (p.startsWith('//')) out.push(new TextRun({ text: p.slice(2, -2), italics: true, font: FONT, size: opt.size, bold: opt.bold }));
-    else if ('☐✓✗'.includes(p)) out.push(new TextRun({ text: p, font: SYM, size: opt.size, bold: opt.bold }));
+    else if ('☐✓✗◯'.includes(p)) out.push(new TextRun({ text: p, font: SYM, size: opt.size, bold: opt.bold }));
     else out.push(new TextRun({ text: p, font: FONT, size: opt.size, bold: opt.bold, italics: opt.italics }));
   }
   return out;
@@ -89,11 +89,12 @@ function stackBlock(b, w, size) {
   const cw = s.cellW ?? 330;
   const cols = digits + 1;
   const fsz = s.size ?? 30;
+  // '□' marks a missing digit: drawn as an empty box
   const cell = (txt, opts = {}) => new TableCell({
     width: { size: cw, type: WidthType.DXA },
-    borders: { top: opts.top ? line(16) : NONE, bottom: NONE, left: NONE, right: NONE },
+    borders: txt === '□' ? { top: line(10), bottom: line(10), left: line(10), right: line(10) } : { top: opts.top ? line(16) : NONE, bottom: NONE, left: NONE, right: NONE },
     margins: { top: 0, bottom: 0, left: 0, right: 0 },
-    children: [new Paragraph({ alignment: AlignmentType.CENTER, spacing: { before: 0, after: 0 }, children: [new TextRun({ text: txt, font: FONT, size: opts.size ?? fsz, bold: opts.bold })] })],
+    children: [new Paragraph({ alignment: AlignmentType.CENTER, spacing: { before: 0, after: 0 }, children: [new TextRun({ text: txt === '□' ? '' : txt, font: FONT, size: opts.size ?? fsz, bold: opts.bold })] })],
   });
   const mkRow = (op, n, opts = {}) => {
     const padded = n.padStart(digits, ' ');
@@ -105,7 +106,7 @@ function stackBlock(b, w, size) {
   trs.push(mkRow('', s.result ?? '', { top: true, bold: !!s.result, h: s.result ? undefined : 520 }));
   return [new Table({
     width: { size: cw * cols, type: WidthType.DXA }, columnWidths: Array(cols).fill(cw), layout: TableLayoutType.FIXED,
-    borders: NO_BORDERS, rows: trs, indent: { size: b.indent ?? 300, type: WidthType.DXA },
+    borders: NO_BORDERS, rows: trs, indent: { size: b.stack.indent ?? b.indent ?? 300, type: WidthType.DXA },
   }), spacer(80)];
 }
 
@@ -180,16 +181,17 @@ function arrowsBlock(b, w, size) {
 function psumBlock(b, w, size) {
   const { nums, mode, show = true } = b.psum;
   const fmt = n => n.toLocaleString('en-US');
-  const places = [100, 10, 1];
+  const places = [];
+  for (let p = 10 ** (String(Math.max(...nums)).length - 1); p >= 1; p /= 10) places.push(p);
   const parts = places.map(p => nums.map(n => Math.floor(n / p) % 10 * p));
   const partials = parts.map(ps => ps.reduce((a, c) => a + c, 0));
   const total = nums.reduce((a, c) => a + c, 0);
   const fsz = b.size ?? (size >= 24 ? 26 : 21);
   const BL = '______';
   if (mode === 'row') {
-    const lines = [`${nums.join(' + ')} = ${show ? fmt(total) : '?'}`];
-    parts.forEach((ps, i) => lines.push(show ? `${ps.join(' + ')} = ${partials[i]}` : `${ps.map(() => BL).join(' + ')} = ${BL}`));
-    lines.push(show ? `${partials.join(' + ')} = **${fmt(total)}**` : `${partials.map(() => BL).join(' + ')} = ${BL}`);
+    const lines = [`${nums.map(fmt).join(' + ')} = ${show ? fmt(total) : '?'}`];
+    parts.forEach((ps, i) => lines.push(show ? `${ps.map(fmt).join(' + ')} = ${fmt(partials[i])}` : `${ps.map(() => BL).join(' + ')} = ${BL}`));
+    lines.push(show ? `${partials.map(fmt).join(' + ')} = **${fmt(total)}**` : `${partials.map(() => BL).join(' + ')} = ${BL}`);
     const cw = b.width ?? Math.min(w - 200, show ? 3400 : 5200);
     return [new Table({
       width: { size: cw, type: WidthType.DXA }, columnWidths: [cw], layout: TableLayoutType.FIXED, borders: NO_BORDERS,
@@ -206,11 +208,11 @@ function psumBlock(b, w, size) {
   });
   const h = show ? undefined : { value: 470, rule: HeightRule.ATLEAST };
   const rows = [];
-  rows.push(new TableRow({ cantSplit: true, children: [cell('', lw), cell(String(nums[0]), vw)] }));
-  nums.slice(1).forEach((n, i) => rows.push(new TableRow({ cantSplit: true, children: [cell('', lw), cell(`${i === nums.length - 2 ? '+   ' : ''}${n}`, vw, { under: i === nums.length - 2, thick: true })] })));
+  rows.push(new TableRow({ cantSplit: true, children: [cell('', lw), cell(fmt(nums[0]), vw)] }));
+  nums.slice(1).forEach((n, i) => rows.push(new TableRow({ cantSplit: true, children: [cell('', lw), cell(`${i === nums.length - 2 ? '+   ' : ''}${fmt(n)}`, vw, { under: i === nums.length - 2, thick: true })] })));
   parts.forEach((ps, i) => rows.push(new TableRow({ cantSplit: true, height: h, children: [
-    cell(show ? ps.join(' + ') : '', lw, { under: !show }),
-    cell(show ? `${i === 2 ? '+   ' : ''}${partials[i]}` : (i === 2 ? '+' : ''), vw, { under: !show || i === 2, thick: i === 2 }),
+    cell(show ? ps.map(fmt).join(' + ') : '', lw, { under: !show }),
+    cell(show ? `${i === parts.length - 1 ? '+   ' : ''}${fmt(partials[i])}` : (i === parts.length - 1 ? '+' : ''), vw, { under: !show || i === parts.length - 1, thick: i === parts.length - 1 }),
   ] })));
   rows.push(new TableRow({ cantSplit: true, height: h, children: [cell('', lw), cell(show ? fmt(total) : '', vw, { bold: show, under: !show })] }));
   return [new Table({ width: { size: lw + vw, type: WidthType.DXA }, columnWidths: [lw, vw], layout: TableLayoutType.FIXED, borders: NO_BORDERS, rows }), spacer(80)];

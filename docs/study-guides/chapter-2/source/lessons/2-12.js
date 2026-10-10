@@ -60,7 +60,7 @@ module.exports = {
     { half: true, text: 'Write an equation for the bar diagram. Solve.', blocks: [{ diagram: barDiagram({ whole: '836', part: '609', frac: 0.73, q: 'b', width: 400 }), width: 2.7 }, { lines: ['Equation', 'b ='] }] },
     { half: true, text: 'Draw a bar diagram for the equation. Solve.', blocks: [{ p: '803 − b = 347', size: 28 }, { space: 0.9 }, { lines: ['b ='] }] },
     { half: true, text: 'Draw a bar diagram for the equation. Solve.', blocks: [{ p: '300 + a = 820', size: 28 }, { space: 0.9 }, { lines: ['a ='] }] },
-    story('Lena and Max biked 326 miles in May and 488 miles in June. Lena biked 439 of the miles. How many miles did Max bike? Use letters for the unknowns.', 0.9, 'Max biked'),
+    story('Together, Lena and Max biked 326 miles in May and 488 miles in June. Lena biked 439 of the miles. How many miles did Max bike? Use letters for the unknowns.', 0.9, 'Max biked'),
     story('Jo has $164. She buys a game for $118 and a book for $27. How much money does she have left?', 0.8, 'Money left'),
     story('Ana has 214 stamps. Leo has 165 more stamps than Ana. How many stamps do they have together?', 0.8, 'Stamps together'),
     { half: true, text: 'Solve for the unknown.', blocks: [{ p: 'm = 674 − 352', size: 28 }, { space: 0.5 }, { lines: ['m ='] }] },
@@ -87,7 +87,7 @@ module.exports = {
       { a: ['**k = 438**'], note: '467 + k = 905: count up 467 → 500 (+33) → 905 (+405) = 438.' },
       { a: ['512 + 46 = c, c = 558 cups made in all. 558 − 263 = a, **a = 295** cups.'], note: 'Work backward: sold + left = everything made.' },
       { a: ['9 boxes = 900 crayons. 900 − 300 − 400 = **200** crayons.'], note: 'Also accept 9 − 3 − 4 = 2 boxes = 200 crayons. The answer must be in crayons, not boxes.' },
-      { a: ['Sample: “A farm picked 208 apples on Monday, 315 on Tuesday, and 146 on Wednesday. How many apples in all?” **t = 669**'], note: 'Accept any story that joins the three amounts (it may be told in two steps: 208 + 315 = 523, 523 + 146 = 669).' },
+      { a: ['Sample: “A farm picked 208 apples on Monday and 315 on Tuesday. On Wednesday it picked 146 more. How many apples did it pick in all?” 208 + 315 = a, a = 523; 523 + 146 = t, **t = 669**'], note: 'Accept any two-step story that joins the three amounts.' },
     ],
   },
 };

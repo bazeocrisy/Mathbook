@@ -51,10 +51,9 @@ module.exports = {
     { half: true, text: 'Use stacked partial sums.', blocks: [{ psum: { nums: [539, 247], mode: 'stacked', show: false }, size: 26 }] },
     { half: true, text: 'Use partial sums in a row.', blocks: [{ psum: { nums: [264, 189], mode: 'row', show: false, width: 4300 }, size: 24 }] },
     {
-      text: 'Nia used partial sums. Look at her work. Which two numbers did she add?',
-      blocks: [{ row: [[{ p: '300 + 400 = 700', size: 26 }, { p: '20 + 50 = 70', size: 26 }, { p: '5 + 3 = 8', size: 26 }, { p: '700 + 70 + 8 = 778', size: 26 }], [{ space: 0.2 }, { p: '________ + ________ = 778', size: 26 }]] }],
+      text: 'Nia used partial sums. Look at her work. Which two numbers did she add? How do you know?',
+      blocks: [{ row: [[{ p: '300 + 400 = 700', size: 26 }, { p: '20 + 50 = 70', size: 26 }, { p: '5 + 3 = 8', size: 26 }, { p: '700 + 70 + 8 = 778', size: 26 }], [{ space: 0.2 }, { p: '________ + ________ = 778', size: 26 }, { lines: ['', ''] }]] }],
     },
-    { text: 'How can you find the addends by looking at the partial sums?', blocks: [{ lines: ['', ''] }] },
     { text: 'A library lent 186 books on Monday. It lent the same number of books on Tuesday. How many books did it lend in the two days?', blocks: [{ space: 1.0 }, { lines: ['Books'] }] },
     {
       text: 'Find the sum in a different way. The work in a row is shown. Show it stacked.',
@@ -74,8 +73,7 @@ module.exports = {
       { a: ['600 + 200 = 800;  10 + 70 = 80;  5 + 3 = 8;  sum **888**'] },
       { a: ['500 + 200 = 700;  30 + 40 = 70;  9 + 7 = 16;  sum **786**'] },
       { a: ['200 + 100 = 300;  60 + 80 = 140;  4 + 9 = 13;  sum **453**'] },
-      { a: ['**325 + 453** = 778 (either order)'], note: 'First numbers 300, 20, 5 make 325; second numbers 400, 50, 3 make 453.' },
-      { a: ['Put the first numbers of each partial-sum equation together to make one addend, and the second numbers to make the other.'], note: 'Accept any explanation that uses place value (hundreds, tens, ones).' },
+      { a: ['**325 + 453** = 778 (either order)'], note: 'The first numbers (300, 20, 5) make one addend and the second numbers (400, 50, 3) make the other. Accept any explanation that uses place value.' },
       { a: ['186 + 186: 100 + 100 = 200; 80 + 80 = 160; 6 + 6 = 12. 200 + 160 + 12 = **372** books'] },
       { a: ['Stacked: 352 + 436 → 300 + 400 = 700; 50 + 30 = 80; 2 + 6 = 8. Sum **788**'], note: 'The child should write the labels and partial sums in the stacked form, not just copy 788.' },
       { a: ['Max only added the hundreds. He forgot the tens (50 + 30 = 80) and ones (7 + 1 = 8). 600 + 80 + 8 = **688**.'] },
