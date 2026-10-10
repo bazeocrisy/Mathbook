@@ -29,7 +29,7 @@
     const done = w && w.done ? Object.keys(w.done).length : 0;
     if (done >= l.steps) return { kind: 'learned', text: 'Learn finished' };
     if (done || (w && w.step)) return { kind: 'started', text: `Learn: ${done} of ${l.steps} steps` };
-    const started = l.tests.some(([id]) => get(l.key + 'draft-' + id)) || get(l.key + 'bank-sets') || get(l.key + 'guided');
+    const started = l.tests.some(([id]) => get(l.key + 'draft-' + id)) || get(l.key + 'bank-sets') || get(l.key + 'skill-practice') || get(l.key + 'guided');
     return started ? { kind: 'started', text: 'Started' } : null;
   }
 
