@@ -72,3 +72,33 @@ Screenshots and scripts are under `C:\Users\BAZEOC~1\AppData\Local\Temp\claude\C
 - Headless Chrome driven through `tests/lib/harness.mjs` (local static server at `/Mathbook/`). Viewports simulated with device-metrics emulation (touch below 1024 px). 200% zoom simulated as 683×384. No physical device.
 - I ran `npm test` (76/76) and `npm run test:browser` (all suites pass). The working tree was still clean afterwards.
 - Node v26.5.0, Windows 11, 2026-10-10. No headless Chrome processes were left over (`tasklist | grep -ic chrome` = 0).
+
+### Re-verification (commit d0a3e14)
+
+I re-checked commit `d0a3e14` with the same harness, headless Chrome and simulated viewports. I edited no app, lesson or test file. `npm test`: 77/77 pass. `npm run test:browser`: every suite passes (198 / 96 / 229 / 71 / 62 / 64 / 52). Scripts are in `r24/`; screenshots are in `r24/shots/rv/`.
+
+| Finding | Status | Evidence |
+|---|---|---|
+| L24-01 | verified | **Pair positions in the fixed items:** 1st + 2nd in P7, P10, P11, T7, T10, T11. 2nd + 3rd in P6, P9, P12, T6, T9, T12 and G-E1 (236 + 418 + 182). 1st + 3rd only in P8/T8. The numbers, keys and explanations are unchanged and still correct. **Position strategies, scored with `Q.grade` on the 7 friendly and price items (pair choice + pair sum + total), over 200 test attempts (`r24/shortcut.cjs`):** "always add 1st + 2nd" gets 3/7, "2nd + 3rd" 3/7, "1st + 3rd" 1/7. "Always the first / middle / last choice" averages 2.2–2.3 of 7, which is chance (the choices shuffle per attempt). **In practice** (fixed order), the right choice is 1st in P6, P9, P10, P11, 3rd in P7 and 2nd in P8. The best single strategy, "first choice", gets 4/7 and no longer works across all items. Learn step 3 slide 4 (431 + 125 + 215, V on 2nd + 3rd) and the step 5 receipt ($340, $215, $185, V on 2nd + 3rd) were recomputed: 340 + 431 = 771 and $400 + $340 = $740. See new finding L24-07 for the P11/T11 story text. |
+| L24-02 | verified | P5/T5 and Learn step 4 no longer use `compact`. The choices are a plain grid: 1 column at 320 and 390, 2 at 568 and 683, 3 from 768 to 1920. I measured each choice's text against its inner padding at 320, 390, 568, 683, 768, 800, 1024, 1366 and 1920 px. T5 now has at least 48 px to spare everywhere, T6–T11 at least 17 px, and T12–T14 fit. In the 216-screen viewport sweep, nothing runs past a chip and the page never scrolls sideways. (The Results history table still scrolls inside its own `.table-wrap`, as in 2-3.) Screenshots: `rv/chips/1366-t5.png`, `rv/chips/1920-t5.png`, `rv/chips/800-t5.png`, `rv/chips/320-t5.png`, `rv/vp/1366x768-guided-p5.png`. The coordinator's note calls this a "full-width list", but from 768 px it is a 3-column grid. It fits, so this is not a finding. |
+| L24-03 | verified | 30 fresh page loads, each opening the step 5 Your Turn: 13 fill-in and 17 receipt questions came up first (`r24/mix.mjs`). A refresh keeps the saved question (5 of 5). Node sampling over 5,000 seeds: 2,497 fill-in and 2,503 receipt questions. Both kinds still pass every generator rule (exactly one pair ending in 00 from 200 to 700, no regrouping, total ≤ 999, number-free fill-in choices). |
+| L24-04 | verified | 15,030 explanations (3,000 seeds × 5 Learn steps, plus all practice and test items, `r24/expl.cjs`): 0 "Hundreds: n = n." lines. The single-term form now reads "Hundreds: 1." (617 cases, e.g. "Tens: 8 + 1 + 1 = 10, so 0 tens and 1 more hundred. Hundreds: 1. So 89 + 11 = 100."). Multi-term lines are unchanged ("Hundreds: 1 + 5 + 1 = 7."). There is no repeated "So … = …" sentence. The P12/T12 "Why" now reads "Add $435 and $165 first. Ones: … So 435 + 165 = 600. Then $600 + $210 = $810. …". Every sum in every explanation was re-added: no errors. |
+| L24-05 | verified for 2-4; engine bug stays open | 2-4 now shows a single period everywhere I checked. Learn: "Look again at: Choose all that show the total. Check that …", "Look again at: Which way is fastest. Are the same …". Practice Together P5, P13 and P14 read the same way, and P6–P12 were already fine. The labels are now "Choose all that show the total:", "Which way is fastest?" and "Choose every true equation:". The shared `partsTip` still keeps a label's trailing "." (it still affects 2-3's "Choose the best way."). That stays open for the engine, as the coordinator decided. |
+| L24-06 | verified | The accessibility labels now read "4 circles, then 3 squares. 4 plus 3 equals 7." and "3 squares, then 4 circles. 3 plus 4 equals 7.". The visible labels and captions are unchanged. The groupV and blank labels are unchanged. |
+
+### New findings
+
+| ID | Severity | Where | What I saw | Required fix |
+|---|---|---|---|---|
+| L24-07 | minor | P11 and T11 (`moneyQ` stories) | The table rows were reordered for L24-01, but the story sentence above the table was not. P11 says "fish food for $276, tanks for $415 and plants for $124", while the table lists Fish food $276, Plants $124, Tanks $415. T11 says "paint for $238, paper for $419 and brushes for $162", while the table lists Paint, Brushes, Paper. A child who reads the story still sees the friendly pair as the 1st and 3rd prices (the old pattern). The story and the table also disagree on the order, which can confuse a child matching the choices ("$276 + $124") to the list. | Make each story match its table order. P11: "…fish food for $276, plants for $124 and tanks for $415." T11: "…paint for $238, brushes for $162 and paper for $419." |
+
+**Regression:** these all work as in the first review, with no page JavaScript errors and no missing files:
+- **Learn:** all 5 steps. Empty, wrong, Try Again, a refresh during Try Again, the reveal after two misses, a new question, partly right and right. Finish.
+- **Practice Together:** all 16 items (wrong, then right; both explain items).
+- **On My Own:** a refresh keeps the place.
+- **Test:** saved after 5 answers, refreshed, resumed with Keep going, finished at 11/14. The choice order changed between attempts (10 of 10 items).
+- **Skill practice:** the skill buttons, `#practice/skill-order` (refresh keeps Question 2 of 4) and Practice all 14 questions.
+- **Home and lesson list:** Home Continue for the test and for skill practice, and the Math Lessons note.
+- **Reset:** Cancel, then Reset, removes only the five `lesson-2-4:*` keys.
+
+2-1, 2-2 and 2-3 pass their full browser suites. After the runs, no `mathbook-chrome-*` or headless Chrome process was left over. The only `chrome.exe` processes running were the owner's own browser (default profile, not headless), and I did not touch them.
