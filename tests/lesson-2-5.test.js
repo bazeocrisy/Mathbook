@@ -74,10 +74,12 @@ test('word and equation questions come in connected pairs: same pattern, same ex
       assert.ok(e && e.skill === 'write' && e.sentence === w.sentence, `${where} ${w.id}: followed by its equation question`);
       const text = sentences[w.sentence].text;
       assert.ok(w.prompt.includes(text) && e.prompt.includes(text), `${where} ${w.id}: both show "${text}"`);
-      const eg = w.explanation.match(/For example, (.+?)\./)[1];
-      assert.ok(e.explanation.includes(`For example, ${eg}.`), `${where} ${w.id}: the same example in both`);
+      // The same example: the word question names its ones digits (nothing to copy, review L25-06); the equation
+      // question's explanation gives the full equation, which is the one the answer reveal shows.
       const v = Q.correctResponse(e).v;
-      assert.equal(eg, `${v.a} + ${v.b} = ${v.s}`, `${where} ${w.id}: the example is the one the answer reveal shows`);
+      const digits = `numbers ending in ${v.a.slice(-1)} and ${v.b.slice(-1)} make a sum ending in ${v.s.slice(-1)}`;
+      assert.ok(w.explanation.endsWith(`For example, ${digits}.`) && !w.explanation.includes(v.a), `${where} ${w.id}: digits only`);
+      assert.ok(e.explanation.includes(`For example, ${v.a} + ${v.b} = ${v.s}: ${digits}, as in the word question.`), `${where} ${w.id}: the same example`);
       assert.equal(w.type, 'parts');
       assert.equal(e.type, 'chain');
     });
@@ -139,6 +141,11 @@ test('Learn: step 5 writes an equation for the same pattern as step 4', () => {
     delete globalThis.localStorage;
     assert.equal(e.sentence, w.sentence, `seed ${seed}`);
     assert.ok(e.prompt.startsWith(`Same pattern as step 4: ${L._sentences[w.sentence].text}.`));
+    // Back on step 4 after step 5 exists: a new question keeps step 5's sentence (review L25-07).
+    const saved5 = JSON.stringify({ step: 3, done: {}, checks: { 'write-equation': { q: e } } });
+    globalThis.localStorage = { getItem: (k) => (k === 'mathbook:v2:lesson-2-5:see-wizard' ? saved5 : null) };
+    assert.equal(S[3].check(pv.rng(seed + 2000)).sentence, e.sentence, `seed ${seed}: step 4 keeps step 5's sentence`);
+    delete globalThis.localStorage;
     assert.equal(w.skill, 'rules');
     assert.equal(e.skill, 'write');
   }
@@ -188,4 +195,13 @@ test('Learn generators follow the spec over many seeds', () => {
   assert.equal(notice.size, 2, 'step 3: both answers occur');
   assert.ok(starts.has(4) && starts.has(20));
   assert.equal(forms.size, 7, 'step 4: all seven sentences');
+});
+
+test('O18: every right-kind sum is a correct sum, so the key matches "can\'t be right" (review L25-05)', () => {
+  const q = L.bank.find((x) => x.id === 'o18');
+  const par = (n) => n % 2;
+  q.parts[0].choices.forEach((c) => {
+    const [a, b, s] = c.match(/\d+/g).map(Number);
+    if (par(a + b) === par(s)) assert.equal(a + b, s, c);
+  });
 });

@@ -68,7 +68,8 @@
   function exampleFor(key) {
     const v = MB.Q.correctResponse(equationShell(key)).v;
     const [a, b, sum] = [v.a, v.b, v.s].map((x) => pv.parseWholeNumber(x));
-    return { a, b, sum, text: `${plus([a, b])} = ${fmt(sum)}` };
+    return { a, b, sum, text: `${plus([a, b])} = ${fmt(sum)}`,
+      digits: `numbers ending in ${ones(a)} and ${ones(b)} make a sum ending in ${ones(sum)}` };
   }
   const needs = (key) => { const [ta, tb] = SENTENCES[key].types; return ta === tb ? `two ${ta} numbers` : 'one even and one odd number (in either order)'; };
 
@@ -81,7 +82,7 @@
       prompt: `Pattern: ${S.text}. Which word goes in the blank?${o.next ? ' ' + o.next : ''}`,
       parts: [{ kind: 'choice', label: 'The missing word is', answer: S.answer, choices: WORDS.slice(), compact: true }],
       hint: o.hint || 'Think about pairs. Does a number have one left over?',
-      explanation: `The blank is ${S.answer}. ${ruleWhy(...S.types)} For example, ${eg.text}.`
+      explanation: `The blank is ${S.answer}. ${ruleWhy(...S.types)} For example, ${eg.digits}.`
     };
   }
 
@@ -94,7 +95,7 @@
       id: o.id, skill: 'write', sentence: o.key,
       prompt: `${o.lead || 'Pattern'}: ${S.text}. Write your own equation with 3-digit numbers that fits this pattern.`,
       hint: o.hint || (ta !== tb ? 'You need one even and one odd number. Then add.' : `Choose two ${ta} numbers. Look at the ones digits. Then add.`),
-      explanation: `The blank is ${S.answer}, so you need ${needs(o.key)}. ${ruleWhy(ta, tb)} For example, ${eg.text}. Any numbers that fit work, if the sum is added correctly.`
+      explanation: `The blank is ${S.answer}, so you need ${needs(o.key)}. ${ruleWhy(ta, tb)} For example, ${eg.text}: ${eg.digits}, as in the word question. Any numbers that fit work, if the sum is added correctly.`
     });
   }
 
@@ -302,23 +303,23 @@
     });
   }
 
-  // Step 4: which word goes in the blank (any of the seven sentences).
+  // Step 4: which word goes in the blank (any of the seven sentences; once step 5 has a question, its sentence).
   function wordCheck(r) {
-    return wordQ({ id: 'learn-4', key: pv.pick(r, Object.keys(SENTENCES)), next: 'In the next step you will write an equation for this pattern.' });
+    return wordQ({ id: 'learn-4', key: learnSentence(r, 'write-equation'), next: 'In the next step you will write an equation for this pattern.' });
   }
-  // Step 5: an equation for the same sentence as step 4's question (read from this lesson's saved Learn progress;
-  // a fresh one when there is none, e.g. in the unit tests).
-  function learnSentence(r) {
+  // Steps 4 and 5 share one sentence, read from this lesson's saved Learn progress (the other step's question);
+  // a fresh one when there is none, e.g. in the unit tests or a new browser.
+  function learnSentence(r, stepId) {
     try {
       const W = JSON.parse(root.localStorage.getItem('mathbook:v2:lesson-2-5:see-wizard') || 'null');
-      const c = W && W.checks && W.checks['ones-decide'];
+      const c = W && W.checks && W.checks[stepId];
       const k = c && c.q && c.q.sentence;
       if (k && SENTENCES[k]) return k;
     } catch (e) { /* no saved Learn progress */ }
     return pv.pick(r, Object.keys(SENTENCES));
   }
   function writeCheck(r) {
-    return equationQ({ id: 'learn-5', key: learnSentence(r), lead: 'Same pattern as step 4',
+    return equationQ({ id: 'learn-5', key: learnSentence(r, 'ones-decide'), lead: 'Same pattern as step 4',
       hint: 'You found the missing word in step 4. Pick 3-digit numbers that end in the right digits, and add.' });
   }
 
@@ -479,7 +480,7 @@
       wrong: ['Big odd numbers are always even.', 'Because 1 + 1 = 1.', 'Because the tens digits are even.'],
       hint: 'Draw two odd piles of dots. What happens to the leftovers?', explanation: 'Each odd number has one left over. Put the two leftovers together: they make a pair, so nothing is left over.', seed: 15 }),
     // O18 and O19 practise the test's other two "check a sum" formats (choose all that can't be right; a matching type; review L25-03).
-    cantQ({ id: 'o18', eqs: [[234, 152, 387], [127, 341, 468], [318, 205, 524], [452, 136, 598], [263, 114, 377]], seed: 16 }),
+    cantQ({ id: 'o18', eqs: [[234, 152, 387], [127, 341, 468], [318, 205, 524], [452, 136, 588], [263, 114, 377]], seed: 16 }),
     proveQ({ id: 'o19', who: 'Zoe', pronoun: 'She', a: 428, b: 153, c: 571, seed: 17 })
   ];
 

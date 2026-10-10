@@ -4,7 +4,7 @@ Reviewed build: worktree `Mathbook-25`, branch `claude/lesson-2-5`, commit `364e
 
 Screenshots and scripts are under `C:\Users\BAZEOC~1\AppData\Local\Temp\claude\C--WINDOWS-system32\477cc6fa-3229-4b55-9cf8-4292528d1e9f\scratchpad\r25\` (written below as `r25/...`).
 
-**Result: 0 critical, 0 major, 4 minor.** Two belong to 2-5 itself (L25-01, L25-03). Two come from shared code and show up because 2-5 is the first lesson with written equations in practice and tests (L25-02 engine part labels, L25-04 the Home page "Continue" count).
+**Result: 0 critical, 0 major, 4 minor.** (Re-verification at `86419dd`: L25-01 to L25-04 verified; new L25-05 major, L25-06 and L25-07 minor; see the end.) Two belong to 2-5 itself (L25-01, L25-03). Two come from shared code and show up because 2-5 is the first lesson with written equations in practice and tests (L25-02 engine part labels, L25-04 the Home page "Continue" count).
 
 ## Findings
 
@@ -96,3 +96,44 @@ Screenshots and scripts are under `C:\Users\BAZEOC~1\AppData\Local\Temp\claude\C
 - Textbook pages extracted with `node tools/extract-textbook-pages.mjs` (git-ignored output).
 - I ran `npm test` (84/84) and `npm run test:browser` (full run, in the background).
 - Node v26.5.0, Windows 11, 2026-10-10. No headless `mathbook-chrome-*` Chrome processes were left over (count 0). The owner's normal Chrome was not touched. The working tree has only this report as a new file.
+
+### Re-verification (commit 86419dd)
+
+I re-checked commit `86419dd` (with the review fixes from `ae56b7f`) using the same harness, headless Chrome and simulated viewports. I edited no app, lesson, engine or test file. `npm test`: 86/86 pass. I ran the browser suites one at a time (results below). Scripts are in `r25/` (`sample2.cjs`, `labels.cjs`, `learn2.mjs`, `back.mjs`, `another2.mjs`, `home.mjs`, `home24.mjs`, `vp2.mjs`); screenshots are in `r25/shots/rv/`.
+
+| Finding | Status | Evidence |
+|---|---|---|
+| L25-01 | verified | Every "Why" now starts with a capital and says the rule once ("The blank is even. Odd + odd = even: the two leftovers make a new pair. For example, 289 + 523 = 812."). There are no repeated sentences (the old O2 case is gone with the pairs). The odd + even items now say "Odd + even = odd: …" (O15, T7). Each pattern has one example everywhere. It is the engine's sample equation, so the equation reveal's "e.g." and the "For example" are the same equation (shown twice in one reveal message, which is harmless). `r25/sample2.out`, `r25/learn2.out`. |
+| L25-02 | verified | `withBlanks` now draws `___` as the blank box with the name "blank" in choice/multi legends and `num` labels, and it still escapes the rest of the label (`a < ___ & b` renders `a &lt; [blank] &amp; b`). No other lesson changes: over every guided, practice and test item and 500 seeds of every Learn generator, 2-2, 2-3 and 2-4 have no part label containing `___`, and 2-1 has no `parts` questions (`r25/labels.cjs`). After the pairing, 2-5 has no `___` in any label either: the blank is in the prompt, drawn as the box (`r25/shots/rv/vp/1366x768-test-q1.png`). |
+| L25-03 | verified, but see L25-05 | O18 (choose all that can't be right) and O19 (Zoe, "a matching type doesn't prove it", 428 + 153 = 581) were added. The `check` skill now has 3 questions, and My Results shows "Practice this skill (3 questions)". |
+| L25-04 | verified | Home now shows "Addition Patterns Test: 1 of 14 answered" when only an equation is answered, the same as the test menu. Skill practice with one equation shows "Practice one skill: 1 of 4 answered". On My Own with 3 equations shows "3 of 19", and adding 1 more answer gives "4 of 19". In 2-4, pressing only Next through the set no longer shows Continue (`r25/home.mjs`, `r25/home24.mjs`). |
+
+**Owner's pairing (word question + equation question): checked, and sound.**
+- **Pairing and order:** Practice Together pt1/pt2 (e+B=e), pt3/pt4 (o+B=e), pt5/pt6 (e+o=S); On My Own o1/o2 (S=e+e), o3/o4 (o+e=S), o5/o6 (e+B=o), o7/o8 (S=o+o); Test t1/t2 (e+B=o), t3/t4 (S=o+o). Each pair shares its sentence and its example (the engine's reveal equation), and the two questions sit next to each other in Practice Together and the Test (fixed order, checked in the running app).
+- **Counts:** Practice Together 13, On My Own 19, Test 14.
+- **Skills:** `rules` and `write` are separate skills. Each has its own "Practice this skill (4 questions)" button on My Results, and each opens only its own four questions (`#practice/skill-rules`: o1, o3, o5, o7; `#practice/skill-write`: o2, o4, o6, o8).
+- **Textbook items 1–6 (fill the word, then write a supporting equation):** all seven sentence forms are asked as words, and each form in practice and the test is followed by its equation.
+- **PLAN decision 28:** still holds. Over 20,000 seeds the cube train starts at 4–20 and never at 7, 11 or 15.
+- **Learn (6 steps):**
+  - Step 4 picks among the 7 sentences evenly. Step 5 reads step 4's saved sentence: in 20,000 sampled seeds and in the app, step 5's "Same pattern as step 4: …" always matched what step 4 had just asked.
+  - Step 5's "Try a new one" keeps the sentence, and a refresh keeps it. The one exception is L25-07.
+  - Next Step stays locked until step 4 is right.
+  - Completion needs all 6 steps. With 5 done, Home says "Learn: step 6 of 6" and the list says "Learn: 5 of 6 steps". With 6 done, Continue is gone and the list says "Learn finished".
+  - Reset Lesson Progress clears all 2-5 keys (2-4 kept), and Learn restarts at "Step 1 of 6".
+  - A fresh browser profile (each run) starts at Step 1 of 6. A step 5 with no saved step-4 question (reachable only by editing storage) picks a sentence of its own.
+- **Grading and coaching:** unchanged and correct. A wrong-kind number gives "357 + 136 = 493: 136 is even, but the sentence needs two odd numbers."; a wrong sum gives "Check 289 + 523."; either order is accepted for mixed sentences.
+- **Test:** shows no feedback, and the word answer is not printed in its equation question.
+- **Layout:** 8 viewports × every screen, including the new steps 4–5, Practice Together 1–13, Test 1–14, On My Own 1–19 and Results with 8 skill rows. No sideways scroll, no clipped text, and every target is at least 48 px (`r25/vp2.out`, `r25/shots/rv/vp/`).
+- **Keyboard and screen reader:** Learn step 5 Tab order goes First addend → Second addend → Sum → Check Answer → See the Example Again, all with a 3 px outline. The prompt's blank reads "blank".
+
+**New findings**
+
+| ID | Severity | Where | What I saw | Required fix |
+|---|---|---|---|---|
+| L25-05 | major | O18 (`cantQ`, On My Own, and "Practice this skill" for `check`) | "Use patterns. Which sums can't be right? Choose all." lists 452 + 136 = 598. That claim is wrong (452 + 136 = 588), but it is **not** in the key, because the pattern can't catch it (598 is even, as it should be). A child who adds to check (which the lesson teaches: "Always add to be sure") ticks it and is marked wrong. The item's own "Why" agrees that the sum is wrong: "452 + 136 = 598 is the right kind (even), so the pattern can't catch it. But adding shows 588, so it is still wrong." The test version (T13) has no such case: its three right-kind claims are all correct. Key in `r25/sample2.out`. | Make every right-kind claim in O18 a correct sum (e.g. 452 + 136 = 588), as T13 does. Or reword the question so it asks only what the pattern shows ("Which sums does the even/odd pattern show are wrong?"), and apply the same wording to T13. Update the hand key in `tests/lesson-2-5.test.js`. |
+| L25-06 | minor | Learn steps 4 → 5, and Practice Together pairs (pt1→pt2, pt3→pt4, pt5→pt6) | The word question's "Correct!" message prints the full example equation ("For example, 289 + 523 = 812"). The very next question asks the child to write their own equation for that pattern, and that exact example is graded correct. In the app I copied step 4's example into step 5: "✓ Correct!" (`r25/learn2.out`, "S5 copy"). The examples are also the same for every pattern of the same kind (290 + 524 for every even + even, 289 + 523 for odd + odd, 290 + 523 or 289 + 524 for mixed), so after the first pair the answer is always on screen. The test and On My Own are not affected (no explanation is shown before answering). Learn step 5 and the Practice Together `write` items therefore cannot show that the child can write an equation alone, which is what the owner wanted verified. | Keep the shared example out of the word question's message. Show the sentence filled in and the kinds of numbers needed ("The blank is odd: odd + odd = even. In the next question you'll write an equation for it."), and show the example only in the equation question's reveal and "Why". The pair stays linked by the same sentence and by that example after the equation is done. Or, if the owner prefers to keep the example in the word question, write a different example there from the one the equation question reveals. |
+| L25-07 | minor | Learn step 4 "Try another one" → step 5 | After step 5 has been opened, a child can go back to step 4 (See the Example Again → ← Previous Step) and press "Try another one". That gives step 4 a new sentence (e.g. "___ = even + even"). Step 5 keeps its saved question, so it still says "Same pattern as step 4: even + odd = ___" for a pattern step 4 no longer shows. A refresh does not fix it (saved state: step 4 = S=e+e, step 5 = e+o=S). `r25/another2.out`, `r25/shots/rv/mismatch-step5-390.png`. It does not affect grading or completion. | When step 5 shows its question, compare its sentence with step 4's saved one and build a new question if they differ. The engine reuses the saved check, so this needs a small hook, or a lesson-side check when the step is shown. Or soften the lead to "Pattern from step 4" only while they match, otherwise "Pattern". |
+
+**Regression (browser suites run one at a time):** every suite passes: 198 (2-1 + home), 96 (2-2), 349 (lessons 2-3, 2-4 and 2-5), 71 (2-3 skills), 62 (2-4 skills), 68 (2-5 skills), 64 (Number Words), 52 (components). Lessons 2-1 to 2-4 keep working, and the shared `withBlanks` and Home changes do not change them (see L25-02 and L25-04).
+
+No headless `mathbook-chrome-*` Chrome processes were left over. The owner's normal Chrome was not touched. Node v26.5.0, Windows 11, 2026-10-10.
