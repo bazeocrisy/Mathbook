@@ -10,7 +10,7 @@
   // id: lesson id (storage prefix and folder name lesson-<id>); steps: number of Learn steps; tests: [id, label].
   const CHAPTER_2 = [
     { id: '2-1', title: 'Represent 4-Digit Numbers', desc: 'Thousands, hundreds, tens, and ones.', steps: 5, tests: [['math', 'Math Test'], ['vocab', 'Math Words Test']] },
-    { id: '2-2', title: 'Round Multi-Digit Numbers', desc: 'Round to the nearest 10 and 100.', steps: 5, tests: [['rounding', 'Rounding Test']] },
+    { id: '2-2', title: 'Round Multi-Digit Numbers', desc: 'Round to the nearest 10 and 100.', steps: 5, tests: [['rounding', 'Rounding Test'], ['checkup', 'Rounding Check-Up']] },
     { id: '2-3', title: 'Estimate Sums and Differences', desc: 'Find about how many by rounding or using friendly numbers.', steps: 6, tests: [['estimate', 'Estimation Test']] },
     { id: '2-4', title: 'Use Addition Properties to Add', desc: 'Change the order or grouping to add more easily.', steps: 5, tests: [['properties', 'Addition Properties Test']] },
     { id: '2-5', title: 'Addition Patterns', desc: 'Even and odd sums, and why they work.', steps: 6, tests: [['patterns', 'Addition Patterns Test']] }

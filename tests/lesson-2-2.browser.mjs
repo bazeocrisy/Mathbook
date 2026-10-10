@@ -66,8 +66,8 @@ try {
   const parent = await js(`return { h1: document.querySelector('h1').textContent, words: Array.from(document.querySelectorAll('.pl-words dt')).map((e) => e.textContent), lines: document.querySelectorAll('#demo .nline').length,
     checklist: document.querySelectorAll('#check ol.checks li').length, ask: /Which two tens\\/hundreds|Which two tens \\(or hundreds\\)/.test(document.body.innerText) && /What is halfway/.test(document.body.innerText) && /Which end is it closer to/.test(document.body.innerText),
     mistakes: document.querySelectorAll('#check .callout-warn li').length, text: document.querySelector('main').innerText }`);
-  check('Parent Learn: goal, six math words, 127 demonstration (two number lines), teaching questions, mistakes, five-step checklist', parent.h1 === 'Parent Guide' &&
-    parent.words.join('|') === 'Round|Nearest|Multiple of 10 / 100|Halfway point|Estimate|Exact' && parent.lines === 2 && parent.checklist === 5 && parent.ask && parent.mistakes >= 4 &&
+  check('Parent Learn: goal, six math words, 127 demonstration (two number lines), teaching questions, mistakes, six-item checklist', parent.h1 === 'Parent Guide' &&
+    parent.words.join('|') === 'Round|Nearest|Multiple of 10 / 100|Halfway point|Estimate|Exact' && parent.lines === 2 && parent.checklist === 6 && parent.ask && parent.mistakes >= 4 &&
     /127 rounds to 130/.test(parent.text) && /rounds to 100/.test(parent.text), parent);
 
   // ----- Learn: all five steps, both phases. Steps 1–2 are staged number lines. -----
@@ -196,29 +196,29 @@ try {
   const g = await js(`${RL}
     const box = document.querySelector('#guided-runner');
     const o = { count: box.querySelector('.q-count').textContent, part: part(), task: task(), extra: box.querySelectorAll('[data-act=check], [data-act=hint], [data-act=reveal]').length, help: !!document.querySelector('details.parent-help'), over: !!act('over') };
-    type('lo', '350'); type('hi', '370'); act('check').click(); o.wrong = rfb();
-    type('lo', '360'); act('check').click(); o.right = rfb(); act('next').click(); o.part2 = part();
+    type('lo', '30'); type('hi', '50'); act('check').click(); o.wrong = rfb();
+    type('lo', '40'); act('check').click(); o.right = rfb(); act('next').click(); o.part2 = part();
     return o;`);
   check('Practice Together: number-line items run the same parts with Check Answer, one hint, Continue, and Start Over (no extra check buttons)',
-    g.count === 'Question 1 of 12' && g.part === 'Part 1 of 3' && g.task === 'What two tens is 364 between?' && g.extra === 0 && /Not quite\. Which ten is just below 364/.test(g.wrong) && /^Yes! 364 is between 360 and 370/.test(g.right) && g.part2 === 'Part 2 of 3' && g.help && g.over, g);
+    g.count === 'Question 1 of 12' && g.part === 'Part 1 of 3' && g.task === 'What two tens is 46 between?' && g.extra === 0 && /Not quite\. Which ten is just below 46/.test(g.wrong) && /^Yes! 46 is between 40 and 50/.test(g.right) && g.part2 === 'Part 2 of 3' && g.help && g.over, g);
   await b.reload(); await wait(250);
-  check('Practice Together keeps the question, the part, and the answers after a refresh', await js(`${RL} return document.querySelector('.q-count').textContent === 'Question 1 of 12' && part() === 'Part 2 of 3' && labels().join() === '360,370'`));
+  check('Practice Together keeps the question, the part, and the answers after a refresh', await js(`${RL} return document.querySelector('.q-count').textContent === 'Question 1 of 12' && part() === 'Part 2 of 3' && labels().join() === '40,50'`));
   // Reviewer findings (regressions): an edited right answer must be checked again; misses never give the answer;
   // a finished problem shows one explanation after a refresh.
   const rev = await js(`${RL}
     const o = {};
-    type('mid', '364'); act('check').click(); o.miss1 = rfb(); act('check').click(); o.miss2 = rfb();
-    type('mid', '36'); o.hintWhileFixing = rfb();
-    type('mid', '365'); act('check').click(); o.ok = rfb(); o.cont = !!act('next');
-    type('mid', '366'); o.afterEdit = { fb: rfb(), check: !!act('check'), cont: !!act('next') };
-    type('mid', '365'); act('check').click(); act('next').click();
-    rl().querySelector('[data-side="lo"]').click(); act('check').click(); act('next').click(); o.done = task();
+    type('mid', '46'); act('check').click(); o.miss1 = rfb(); act('check').click(); o.miss2 = rfb();
+    type('mid', '4'); o.hintWhileFixing = rfb();
+    type('mid', '45'); act('check').click(); o.ok = rfb(); o.cont = !!act('next');
+    type('mid', '44'); o.afterEdit = { fb: rfb(), check: !!act('check'), cont: !!act('next') };
+    type('mid', '45'); act('check').click(); act('next').click();
+    rl().querySelector('[data-side="hi"]').click(); act('check').click(); act('next').click(); o.done = task();
     return o;`);
   check('Editing a part already marked right clears "Yes!" and needs Check Answer again (no unchecked Continue)', /^Yes!/.test(rev.ok) && rev.cont && rev.afterEdit.fb === '' && rev.afterEdit.check && !rev.afterEdit.cont, rev);
-  check('A second miss repeats the specific hint and never gives the answer; the hint stays while the child fixes the box', /Halfway is 5 more than 360/.test(rev.miss1) && rev.miss2 === rev.miss1 && !/365/.test(rev.miss2) && rev.hintWhileFixing === rev.miss1, rev);
+  check('A second miss repeats the specific hint and never gives the answer; the hint stays while the child fixes the box', /Halfway is 5 more than 40/.test(rev.miss1) && rev.miss2 === rev.miss1 && !/45/.test(rev.miss2) && rev.hintWhileFixing === rev.miss1, rev);
   await b.reload(); await wait(250);
   const once = await js(`return { explanations: document.querySelectorAll('#guided-runner .rl-task.is-done').length, extra: document.querySelectorAll('#guided-runner .result-box .feedback').length }`);
-  check('A finished Practice Together problem shows its explanation once after a refresh', rev.done.startsWith('364 is closer to 360') && once.explanations === 1 && once.extra === 0, { rev: rev.done, once });
+  check('A finished Practice Together problem shows its explanation once after a refresh', rev.done.startsWith('46 is closer to 50') && once.explanations === 1 && once.extra === 0, { rev: rev.done, once });
   await b.load(O + LESSON + '#practice/own'); await wait(200);
   await b.navigate(`document.querySelector('[data-open-set="s1"]').click();`);
   const own = await js(`${FILL_HELPERS}
@@ -236,16 +236,16 @@ try {
   // ----- Test -----
   await hash('#test');
   const chooser = await js(`return { titles: Array.from(document.querySelectorAll('.test-card h2')).map((h) => h.textContent), meta: document.querySelector('.test-meta').textContent }`);
-  check('Take a Test: the Rounding Test (12 questions)', chooser.titles.join() === 'Rounding Test' && /12 questions/.test(chooser.meta), chooser);
+  check('Take a Test: the Rounding Test (12 questions) and the Rounding Check-Up', chooser.titles.join() === 'Rounding Test,Rounding Check-Up' && /12 questions/.test(chooser.meta), chooser);
   await js(`document.querySelector('[data-start="rounding"]').click();`); await wait(200);
   // Test: the same staged layout, but no checking, hints, plotted number, or filled-in answers.
   const t1 = await js(`${RL}
     const q = document.querySelector('.test-one');
     const o = { count: document.querySelector('.q-count').textContent, part: part(), task: task(), inputs: inputs().join(), shown: q.innerText,
       giveaways: q.querySelectorAll('[data-rl-act="check"], [data-rl-act="over"], .nline-dot, .nline-point, .nline-go, .is-answer, .feedback:not([hidden])').length };
-    type('lo', '500'); type('hi', '590'); act('next').click();
+    type('lo', '60'); type('hi', '80'); act('next').click();
     o.p2 = { part: part(), task: task(), labels: labels().join('|'), inputs: inputs().join(), fb: rfb() };
-    type('mid', '585'); act('next').click();
+    type('mid', '75'); act('next').click();
     o.p3 = { part: part(), task: task(), buttons: Array.from(rl().querySelectorAll('[data-rl-act="pick"]')).map((b) => b.textContent).join('|'), next: !!act('next'), dot: !!rl().querySelector('.nline-dot') };
     rl().querySelector('[data-side="lo"]').click();
     act('back').click(); act('back').click(); o.back = { part: part(), lo: rl().querySelector('[data-f="lo"]').value };
@@ -253,10 +253,10 @@ try {
     o.kept = { part: part(), lo: rl().querySelector('[data-f="lo"]').value, saved: JSON.parse(localStorage.getItem(L.storageKey + ':draft-rounding')).responses.t1 };
     return o;`);
   check('Test question 1: staged like Learn but with nothing given away — no Check, hint, Start Over, plotted number, or filled-in answers', t1.count === 'Question 1 of 12' && t1.part === 'Part 1 of 3' &&
-    t1.task === 'What two tens is 583 between?' && t1.inputs === 'lo,hi' && t1.giveaways === 0, t1);
-  check('Test: later parts show the child\'s own entries (500 stays 500), ask without hints ("Which ten does 583 round to?"), and keep answers on Back and between questions',
-    t1.p2.labels === '500|590' && t1.p2.task === 'What number is halfway?' && t1.p2.fb === '' && t1.p3.task === 'Which ten does 583 round to?' && t1.p3.buttons === '500|590' && !t1.p3.next && !t1.p3.dot &&
-    t1.back.part === 'Part 1 of 3' && t1.back.lo === '500' && t1.kept.lo === '500' && t1.kept.saved.lo === '500' && t1.kept.saved.pick === 'lo', t1);
+    t1.task === 'What two tens is 72 between?' && t1.inputs === 'lo,hi' && t1.giveaways === 0, t1);
+  check('Test: later parts show the child\'s own entries (60 stays 60), ask without hints ("Which ten does 72 round to?"), and keep answers on Back and between questions',
+    t1.p2.labels === '60|80' && t1.p2.task === 'What number is halfway?' && t1.p2.fb === '' && t1.p3.task === 'Which ten does 72 round to?' && t1.p3.buttons === '60|80' && !t1.p3.next && !t1.p3.dot &&
+    t1.back.part === 'Part 1 of 3' && t1.back.lo === '60' && t1.kept.lo === '60' && t1.kept.saved.lo === '60' && t1.kept.saved.pick === 'lo', t1);
   await b.viewport(390, 844, true); await b.shot(path.join(SHOTS, 'l22-test-q1-phone.png')); await b.viewport(1366, 768, false);
   const perfect = await js(`${PAGED} answerTest(12); await new Promise((r) => setTimeout(r, 400));
     const a = JSON.parse(localStorage.getItem(L.storageKey + ':attempts')); return { hash: location.hash, last: a[a.length - 1], text: document.querySelector('.result-detail').innerText };`);

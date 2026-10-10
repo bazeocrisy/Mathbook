@@ -117,10 +117,10 @@ test('Practice and Test: 12 each, matching coverage, different numbers, every au
   const ans = (q) => (q.type === 'rline' ? [pv.roundEnds(q.n, q.place).lo, pv.roundEnds(q.n, q.place).mid, pv.roundEnds(q.n, q.place).hi, pv.roundTo(q.n, q.place)].concat(q.why ? [q.why.answer.split(',')[0]] : [])
     : q.type === 'parts' ? q.parts.map((p) => (p.kind === 'round' ? pv.roundRange(p.target, p.place).join('–') : p.kind === 'choice' ? p.answer.split('.')[0] : p.answer)) : q.answer);
   const want = {
-    p1: [360, 365, 370, 360], p2: [390, 395, 400, 400], p3: 60, p4: 490, p5: [400, 450, 500, 400], p6: [600, 650, 700, 700],
+    p1: [40, 45, 50, 50], p2: [390, 395, 400, 400], p3: 60, p4: 490, p5: [400, 450, 500, 400], p6: [0, 50, 100, 100],
     p7: [250, 200, 'Nearest ten looks at the ones digit (9), so it rounds up'], p8: ['375–384'], p9: [500, 550, 600, 600, 'It is past the halfway mark'],
     p10: ['No', 700], p11: [['251 crayons', '300 crayons', '342 crayons']], p12: [40, 49, 'No'],
-    t1: [580, 585, 590, 580], t2: [290, 295, 300, 300], t3: 620, t4: 740, t5: [300, 350, 400, 300], t6: [700, 750, 800, 800],
+    t1: [70, 75, 80, 70], t2: [290, 295, 300, 300], t3: 620, t4: 740, t5: [300, 350, 400, 300], t6: [700, 750, 800, 800],
     t7: [350, 300, 'Nearest ten looks at the ones digit (7), so it rounds up'], t8: ['515–524'], t9: [800, 850, 900, 800, 'It is before the halfway mark'],
     t10: ['No', 90], t11: [['450 pages', '482 pages', '500 pages', '538 pages']], t12: [60, 57, 'Yes']
   };
@@ -145,9 +145,9 @@ test('Practice and Test: 12 each, matching coverage, different numbers, every au
 
 test('Lesson 2-2 is separate from 2-1 and complete', () => {
   assert.equal(L.storageKey, 'mathbook:v2:lesson-2-2');
-  assert.ok(L.parentLearn && L.parentLearn.checklist.length === 5 && L.parentLearn.words.length === 6);
+  assert.ok(L.parentLearn && L.parentLearn.checklist.length === 6 && L.parentLearn.words.length === 6);
   assert.deepEqual(L.parentLearn.words.map((w) => w.term), ['Round', 'Nearest', 'Multiple of 10 / 100', 'Halfway point', 'Estimate', 'Exact']);
-  assert.ok(L.bankSets[0].ids.length === 12 && L.bankSets[0].ids.every((id) => L.bank.some((q) => q.id === id)));
+  assert.ok(L.bankSets[0].ids.length === 12 && L.bankSets.every((set) => set.ids.every((id) => L.bank.some((q) => q.id === id))));
   for (const q of L.guided.concat(L.tests.rounding.generate(2))) assert.ok(L.skills[q.skill], 'skill named: ' + q.skill);
   // The test is reproducible for a saved seed, and choice order varies between attempts.
   assert.deepEqual(L.tests.rounding.generate(9), L.tests.rounding.generate(9));
@@ -181,4 +181,58 @@ test('staged number line: grading, halfway wording, and no answers given away in
   }
   // Coverage is unchanged: same 12 skills in Practice and Test, with the number-line items staged.
   assert.deepEqual(L.guided.map((x) => x.type), ['rline', 'rline', 'number', 'number', 'rline', 'rline', 'parts', 'parts', 'rline', 'parts', 'parts', 'parts']);
+});
+
+test('2-2 verification fixes (2-2-verification.md §6): no book On My Own numbers; 2-digit lines; 0 to 100', () => {
+  const P = L.guided, T = L.tests.rounding.generate(1);
+  const byId = (list, id) => list.find((q) => q.id === id);
+  assert.equal(byId(P, 'p1').n, 46);
+  assert.equal(byId(P, 'p5').n, 418);
+  assert.equal(byId(P, 'p6').n, 87);
+  assert.match(byId(P, 'p6').explanation, /87 is between 0 and 100\. Halfway is 50\./);
+  assert.equal(byId(T, 't1').n, 72);
+  assert.equal(byId(T, 't6').n, 781, 't6 unchanged (decision 1)');
+  assert.ok(/^Dev has \$45/.test(byId(P, 'p12').prompt) && !/Sam/.test(byId(P, 'p12').prompt));
+  // No number being rounded in practice or the test is one of the book's On My Own numbers (pp. 39–40).
+  const book = [27, 896, 48, 273, 436, 672, 78, 240, 678, 315];
+  for (const q of P.concat(T).filter((x) => x.skill !== 'money')) {
+    const nums = (q.n !== undefined ? [q.n] : []).concat((q.prompt.match(/\d[\d,]*/g) || []).map((x) => Number(x.replace(/,/g, ''))));
+    nums.forEach((n) => assert.ok(!book.includes(n), `${q.id}: ${n} is a book number`));
+  }
+  assert.ok(L.parentLearn.ask.some((a) => /Why is a number line helpful for rounding/.test(a)), 'Choosing Tools question (A-07)');
+});
+
+test('Rounding Check-Up (2-2-probe.md): set s2 and test "checkup" match the hand-checked key', () => {
+  const want = {
+    pr1: ['483', '476', '475'], pr2: ['681', '742', '715'], pr3: ['86 stickers', '94 stickers', '85 stickers', '89 stickers'], pr4: ['362', '418'],
+    tr1: ['263', '258', '255'], tr2: ['438', '352', '449'], tr3: ['46', '45', '54', '49'], tr4: ['761', '829']
+  };
+  const set = L.bankSets.find((x) => x.id === 's2');
+  assert.equal(set.title, 'Rounding Check-Up');
+  assert.deepEqual(set.ids, ['pr1', 'pr2', 'pr3', 'pr4']);
+  const T = L.tests.checkup;
+  assert.equal(T.questions, 4);
+  const sorted = (a) => a.slice().sort();
+  for (const seed of [1, 2, 50]) {
+    const items = T.generate(seed);
+    assert.deepEqual(items.map((q) => q.id), ['tr1', 'tr2', 'tr3', 'tr4']);
+    items.forEach((q) => { assert.ok(!q.hint); assert.deepEqual(sorted(q.parts[0].answer), sorted(want[q.id])); assert.ok(q.parts[1].choices.includes(q.parts[1].answer)); });
+  }
+  for (const id of ['pr1', 'pr2', 'pr3', 'pr4']) {
+    const q = L.bank.find((x) => x.id === id);
+    assert.deepEqual(sorted(q.parts[0].answer), sorted(want[id]));
+    assert.ok(q.hint && Q.grade(q, Q.correctResponse(q)) && !Q.grade(q, Q.emptyResponse(q)));
+  }
+  // Every key is the set of numbers that round to the target (half up), recomputed here.
+  for (const q of L.bank.filter((x) => x.skill === 'probe').concat(L._checkTestItems)) {
+    const freeOfNumbers = !['pr1', 'tr1'].includes(q.id);
+    const target = Number(q.prompt.match(/round to (\d+)|about (\d+)/).slice(1).find(Boolean));
+    const place = /hundred/.test(q.prompt) ? 100 : 10;
+    const nums = q.parts[0].choices.map((c) => Number(c.split(' ')[0]));
+    assert.deepEqual(sorted(q.parts[0].answer.map((c) => Number(c.split(' ')[0])).map(String)), sorted(nums.filter((n) => pv.roundTo(n, place) === target).map(String)), q.id);
+    // Reasoning choices never name one of the item's own numbers (review A-04, A-09).
+    // A stated range ("from 350 to 449") is the rule, not a pick, so its endpoints are allowed.
+    if (freeOfNumbers) q.parts[1].choices.map((c) => c.replace(/from \d+ to \d+/g, 'the range')).forEach((c) => nums.forEach((n) => assert.ok(!new RegExp('(^|\\D)' + n + '(\\D|$)').test(c), `${q.id}: "${c}" names ${n}`)));
+  }
+  assert.equal(L.skills.probe, 'Choosing every number that rounds to an amount');
 });
