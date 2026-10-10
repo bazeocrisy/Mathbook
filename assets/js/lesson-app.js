@@ -212,7 +212,7 @@
         `<section class="card card-parent" id="demo">${head('C', 'Demonstrate', 'parent')}${p.demoVisual || ''}<ol>${p.demonstrate.map((x) => `<li>${esc(x)}</li>`).join('')}</ol></section>` +
         `<section class="card card-parent" id="check">${head('D', 'Questions, mistakes, and checklist', 'parent')}` +
         `<h3>Ask</h3>${list(p.ask)}<div class="callout callout-warn"><h3>Watch for these mistakes</h3>${list(L.mistakes)}</div>` +
-        `<h3>Checklist: the five Learn steps</h3><ol class="checks">${p.checklist.map((x) => `<li>${esc(x)}</li>`).join('')}</ol></section>` +
+        `<h3>Checklist: the Learn steps</h3><ol class="checks">${p.checklist.map((x) => `<li>${esc(x)}</li>`).join('')}</ol></section>` +
         `<section class="card card-parent" id="reset">${head('', 'Reset Lesson Progress', 'parent')}` +
         `<p>Erase Section ${esc(L.number)}'s saved answers, Learn completion, and test scores on this device. Other lessons and Number Words are not changed.</p>` +
         `<div id="clear-area"><button type="button" class="btn btn-ghost" id="clear">Reset Lesson Progress…</button></div></section>` +
@@ -462,7 +462,7 @@
         if (c.solved) {
           const note = Q.note(q, c.response);
           msg = `<div class="feedback feedback-ok"><p><b>✓ ${c.tries <= 1 ? 'Correct!' : 'You got it!'}</b> ${esc(q.explanation)}</p>${note ? `<p class="q-note">${esc(note)}</p>` : ''}</div>`;
-        } else if (c.revealed) msg = `<div class="feedback feedback-info"><p><b>The answer is ${esc(Q.correctText(q))}.</b> ${esc(q.explanation)}</p><p>Now try a new one like it.</p></div>`;
+        } else if (c.revealed) msg = `<div class="feedback feedback-info"><p><b>The answer is ${esc(Q.correctText(q)).replace(/[.]$/, "")}.</b> ${esc(q.explanation)}</p><p>Now try a new one like it.</p></div>`;
         else if (c.retry) {
           const t = Q.tip(q, c.response);
           const tip = t ? t + ' ' : '';

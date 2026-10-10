@@ -26,7 +26,9 @@ const TEST = {
   t5: ['825 − 375', 450], t6: ['475 + 250', 725], t7: [HOW, 900], t8: [SUB, 500], t9: [SUB, 240],
   t10: [280, 290], t11: [680, 40, 600], t12: [400, NO], t13: [ADD, 900], t14: [380, 300, TEN]
 };
-const keyOf = (q) => q.parts.map((p) => p.answer);
+// Compatible-number choices use non-breaking spaces (review L23-01); compare them as ordinary text.
+const sp = (v) => (typeof v === 'string' ? v.replace(/\u00a0/g, ' ') : v);
+const keyOf = (q) => q.parts.map((p) => sp(p.answer));
 
 test('On My Own and Practice Together match the hand-checked key (P1–P14)', () => {
   assert.deepEqual(L.bank.map((q) => q.id), Object.keys(PRACTICE));
@@ -57,7 +59,7 @@ test('fixed distractors from the spec, and every compatible key is the nearest m
   const all = L.bank.concat(L._testItems);
   for (const [id, wrong] of Object.entries(want)) {
     const q = all.find((x) => x.id === id);
-    assert.deepEqual(q.parts[0].choices.filter((c) => c !== q.parts[0].answer).sort(), wrong.slice().sort(), id);
+    assert.deepEqual(q.parts[0].choices.filter((c) => c !== q.parts[0].answer).map(sp).sort(), wrong.slice().sort(), id);
   }
   // Compatible = nearest of 00/25/50/75; whole numbers never tie.
   for (let n = 0; n <= 1000; n++) {
@@ -151,7 +153,7 @@ test('Learn step 4: compatible pairs, no reused pairs (incl. 575/125, N-04), sen
     assert.ok(ca % 100 || cb % 100, 'at least one is not a multiple of 100');
     assert.ok(!L._usedPairs.some(([x, y]) => (x === ca && y === cb) || (x === cb && y === ca)), `${ca}/${cb} is a used pair`);
     assert.ok(op === '−' ? ca > cb : ca + cb <= 1000);
-    assert.equal(q.parts[0].answer, `${pv.fmt(ca)} ${op} ${pv.fmt(cb)}`);
+    assert.equal(sp(q.parts[0].answer), `${pv.fmt(ca)} ${op} ${pv.fmt(cb)}`);
     assert.equal(q.parts[0].choices.length, 4);
     assert.equal(q.parts[1].answer, op === '+' ? ca + cb : ca - cb);
     assert.ok(!L._leaks(q));
@@ -214,4 +216,11 @@ test('the full key grades right and a typical mistake grades wrong', () => {
     r[i] = String(Number(String(r[i]).replace(/,/g, '')) + 10);
     assert.ok(!Q.grade(q, r), q.id + ' off by 10');
   }
+});
+
+test('compatible-number choices never break inside an expression (review L23-01)', () => {
+  const all = L.bank.concat(L.tests[Object.keys(L.tests)[0]].generate(7));
+  const items = all.filter((q) => q.skill === 'compat');
+  assert.ok(items.length >= 2);
+  items.forEach((q) => q.parts[0].choices.forEach((c) => assert.ok(!/ [+−] /.test(c) && /\u00a0/.test(c), `${q.id}: "${c}"`)));
 });

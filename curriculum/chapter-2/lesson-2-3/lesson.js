@@ -104,14 +104,16 @@
     const { a, b, op } = o;
     const P = compatPairs(a, b, op);
     const wrong = o.wrong || P.wrong;
-    const list = [P.right].concat(wrong);
+    // Non-breaking spaces keep each choice (e.g. 750 − 500) on one line at any width or zoom.
+    const nb = (t) => t.replace(/ ([+−]) /g, '\u00a0$1\u00a0');
+    const list = [P.right].concat(wrong).map(nb);
     const choices = o.r ? pv.shuffle(o.r, list) : fixedOrder(o.seed || 1, list);
     const rule = '(numbers ending in 00, 25, 50 or 75)';
     const q = {
       id: o.id, type: 'parts', skill: 'compat',
       prompt: o.story ? `${o.story} Use compatible numbers ${rule} to find about how many ${o.noun || 'in all'}.` : `Use compatible numbers ${rule} to estimate ${eq(a, op, b)}.`,
       parts: [
-        { kind: 'choice', label: 'Which compatible numbers are closest?', answer: P.right, choices, compact: true },
+        { kind: 'choice', label: 'Which compatible numbers are closest?', answer: nb(P.right), choices, compact: true },
         { kind: 'num', label: 'Estimate', answer: P.est }
       ],
       hint: o.hint || 'Count by 25s near each number. Find the nearest number that ends in 00, 25, 50 or 75.',
@@ -257,7 +259,7 @@
   };
 
   // Numbers used in the Learn examples; Your Turn never repeats them.
-  const DEMO = [312, 465, 674, 231, 526, 274, 247, 352, 750, 325, 375, 450, 284, 517, 640, 389, 560, 213, 820, 394, 455, 29, 205];
+  const DEMO = [312, 465, 674, 231, 526, 274, 247, 352, 326, 750, 325, 375, 450, 284, 517, 640, 389, 560, 213, 820, 394, 455, 29, 205];
   // Compatible pairs that Your Turn never produces: practice and test (650/425, 225/350, 825/375, 475/250),
   // the slides (525/275, 250/350, 750/325, 375/450) and the book's own pair 575/125 (review N-04).
   const USED_PAIRS = [[650, 425], [225, 350], [825, 375], [475, 250], [525, 275], [250, 350], [750, 325], [375, 450], [575, 125]];
@@ -465,9 +467,9 @@
         say('It works for sums too: <b>247 + 352</b>.') + arrows(247, 352, '+', [compat(247), compat(352)], 'all') +
           say(`${fmt(compat(247))} + ${fmt(compat(352))} = <b>${fmt(compat(247) + compat(352))}</b>. The exact sum is ${fmt(247 + 352)}.`),
         say('Compatible numbers are not always the same as rounding.') +
-          `<div class="slide-pair">${fig({ fig: 'arrows', a: 247, b: 352, op: '+', to: [roundTo(247, 100), roundTo(352, 100)], result: roundTo(247, 100) + roundTo(352, 100), caption: 'Rounding (nearest hundred)' })}` +
-          `${fig({ fig: 'arrows', a: 247, b: 352, op: '+', to: [compat(247), compat(352)], result: compat(247) + compat(352), caption: 'Compatible numbers' })}</div>` +
-          say(`247 rounded to the nearest hundred is ${fmt(roundTo(247, 100))}, but ${fmt(compat(247))} is closer and still easy.`),
+          `<div class="slide-pair">${fig({ fig: 'arrows', a: 247, b: 326, op: '+', to: [roundTo(247, 100), roundTo(326, 100)], result: roundTo(247, 100) + roundTo(326, 100), caption: 'Rounding (nearest hundred)' })}` +
+          `${fig({ fig: 'arrows', a: 247, b: 326, op: '+', to: [compat(247), compat(326)], result: compat(247) + compat(326), caption: 'Compatible numbers' })}</div>` +
+          say(`For <b>247 + 326</b>, rounding gives <b>${fmt(roundTo(247, 100) + roundTo(326, 100))}</b> but compatible numbers give <b>${fmt(compat(247) + compat(326))}</b>. The exact sum is ${fmt(247 + 326)}, so here the compatible numbers are closer.`),
         say('Working with 25s in your head: do the <b>hundreds first</b>.') +
           `<div class="money"><p><b>750 − 325:</b> 750 − 300 = ${fmt(750 - 300)}, then ${fmt(750 - 300)} − 25 = <b>${fmt(750 - 325)}</b>.</p>` +
           `<p><b>375 + 450:</b> 375 + 400 = ${fmt(375 + 400)}, then ${fmt(375 + 400)} + 50 = <b>${fmt(375 + 450)}</b>.</p></div>`
@@ -507,6 +509,7 @@
           say(`<b>✗ 794 is far from ${fmt(roundTo(389, 100) + roundTo(205, 100))}.</b> Leo's answer is not reasonable. The exact sum is ${fmt(389 + 205)}: he added an extra hundred.`),
         story('Ivy says <b>389 + 205 = 594</b>.') + arrows(389, 205, '+', [roundTo(389, 100), roundTo(205, 100)], 'all') +
           say(`<b>✓ 594 is close to ${fmt(roundTo(389, 100) + roundTo(205, 100))},</b> so it is reasonable.`) +
+          say('In this lesson, <b>close</b> means within about 100 of the estimate. More than that is <b>far</b>.') +
           say('An estimate can\'t prove an answer is exactly right. It tells you if it is close.')
       ],
       check(r) { return checkCheck(r); }
