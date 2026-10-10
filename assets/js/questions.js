@@ -1257,7 +1257,7 @@
         body = (q.line ? blankLine(q.line.place) : '') + `<div class="q-parts">` + q.parts.map((p, i) => {
           const v = rr[i];
           if (p.kind === 'num' || p.kind === 'round') {
-            return `<label class="part part-num"><span class="part-label">${esc(p.label)}</span>` +
+            return `<label class="part part-num"><span class="part-label">${withBlanks(p.label)}</span>` +
               `<input class="part-input" data-part="${i}" type="text" inputmode="numeric" autocomplete="off" spellcheck="false" value="${esc(v || '')}"></label>`;
           }
           if (p.kind === 'symbol') {
@@ -1272,7 +1272,7 @@
           }
           const multi = p.kind === 'multi';
           const compact = p.compact ? ` is-compact${p.choices.length === 3 ? ' is-three' : ''}${p.choices.some((c) => String(c).length > 6) ? ' is-wordy' : ''}` : '';
-          return `<fieldset class="part part-${p.kind}" data-part="${i}"><legend class="part-label">${esc(p.label)}</legend>` +
+          return `<fieldset class="part part-${p.kind}" data-part="${i}"><legend class="part-label">${withBlanks(p.label)}</legend>` +
             (multi ? '<p class="q-help">Choose every one that is correct.</p>' : '') + `<div class="q-choices${compact}">` +
             p.choices.map((c) => `<label class="choice"><input type="${multi ? 'checkbox' : 'radio'}" name="${key}-${i}" value="${esc(c)}"${(multi ? (v || []).includes(c) : v === c) ? ' checked' : ''}><span>${esc(c)}</span></label>`).join('') +
             `</div></fieldset>`;

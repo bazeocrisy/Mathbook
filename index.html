@@ -67,9 +67,17 @@
       // A staged number-line answer is an object: "started" once any box is filled, "answered" when all are.
       var LINE_PARTS = ['lo', 'hi', 'mid', 'pick'];
       function filled(r, k) { return r[k] !== undefined && r[k] !== null && String(r[k]).trim() !== ''; }
+      // An empty select-all ([]) is blank too, so opening a question without answering it is not counted.
+      function blank(v) { return v === undefined || v === null || v === 0 || String(v).trim() === '' || (Array.isArray(v) && !v.length); }
       function answered(r, started) {
+        if (r && typeof r === 'object' && !Array.isArray(r) && r.v && typeof r.v === 'object') {
+          // A written equation (chain): its boxes, plus any tree parts.
+          var boxes = Object.keys(r.v).map(function (k) { return r.v[k]; });
+          (r.t || []).forEach(function (t) { boxes = boxes.concat(t || []); });
+          return started ? boxes.some(function (v) { return !blank(v); }) : boxes.length > 0 && boxes.every(function (v) { return !blank(v); });
+        }
         if (r && typeof r === 'object' && !Array.isArray(r)) return started ? LINE_PARTS.concat('why').some(function (k) { return filled(r, k); }) : LINE_PARTS.concat(r.needWhy ? ['why'] : []).every(function (k) { return filled(r, k); });
-        return r !== undefined && r !== '' && r !== null && !(Array.isArray(r) && r.every(function (v) { return v === '' || v === 0 || v === null; }));
+        return r !== undefined && r !== '' && r !== null && !(Array.isArray(r) && r.every(blank));
       }
       // Continue appears once anything has been typed; the label counts fully answered questions (as the test does).
       function count(responses, started) { return Object.keys(responses || {}).filter(function (k) { return answered(responses[k], started); }).length; }

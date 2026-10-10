@@ -28,7 +28,8 @@ const PRACTICE = {
   o1: ['even', 'odd', 'odd'], o2: ['odd', 'odd', 'even'], o3: ['eq:even+even'], o4: ['eq:odd+odd'], o5: ['eq:even+odd'], o6: ['eq:even+odd'],
   o7: ['odd', 589], o8: ['even', 486], o9: ['Because 3 + 6 = 9 in the ones place, and 9 is odd.'], o10: ['The ones digits of the addends'],
   o11: [['11 and 13', '7 and 9', '8 and 6']], o12: ['even', 642], o13: ['No. Odd + even must be odd, and 676 is even.', 677],
-  o14: [['426', '604', '958']], o15: ['Each odd number has one left over, and the two leftovers make a pair.']
+  o14: [['426', '604', '958']], o15: ['Each odd number has one left over, and the two leftovers make a pair.'],
+  o16: [['234 + 152 = 387', '318 + 205 = 524']], o17: [NOT_PROVE(571), 581]
 };
 const TEST = {
   t1: ['even', 'odd', 'odd'], t2: ['eq:even+odd'], t3: ['eq:odd+odd'], t4: ['odd', 771], t5: ['even', 778],
@@ -80,10 +81,11 @@ test('written equations: any fitting 3-digit numbers, either order when mixed, t
   const ee = L.bank.find((q) => q.id === 'o3');
   assert.ok(Q.grade(ee, r(204, 316, 520)) && Q.grade(ee, r(204, 316, '520 ')), 'spaces are fine');
   assert.ok(!Q.grade(ee, r(203, 316, 519)));
-  // Every equation item's own example in the explanation fits it.
+  // Every equation item: the engine's own example (shown after two misses) fits, and the explanation names the word.
   for (const q of L.guided.concat(L.bank, L._testItems).filter((x) => x.type === 'chain')) {
-    const [, a, b, s] = q.explanation.match(/For example, (\d+) \+ (\d+) = ([\d,]+)/);
-    assert.ok(Q.grade(q, r(a, b, s.replace(',', ''))), `${q.id}: example ${a} + ${b} fits`);
+    assert.ok(Q.grade(q, Q.correctResponse(q)), `${q.id}: example fits`);
+    assert.ok(q.explanation.startsWith(`The blank is ${L._sentences[Object.keys(L._sentences).find((k) => q.prompt.startsWith(L._sentences[k].text))].answer}.`), q.id);
+    assert.ok(!/For example/.test(q.explanation), `${q.id}: one example only (L25-01)`);
   }
 });
 
