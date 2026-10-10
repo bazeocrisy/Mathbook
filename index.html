@@ -89,6 +89,12 @@
           var n = a && !a.checked ? count(a.responses) : 0;
           if (a && !a.checked && count(a.responses, true)) found.push({ href: page + '#practice/' + id, what: 'Lesson ' + lesson.id + ' · Practice on my own: ' + n + ' of ' + a.order.length + ' answered' });
         });
+        var skills = get(key + 'skill-practice') || {};
+        Object.keys(skills).forEach(function (id) {
+          var a = skills[id] && skills[id].active;
+          var n = a && !a.checked ? count(a.responses) : 0;
+          if (a && !a.checked && count(a.responses, true)) found.push({ href: page + '#practice/' + id, what: 'Lesson ' + lesson.id + ' · Practice one skill: ' + n + ' of ' + a.order.length + ' answered' });
+        });
         var w = get(key + 'see-wizard');
         var done = w && w.done ? Object.keys(w.done).length : 0;
         if (w && (done || w.step) && done < lesson.steps) found.push({ href: page + '#see', what: 'Lesson ' + lesson.id + ' · Learn: step ' + ((w.step || 0) + 1) + ' of ' + lesson.steps });
@@ -100,13 +106,14 @@
       // Prefer the screen that was open most recently, if it is one of these.
       var act = get('mathbook:v2:activity');
       var pick = found[0];
-      // Best: the same lesson and the same screen (e.g. #test and #test/rounding); next best: the same lesson.
+      // Best: the exact screen (e.g. #practice/skill-round100); next: the same lesson and the same screen (e.g. #test and #test/rounding); next best: the same lesson.
       if (act && act.path) {
         var page = function (p) { return p.split('#')[0]; };
         var screen = function (p) { return (p.split('#')[1] || '').split('/')[0]; };
         var samePage = found.filter(function (f) { return page(f.href) === page(act.path); });
         var sameScreen = samePage.filter(function (f) { return screen(f.href) === screen(act.path); });
-        pick = sameScreen[0] || samePage[0] || pick;
+        var sameItem = samePage.filter(function (f) { return f.href.split('#')[1] === act.path.split('#')[1]; });
+        pick = sameItem[0] || sameScreen[0] || samePage[0] || pick;
       }
       document.getElementById('continue-link').href = pick.href;
       document.getElementById('continue-what').textContent = pick.what;

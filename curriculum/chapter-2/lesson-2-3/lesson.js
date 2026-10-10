@@ -678,6 +678,7 @@
     guided,
     saveGuided: true,
     bank,
+    skillPractice: true,
     bankSets: [{ id: 's1', title: 'Estimation Practice', blurb: 'All 14 practice questions: rounding, compatible numbers, word problems, and checking answers.', ids: bank.map((q) => q.id) }],
     tests: {
       estimate: { id: 'estimate', title: 'Estimation Test', questions: 14, blurb: 'Rounding, compatible numbers, word problems, and checking answers.', generate: estimationTest }

@@ -86,6 +86,7 @@
       vocabStates: {},
       vocabItems: L.vocabPractice ? L.vocabPractice(shell.newSeed()) : [],
       bank: store.get('bank-sets', {}),
+      skillBank: store.get('skill-practice', {}),
       openSet: store.get('bank-open', null),
       activeTest: null,
       pendingStart: null,
@@ -99,7 +100,7 @@
     const saveGuided = () => { if (L.saveGuided) store.set('guided', { i: S.guidedPos.i, states: S.guidedStates }); };
     /** Forget this lesson's in-memory progress after its saved progress is erased. */
     function forgetProgress() {
-      S.bank = {}; S.openSet = null; S.view = null; S.unsaved = null; S.guidedStates = {}; S.guidedPos.i = 0; S.vocabStates = {}; S.vocabPos.i = 0;
+      S.bank = {}; S.skillBank = {}; S.openSet = null; S.view = null; S.unsaved = null; S.guidedStates = {}; S.guidedPos.i = 0; S.vocabStates = {}; S.vocabPos.i = 0;
       // Home's Continue must not point into erased progress.
       const act = shell.readActivity && shell.readActivity();
       if (act && act.path && opts.path && act.path.indexOf(opts.path) === 0) { try { root.localStorage.removeItem('mathbook:v2:activity'); } catch (e) { /* ignore */ } }
@@ -578,6 +579,7 @@
     // Practice: a choice screen first, then ONE activity on screen.
     //   #practice  choices · #practice/words  Math Words · #practice/together  Practice Together
     //   #practice/own  On My Own (choose a set) · #practice/s1 … s5  one set, one question at a time
+    //   #practice/skill-<skill>  only that skill's questions (lessons with skillPractice; opened from My Results)
     function practiceView(c, arg) {
       if (arg === 'words' && L.vocabPractice) return mathWordsView();
       if (arg === 'together') return togetherView();
@@ -637,10 +639,23 @@
       if (!setState(id).active) startSet(id);
       S.openSet = id;
       saveBank();
-      main.innerHTML = ctx.hero(lessonEyebrow(), `Set ${L.bankSets.indexOf(set) + 1}: ${esc(set.title)}`, esc(set.blurb)) +
-        `<section class="card activity-card"><div id="indep"></div></section>` + menuNav('#practice/own', 'Choose a set');
+      main.innerHTML = (set.skillOnly
+        ? ctx.hero(lessonEyebrow(), 'Practice One Skill', esc(set.blurb)) +
+          `<section class="card activity-card"><div id="indep"></div></section>` + menuNav('#results', 'My Results')
+        : ctx.hero(lessonEyebrow(), `Set ${L.bankSets.indexOf(set) + 1}: ${esc(set.title)}`, esc(set.blurb)) +
+          `<section class="card activity-card"><div id="indep"></div></section>` + menuNav('#practice/own', 'Choose a set'));
       drawIndep();
     }
+
+    /** Open a set: continue its unchecked attempt, or start a new one. */
+    function openSet(id) {
+      const st = setState(id);
+      if (!st.active || st.active.checked) startSet(id); else { S.openSet = id; saveBank(); }
+      ctx.go('practice/' + id);
+    }
+    /** The normal full practice: the one set when there is only one, otherwise the set chooser. */
+    const fullSetLabel = () => (L.bankSets.length === 1 ? `Practice all ${L.bankSets[0].ids.length} questions` : 'Choose a full practice set');
+    const openFullSet = () => (L.bankSets.length === 1 ? openSet(L.bankSets[0].id) : ctx.go('practice/own'));
 
     /** End-of-activity card: a short message, the activity's own action, and the Lesson Menu. */
     function doneCard(message, actions, bind) {
@@ -654,9 +669,28 @@
     // ----- Practice bank: five sets of 10 and "Practice My Misses" -----
     // Saved as 'bank-sets': { [setId]: { attempts: [], retries: [], active } } — attempts and retries are never edited after checking.
     const bankQ = (id) => L.bank.find((q) => q.id === id);
-    const setOf = (id) => L.bankSets.find((s) => s.id === id);
-    const setState = (id) => S.bank[id] || (S.bank[id] = { attempts: [], retries: [], active: null });
-    const saveBank = () => { store.set('bank-sets', S.bank); store.set('bank-open', S.openSet); };
+    const setOf = (id) => L.bankSets.find((s) => s.id === id) || skillSet(id);
+    const setState = (id) => { const B = isSkillId(id) ? S.skillBank : S.bank; return B[id] || (B[id] = { attempts: [], retries: [], active: null }); };
+    const saveBank = () => {
+      store.set('bank-sets', S.bank); store.set('bank-open', S.openSet);
+      if (Object.keys(S.skillBank).length) store.set('skill-practice', S.skillBank);
+    };
+
+    // ----- Skill practice (lessons with skillPractice: true) -----
+    // "Practice this skill" on My Results opens #practice/skill-<skill>: only the bank questions for that skill, run
+    // like a set (one at a time, Check my work, Practice My Misses). Saved apart from the full sets as
+    // 'skill-practice': { [id]: { attempts, retries, active } }, so full-set scores and status never change.
+    const SKILL = 'skill-';
+    const isSkillId = (id) => !!L.skillPractice && typeof id === 'string' && id.indexOf(SKILL) === 0;
+    const skillIds = (skill) => L.bank.filter((q) => q.skill === skill).map((q) => q.id);
+    function skillSet(id) {
+      if (!isSkillId(id)) return null;
+      const skill = id.slice(SKILL.length);
+      const ids = skillIds(skill);
+      if (!ids.length || !L.skills[skill]) return null;
+      return { id, skill, skillOnly: true, ids, title: L.skills[skill],
+        blurb: `Only the ${plural(ids.length, 'question')} for this skill. Answer, then check your work. No hints until you check.` };
+    }
 
     /** Start a new attempt at a whole set, in a new random order (each question once). */
     function startSet(id) {
@@ -705,12 +739,7 @@
           `<p class="set-status">${status}</p>${scores}` +
           `<button type="button" class="btn ${inProgress ? 'btn-primary' : 'btn-ghost'}" data-open-set="${set.id}" aria-label="${label}: Set ${n + 1}, ${esc(set.title)}">${label}</button></div>`;
       }).join('');
-      grid.querySelectorAll('[data-open-set]').forEach((b) => b.addEventListener('click', () => {
-        const id = b.dataset.openSet;
-        const st = setState(id);
-        if (!st.active || st.active.checked) startSet(id); else { S.openSet = id; saveBank(); }
-        ctx.go('practice/' + id);
-      }));
+      grid.querySelectorAll('[data-open-set]').forEach((b) => b.addEventListener('click', () => openSet(b.dataset.openSet)));
     }
 
     function drawIndep() {
@@ -723,15 +752,16 @@
         return;
       }
       const n = L.bankSets.indexOf(set) + 1;
+      const name = set.skillOnly ? 'Skill practice' : `Set ${n} · ${esc(set.title)}`;
       const qs = A.order.map(bankQ);
       const checked = A.checked;
       const isRetry = A.kind === 'retry';
       const parent = isRetry ? st.attempts.find((a) => a.id === A.parentId) : null;
       const attemptNo = isRetry ? null : (checked ? st.attempts.findIndex((a) => a.id === A.attemptId) + 1 : st.attempts.length + 1);
-      let title = isRetry ? `Set ${n} · ${esc(set.title)} — Practice My Misses (${plural(qs.length, 'question')})` : `Set ${n} · ${esc(set.title)} — attempt ${attemptNo}`;
-      let intro = isRetry
+      let title = isRetry ? `${name} — Practice My Misses (${plural(qs.length, 'question')})` : `${name} — attempt ${attemptNo}`;
+      let intro = (set.skillOnly ? `<p class="skill-banner"><span class="skill-banner-tag">Practicing one skill</span> <b>${esc(set.title)}</b></p>` : '') + (isRetry
         ? `<p class="parent-tip"><b>On your own:</b> these are the questions missed before. Answer them again without help. Explanations appear after you check.</p>`
-        : '';
+        : '');
       let score = '';
       if (checked) {
         const right = qs.filter((q) => Q.grade(q, A.responses[q.id])).length;
@@ -756,13 +786,13 @@
       }).join('') + `</ol>` +
         `<div class="actions">` +
         (missesLeft ? `<button type="button" class="btn btn-primary" id="practice-misses">Practice My Misses (${missesLeft})</button>` : '') +
-        `<button type="button" class="btn ${missesLeft ? 'btn-ghost' : 'btn-primary'}" id="set-again">Practice this set again</button>` +
-        `<button type="button" class="btn btn-ghost" id="choose-set">Choose another set</button>` +
+        `<button type="button" class="btn ${missesLeft ? 'btn-ghost' : 'btn-primary'}" id="set-again">Practice this ${set.skillOnly ? 'skill' : 'set'} again</button>` +
+        `<button type="button" class="btn btn-ghost" id="choose-set">${set.skillOnly ? fullSetLabel() : 'Choose another set'}</button>` +
         `<a class="btn btn-ghost" href="#menu">Lesson Menu</a></div>`;
       box.querySelectorAll('.q[data-qkey] input, .q[data-qkey] select, .q[data-qkey] button').forEach((c) => { c.disabled = true; });
       box.querySelector('#practice-misses') && box.querySelector('#practice-misses').addEventListener('click', () => { startMisses(set.id); restart(); });
       box.querySelector('#set-again').addEventListener('click', () => { startSet(set.id); restart(); });
-      box.querySelector('#choose-set').addEventListener('click', () => ctx.go('practice/own'));
+      box.querySelector('#choose-set').addEventListener('click', () => (set.skillOnly ? openFullSet() : ctx.go('practice/own')));
     }
 
     /** Back to the top of the set screen with the first question showing. */
@@ -945,12 +975,17 @@
             const href = L.skillLinks[s];
             return `<li><span>${esc(L.skills[s] || s)}</span>${href ? `<a class="btn btn-small" href="${esc(href)}">Review this lesson (${esc(s)})</a>` : ''}</li>`;
           }
-          const action = bankSkills.has(s)
-            ? `<button type="button" class="btn btn-small" data-practice="${s}">Practice this skill (Set ${L.bankSets.indexOf(setOf(bestSetFor(s))) + 1})</button>`
-            : `<button type="button" class="btn btn-small" data-vocab="1">Math Words practice</button>`;
+          const skillCount = L.skillPractice ? skillIds(s).length : 0;
+          const action = skillCount
+            ? `<button type="button" class="btn btn-small" data-practice="${s}">Practice this skill (${plural(skillCount, 'question')})<span class="sr-only">: ${esc(L.skills[s] || s)}</span></button>`
+            : bankSkills.has(s)
+              ? `<button type="button" class="btn btn-small" data-practice="${s}">Practice this skill (Set ${L.bankSets.indexOf(setOf(bestSetFor(s))) + 1})</button>`
+              : L.vocabPractice ? `<button type="button" class="btn btn-small" data-vocab="1">Math Words practice</button>` : '';
           return `<li><span>${esc(L.skills[s] || s)}</span>${action}</li>`;
         }).join('') + `</ul>`
         : '<p>No skills to review. Every question was correct.</p>';
+      const fullSet = L.skillPractice && L.bankSets
+        ? `<p class="full-set-line"><button type="button" class="btn btn-ghost" data-fullset="1">${fullSetLabel()}</button> <span class="muted">The full practice set, every skill.</span></p>` : '';
 
       const qBlock = (x, ok) => {
         const q = x.q;
@@ -977,7 +1012,7 @@
         `<p class="advice"><b>Next step:</b> ${esc(m.advice)}</p>` +
         `<p class="muted">Mastered: 90–100% · Review missed skills: 70–89% · Reteach and reassess: below 70%` +
         (selected.pauses ? ` · This test was paused and resumed ${plural(selected.pauses, 'time')}.` : '') + `</p>` +
-        `<h3>Skills to review</h3>${skillHTML}` +
+        `<h3>Skills to review</h3>${skillHTML}${fullSet}` +
         (missed.length ? `<h3>Mistakes to review (${missed.length})</h3><ol class="rq-list">${missed.map((x) => qBlock(x, false)).join('')}</ol>` : '') +
         (right.length ? `<details class="rq-right"><summary>Correct answers (${right.length})</summary><ol class="rq-list">${right.map((x) => qBlock(x, true)).join('')}</ol></details>` : '') +
         `<div class="actions"><button type="button" class="btn btn-primary" data-retake="${selected.testId}">Take a new ${esc(testTitle(selected))}</button></div></section>` +
@@ -990,11 +1025,10 @@
         main.querySelector('#detail').scrollIntoView({ block: 'start' });
       }));
       main.querySelectorAll('[data-practice]').forEach((b) => b.addEventListener('click', () => {
-        const id = bestSetFor(b.dataset.practice);
-        const st = setState(id);
-        if (!st.active || st.active.checked) startSet(id); else { S.openSet = id; saveBank(); }
-        ctx.go('practice/' + id);
+        const s = b.dataset.practice;
+        openSet(L.skillPractice && skillSet(SKILL + s) ? SKILL + s : bestSetFor(s));
       }));
+      main.querySelectorAll('[data-fullset]').forEach((b) => b.addEventListener('click', openFullSet));
       main.querySelectorAll('[data-vocab]').forEach((b) => b.addEventListener('click', () => ctx.go('practice/words')));
       main.querySelectorAll('[data-retake]').forEach((b) => b.addEventListener('click', () => {
         S.pendingStart = b.dataset.retake;
@@ -1016,7 +1050,7 @@
 
     function cleared() {
       if (!store.get('attempts', null)) forgetProgress(); // a confirmed reset (Cancel leaves the attempts in place)
-      else { S.bank = store.get('bank-sets', {}); S.view = null; S.unsaved = null; }
+      else { S.bank = store.get('bank-sets', {}); S.skillBank = store.get('skill-practice', {}); S.view = null; S.unsaved = null; }
       resultsView();
     }
 
