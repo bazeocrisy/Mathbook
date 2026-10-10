@@ -9,7 +9,9 @@ Add it to 2-2 as:
 2. **A second test** in `tests`: `checkup: { id: 'checkup', title: 'Rounding Check-Up', questions: 4 }` with items TR1–TR4 (below), using different numbers. 2-1 already has two tests (`math`, `vocab`), so the engine supports this.
 3. The book's "Reflect On Your Learning" self-rating (I am confused / I'm still learning / I understand / I can teach someone else) is **not graded**. Put it on the Parent Guide as a question to ask after the Check-Up. No new interaction is needed.
 
-Skills: reuse `select` for the select-all parts and add one skill key, `probe: 'Deciding which numbers round to an amount'`, for the reasoning choices. The Results screen then shows probe misses separately.
+Skills: a `parts` item carries one skill, so all eight items (PR1–PR4, TR1–TR4) use one new skill key, `probe: 'Choosing every number that rounds to an amount'`. The Results screen then shows Check-Up misses separately.
+
+Reasoning choices never name the item's own numbers or hint at which ones are in or out. They state the general range or rule, or they ask about a number that is not in the list. All the choices are about the same length, so the select-all part cannot be solved by reading the choices.
 
 ## 1. Source pages
 
@@ -46,10 +48,10 @@ Each item is `type: 'parts'` with a `multi` part (choose all) and a `choice` par
 - Answer: **483, 476, 475**
 - Check: 483 → 480 ✓; 487 → 490; 476 → 480 ✓; 475 → 480 ✓ (halfway, rounds up); 474 → 470; 485 → 490 (halfway, rounds up); 384 → 380; 379 → 380.
 - Reasoning part, "How can you tell which numbers round to 480?"
-  - ✓ "Numbers from 475 to 484 are closer to 480 (475 is halfway and rounds up)."
+  - ✓ "Numbers from 475 to 484 round to 480 (475 is halfway and rounds up)."
   - "Numbers with an 8 in the tens place round to 480."
   - "Numbers that end in 4 or 5 round to 480."
-  - "Every number between 470 and 490 rounds to 480."
+  - "Every number from 470 to 490 rounds to 480."
 - Hint: "Find halfway on each side of 480: 475 and 485. Which numbers are between them?"
 - Explanation: "Only numbers from 475 to 484 round to 480. 485 is halfway to 490, so it rounds up to 490. 384 and 379 are near 380, not 480."
 
@@ -58,10 +60,10 @@ Each item is `type: 'parts'` with a `multi` part (choose all) and a `choice` par
 - Answer: **681, 742, 715**
 - Check: 756 → 800 (tens digit 5); 681 → 700 ✓; 742 → 700 ✓; 627 → 600; 769 → 800; 609 → 600; 794 → 800; 715 → 700 ✓.
 - Reasoning part, "Lily says every number that starts with 7 rounds to 700. Is she right?"
-  - ✓ "No. 756, 769 and 794 start with 7 but round up to 800, and 681 starts with 6 but rounds up to 700."
-  - "Yes. The hundreds digit tells you the answer."
-  - "No. Only numbers that end in 00 round to 700."
-  - "Yes, but only if the ones digit is less than 5."
+  - ✓ "No. Look at the tens digit: numbers from 650 to 749 round to 700, whatever the first digit."
+  - "Yes. The hundreds digit tells you the nearest hundred, so look only at it."
+  - "No. Only numbers that end in 00 can round to 700 when you round them."
+  - "Yes, as long as the ones digit of the number is less than 5."
 - Hint: "Look at the tens digit, not the first digit. Numbers from 650 to 749 round to 700."
 - Explanation: "Numbers from 650 to 749 round to 700. 681 is past 650, so it rounds up to 700. 756, 769 and 794 are 750 or more, so they round to 800."
 
@@ -69,10 +71,11 @@ Each item is `type: 'parts'` with a `multi` part (choose all) and a `choice` par
 - Choices: 86 stickers, 94 stickers, 95 stickers, 85 stickers, 89 stickers, 79 stickers
 - Answer: **86, 94, 85, 89**
 - Check: 86 → 90 ✓; 94 → 90 ✓; 95 → 100 (halfway, rounds up); 85 → 90 ✓ (halfway, rounds up); 89 → 90 ✓; 79 → 80.
-- Reasoning part, "Why is 95 not one of them?"
-  - ✓ "95 is exactly halfway between 90 and 100, and halfway rounds up to 100."
-  - "95 is closer to 90."
-  - "Its tens digit is 9, so it rounds down."
+- Reasoning part (about a number not in the list), "Why does 75 round to 80 and not to 70?"
+  - ✓ "75 is exactly halfway between 70 and 80, and halfway rounds up."
+  - "75 is closer to 80 than it is to 70."
+  - "Its tens digit is 7, so the number rounds up."
+  - "Every number with a 5 in it rounds up to the next ten."
 - Hint: "Halfway points: 85 and 95. Which way does halfway round?"
 
 **PR4. Nearest hundred → 400 (spot the mistake).** "Max chose 450, 362, 418 and 309 as numbers that round to 400 (nearest hundred). Which of his choices are right? Choose all."
@@ -80,19 +83,20 @@ Each item is `type: 'parts'` with a `multi` part (choose all) and a `choice` par
 - Answer: **362, 418**
 - Check: 450 → 500 (halfway, rounds up); 362 → 400 ✓; 418 → 400 ✓; 309 → 300.
 - Reasoning part, "What mistake did Max make?"
-  - ✓ "He chose numbers that are not between 350 and 449. 450 rounds up to 500 and 309 rounds down to 300."
-  - "He forgot that numbers starting with 3 always round to 300."
-  - "He made no mistake."
+  - ✓ "Only numbers from 350 to 449 round to 400. Some of his numbers are outside that range."
+  - "Numbers starting with 3 always round to 300, and he forgot that rule."
+  - "Numbers ending in 0 always round down, and he forgot that rule."
+  - "He made no mistake. Every number he chose rounds to 400."
 
 ## 8. Test items (Rounding Check-Up test; different numbers)
 
-**TR1. Nearest ten → 260.** Choices: 263, 258, 255, 254, 266, 265, 163, 159. Answer: **263, 258, 255**. Check: 263 → 260 ✓; 258 → 260 ✓; 255 → 260 ✓ (halfway up); 254 → 250; 266 → 270; 265 → 270 (halfway up); 163 → 160; 159 → 160. Reasoning choice: ✓ "Numbers from 255 to 264 are closest to 260." / "Numbers with a 6 in the tens place." / "Numbers that end in 3, 5 or 8." / "Every number between 250 and 270."
+**TR1. Nearest ten → 260.** Choices: 263, 258, 255, 254, 266, 265, 163, 159. Answer: **263, 258, 255**. Check: 263 → 260 ✓; 258 → 260 ✓; 255 → 260 ✓ (halfway up); 254 → 250; 266 → 270; 265 → 270 (halfway up); 163 → 160; 159 → 160. Reasoning choice: ✓ "Numbers from 255 to 264 round to 260 (255 is halfway and rounds up)." / "Numbers with a 6 in the tens place round to 260." / "Numbers that end in 3, 5 or 8 round to 260." / "Every number from 250 to 270 rounds to 260."
 
-**TR2. Nearest hundred → 400.** Choices: 438, 352, 449, 451, 467, 349, 486, 318. Answer: **438, 352, 449**. Check: 438 → 400 ✓; 352 → 400 ✓; 449 → 400 ✓; 451 → 500; 467 → 500; 349 → 300; 486 → 500; 318 → 300. Reasoning choice, "Ben says every number that starts with 4 rounds to 400": ✓ "No. 451, 467 and 486 start with 4 but round up to 500, and 352 starts with 3 but rounds up to 400." / "Yes. The hundreds digit tells you the answer." / "No. Only 400 itself rounds to 400." / "Yes, but only if the ones digit is less than 5."
+**TR2. Nearest hundred → 400.** Choices: 438, 352, 449, 451, 467, 349, 486, 318. Answer: **438, 352, 449**. Check: 438 → 400 ✓; 352 → 400 ✓; 449 → 400 ✓; 451 → 500; 467 → 500; 349 → 300; 486 → 500; 318 → 300. Reasoning choice, "Ben says every number that starts with 4 rounds to 400. Is he right?": ✓ "No. Look at the tens digit: numbers from 350 to 449 round to 400, whatever the first digit." / "Yes. The hundreds digit tells you the nearest hundred, so look only at it." / "No. Only numbers that end in 00 can round to 400 when you round them." / "Yes, as long as the ones digit of the number is less than 5."
 
-**TR3. Nearest ten → 50 (2-digit).** Choices: 46, 55, 45, 54, 49, 44. Answer: **46, 45, 54, 49**. Check: 46 → 50 ✓; 55 → 60; 45 → 50 ✓ (halfway up); 54 → 50 ✓; 49 → 50 ✓; 44 → 40. Reasoning choice, "Why is 55 not one of them?": ✓ "55 is exactly halfway between 50 and 60, and halfway rounds up to 60." / "55 is closer to 50." / "Its tens digit is 5, so it rounds down."
+**TR3. Nearest ten → 50 (2-digit).** Choices: 46, 55, 45, 54, 49, 44. Answer: **46, 45, 54, 49**. Check: 46 → 50 ✓; 55 → 60; 45 → 50 ✓ (halfway up); 54 → 50 ✓; 49 → 50 ✓; 44 → 40. Reasoning choice (about a number not in the list), "Why does 35 round to 40 and not to 30?": ✓ "35 is exactly halfway between 30 and 40, and halfway rounds up." / "35 is closer to 40 than it is to 30." / "Its tens digit is 3, so the number rounds up." / "Every number with a 5 in it rounds up to the next ten."
 
-**TR4. Nearest hundred → 800 (spot the mistake).** "Kara chose 850, 761, 829 and 708 as numbers that round to 800." Answer: **761, 829**. Check: 850 → 900 (halfway up); 761 → 800 ✓; 829 → 800 ✓; 708 → 700. Reasoning choice: ✓ "She chose numbers that are not between 750 and 849. 850 rounds up to 900 and 708 rounds down to 700." / "Numbers starting with 7 always round to 700." / "She made no mistake."
+**TR4. Nearest hundred → 800 (spot the mistake).** "Kara chose 850, 761, 829 and 708 as numbers that round to 800." Answer: **761, 829**. Check: 850 → 900 (halfway up); 761 → 800 ✓; 829 → 800 ✓; 708 → 700. Reasoning choice, "What mistake did Kara make?": ✓ "Only numbers from 750 to 849 round to 800. Some of her numbers are outside that range." / "Numbers starting with 7 always round to 700, and she forgot that rule." / "Numbers ending in 0 always round down, and she forgot that rule." / "She made no mistake. Every number she chose rounds to 800."
 
 Grading: a select-all part is right only if exactly the correct set is chosen (existing `multi` behaviour). The explanation should list every choice with its rounded value and a ✓, like `selectQ` in 2-2.
 
@@ -134,3 +138,12 @@ None. Uses `parts` with `multi` and `choice`, a second entry in `bankSets`, and 
 ## 14. Open questions / assumptions
 - Assumed the Check-Up is a separate short test (4 items) rather than added to the 12-item Rounding Test, so the main test stays the same length. If the owner prefers one test, add TR1 and TR2 only (they cover both places).
 - Should the home page "Continue" check count the new `s2` set and `checkup` test? Assumed yes (same storage key prefix).
+
+## Review fixes
+
+| Finding | Change |
+|---|---|
+| A-04 (reasoning choices gave away the select-all answer) | The PR2, PR4, TR2 and TR4 ✓ choices now state only the range rule ("numbers from 650 to 749 round to 700, whatever the first digit"; "Only numbers from 750 to 849 round to 800. Some of her numbers are outside that range."). No choice names any of the item's own numbers. Distractors were made about the same length. |
+| A-08 (255 is not "closest" to 260) | TR1 ✓ now reads "Numbers from 255 to 264 round to 260 (255 is halfway and rounds up)". PR1 ✓ now says "round to" instead of "are closer to", for the same reason. |
+| A-09 ("Why is 95 / 55 not one of them?" revealed an answer) | PR3 and TR3 now ask about a number that is not in the list: "Why does 75 round to 80?" and "Why does 35 round to 40?". Check: 75 → floor(80 / 10) × 10 = 80; 35 → floor(40 / 10) × 10 = 40. |
+| A-10 (a `parts` item has one skill) | All eight items use the single skill `probe`. The Recommendation section now also states that reasoning choices are number-free. |

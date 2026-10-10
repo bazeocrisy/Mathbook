@@ -41,14 +41,16 @@ Legend: ✅ done · ⏳ in progress · — not started · ❌ blocked
 | Curriculum agent B | general-purpose subagent | Specs: 2-5 – 2-8 | Done (4 specs) |
 | Curriculum agent C | general-purpose subagent | Specs: 2-9 – 2-12 | Done (4 specs) |
 | Curriculum agent D | general-purpose subagent | Specs: 2-13 – 2-15, Unit Review, Performance Task, Fluency | Done (6 specs) |
-| Independent math & teaching reviewer A | general-purpose subagent | Batch A plan review vs pp. 37–50 | Running |
-| Independent math & teaching reviewer B | general-purpose subagent | Batch B plan review vs pp. 51–66 | Running |
-| Independent math & teaching reviewer C | general-purpose subagent | Batch C plan review vs pp. 67–82 | Running |
-| Independent math & teaching reviewer D | general-purpose subagent | Batch D/E plan review vs pp. 83–100 | Running |
-| Design agent | general-purpose subagent | DESIGN.md: global patterns, shared models, Batch A screens | Running |
+| Independent math & teaching reviewer A | general-purpose subagent | Batch A plan review vs pp. 37–50 | Done — findings in reviews/batch-A-plan-review.md; spec fixes assigned to curriculum agent |
+| Independent math & teaching reviewer B | general-purpose subagent | Batch B plan review vs pp. 51–66 | Done — findings in reviews/batch-B-plan-review.md; spec fixes assigned to curriculum agent |
+| Independent math & teaching reviewer C | general-purpose subagent | Batch C plan review vs pp. 67–82 | Done — findings in reviews/batch-C-plan-review.md; spec fixes assigned to curriculum agent |
+| Independent math & teaching reviewer D | general-purpose subagent | Batch D/E plan review vs pp. 83–100 | Done — findings in reviews/batch-D-plan-review.md; spec fixes assigned to curriculum agent |
+| Design agent | general-purpose subagent | DESIGN.md: global patterns, shared models, Batch A screens | Done (DESIGN.md; decisions 23–27) |
+| Builder (shared components) | general-purpose subagent, worktree ../Mathbook-shared, branch claude/ch2-shared | figures.js F1–F10, chain, vcalc, parts additions, engine additions, component tests | Running |
 
 ## Log
 
+- 2026-10-10 — Plan reviews: A 1 critical/4 major, B 0/7, C 0/5, D 0/4 (no arithmetic errors outside A-01). Fixes assigned to the authoring curriculum agents. DESIGN.md adopted. Shared-components builder started in worktree claude/ch2-shared.
 - 2026-10-10 — All 19 specs written by 4 curriculum agents (docs/chapter-2/lessons/). Coordinator decisions 1–22 in PLAN.md. Catalog + generic lesson tests committed. Math reviews (4) and design (DESIGN.md) running.
 - 2026-10-10 — Session start. main at `3f214fb` (textbook scans added). Textbook pages extracted and rotated upright (68 pages). Lesson/page map recorded above.
 

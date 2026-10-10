@@ -55,7 +55,7 @@ Each batch: shared components → builders (one per lesson, parallel, separate f
 2. **Rounding probe (pp. 41–42):** add it inside 2-2 as a second On My Own set ("Rounding Check-Up") and a short second test, not as a separate lesson.
 3. **Compatible numbers (2-3):** auto-graded as "the nearest number ending in 00, 25, 50 or 75" (the book's own example uses 575 and 125). The question names the method, so there is exactly one expected estimate. The explanation says other friendly numbers can also work.
 4. **Property names (2-4):** the child sees "order" and "grouping". "Commutative" and "associative" appear in the Parent Guide only.
-5. **Length:** tests may run 10–14 questions when coverage requires it. Every distinct assessed skill and problem type comes first; trim only duplicates.
+5. **Length:** tests may run 10–14 questions when coverage requires it. Every distinct assessed skill and problem type comes first; trim only duplicates. Exception: the Unit Review test (15) and the Fluency Check (16) mirror the book's own item counts.
 6. **Written explanations:** structured, auto-graded choices in practice and tests. Free explanations appear only as Practice Together "explain aloud" items that the parent marks. Free explanations are never auto-graded or counted in test scores.
 7. **Original content:** app questions use new numbers and contexts. Book examples may be cited in the Parent Guide.
 8. **2-5 child-written equations:** one equation per item; the book's "two equations" is covered by giving the same pattern twice across items. Sums above 999 are accepted (the pattern still holds).
