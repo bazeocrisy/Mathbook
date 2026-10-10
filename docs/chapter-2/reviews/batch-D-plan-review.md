@@ -39,3 +39,54 @@ Independent reviewer. Every spec was checked against the upright page scans (pp.
 - **Performance Task.** Book reference values are correct (613, 35, 187, Week 3 = 234, Week 1 has 90 more). V1: 814, 58, 186, 236, Week 1, 200. V2: 858, 68, 142, 217, Week 1, 246. All correct, and both versions regroup.
 - **Fluency.** All Learn, f, q and c answers are correct. Facts mirror the book's mix: regrouping in the addition items, no regrouping in the 2-digit subtractions. The make-a-10 and use-a-10 Your Turn rules always produce valid items (ones digit ≥ the amount needed; regrouping guaranteed).
 - **Originality.** Apart from D-16, all practice and test items use new numbers and contexts. Book examples appear only as citations.
+
+## Re-verification
+
+Re-checked after the curriculum fixes (commit 28f8e3f; each spec's "15. Review fixes") and the coordinator's rulings (PLAN Decisions 5, 9, 13, 20, 21). Every changed or added number was recomputed by hand and with a Node script:
+- **2-13:** o1–o12.
+- **2-14:** o1–o14, p14, and Learn slides 5–6.
+- **2-15:** o1–o14, including a column-by-column check for regrouping and the uniqueness of the o11 missing digits.
+- **Unit Review:** V1′–V5′ and R6′–R20′.
+- **Performance Task:** the Part C choices.
+- **Fluency:** the Learn slide 4 jump line, f9, q15, q16, c2, and the explain item.
+
+**All arithmetic is correct. Every 2-15 subtraction (old and new) needs no regrouping.**
+
+| id | status | notes |
+|---|---|---|
+| D-1 | verified | 2-13 o1–o12, 2-14 o1–o14, 2-15 o1–o14, and Unit Review V1′–V5′ / R6′–R20′ are separate On My Own lists. They cover the same skills and formats, and use new numbers that are not in Practice Together or the tests. All answers are correct: e.g. 2-14 o13 7,264 + 3,958 = 11,222; 2-15 o8 47,596 − 3,284 = 44,312; R9′ 86,974 − 41,523 = 45,451 needs no regrouping; R19′ B gives 327. In R7′ and R15′ exactly one choice is correct. |
+| D-2 | verified | Learn 1 slides 5–6 add a friendly-number split (5,428 + 72 + 300 + 12 = 5,812) and a split whose parts don't add up (72 + 300 + 2 = 374 ≠ 384 → 5,802). New "No" items: p14 (73 + 200 + 5 = 278 ≠ 268; correct sum 4,795) and o14 (61 + 400 + 6 = 467 ≠ 457; correct sum 3,096). The "Yes" twin o5 (55 + 600 + 37 = 692; sum 3,937) is right. t5's distractors are written out, and none shows 3,793. |
+| D-3 | verified | p6, o6 and t6 show the partial-sum rows without the total (o6: 700, 100, 11 → 811). |
+| D-4 | verified | Learn 1 Your Turn uses `chain`. Each row is checked against the child's own previous entry, the final sum must be exact, and no correct running total is shown before the child types it. |
+| D-5 | verified | The swapped digits must differ. The reason choices are now place names, keyed to the first place that differs, so the second differing place is a wrong choice rather than a second true one. |
+| D-6 | verified | The thousands digit is limited to 1–8, and the distractor now names the actual digits. |
+| D-7 | verified | The error-analysis key no longer says "less". The reason choices are written out once and name a place, never "greater" or "less". |
+| D-8 | verified | Book item 3 is now described as regrouping twice. |
+| D-9 | verified | p8, o8 and t8 use `vcalc` `rows` (o8 538 + 274 → 700, 100, 12, 812). No choice shows the sum. |
+| D-10 | verified | p9, o9 and t9 are horizontal `number` items (o9 6,247 + 568 = 6,815). |
+| D-11 | verified | 2(b) and Step 4 require top thousands > bottom thousands, and the hint is reworded. The o11 missing digits (6,□47 − 3,5□□ = □,435 → 9, 1, 2, 3) have one solution, even if borrowing were allowed. |
+| D-12 | verified | V2 is now "…is an ___." Only "estimate" fits; "expanded form" makes no sense there. W3 has no article before the blank, and only "estimate" fits. |
+| D-13 | verified | Decision 5 now allows the 15-item Unit Test and the 16-item Fluency Check. |
+| D-14 | verified | The Performance Task is its own catalog entry (Decision 20). The Part C choices are now worded steps and no longer show 814 or 858. |
+| D-15 | verified | No timer of any kind (Decision 21). |
+| D-16 | verified | The explain item now uses 47 + 26 (→ 50 + 23 = 73). The book's 28 + 17 appears only in the Parent Guide. |
+| D-17 | verified | The grading rule is stated: for addition, start + total jump = end in either addend order; for subtraction, only start − total jump = end. Equations that don't describe the line (e.g. 76 − 30 = 46) are marked wrong. |
+| D-18 | verified | The book's "ones first, then tens" pattern is now taught and assessed: Learn slide 4 (86 − 34 = 52), half of the subtraction Your Turns, f9 (67 − 53 = 14), q16 (95 − 62 = 33) and c2 (69 − 34 = 35). None of these lands on a ten after the first jump. |
+| D-19 | verified | Subtraction Your Turn starts are never multiples of 10. |
+
+The coordinator's "no keyed choice or prompt shows a number the child must enter" rule was checked across all six specs. Each fix is in place:
+- **2-15:** the Learn 3 check-with-addition choices are now worded as steps.
+- **Fluency:** the adjust items have the child write the whole equation, and the f7 choices no longer show sums.
+- **Unit Review:** R17, T17 and R17′ show the adjusted addends but not the sum.
+- **Performance Task:** the Part C choices no longer show the Weeks 1 and 2 total.
+
+I found no remaining leaks.
+
+### New findings
+
+| id | severity | spec · section / item | problem | required correction |
+|---|---|---|---|---|
+| N-1 | minor | fluency §5 Step 3 Your Turn, subtraction (b) "book form" | The first jump k must satisfy 1 ≤ k < the start's ones digit. That is impossible when the ones digit is 1 (e.g. s = 41). | Add: in form (b), the start's ones digit is 2–9. |
+| N-2 | minor | 2-14 §6 parent `explain` after p8 | It asks "Explain aloud how you added 627 + 285 and **why you chose that strategy**". But p8 now tells the child to use partial sums, so there was no choice. | Reword: "Explain aloud how you found each partial sum for 627 + 285. Which other way could you use, and why?" Or attach the explain item to a free-strategy item. |
+
+**Overall:** all 19 original findings are fixed. There are 2 new minor findings, no new major or critical ones, and no new arithmetic, coverage or originality problems.
