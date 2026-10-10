@@ -57,6 +57,7 @@
   </main>
   <footer class="footer"><p>Mathbook · Original learning content · Progress is saved in this browser only.</p></footer>
 
+  <script src="assets/js/catalog.js"></script>
   <script>
     // One "Continue where I left off" button, shown only for unfinished work with real progress:
     // a test with at least one answer, a practice set with at least one answer, or Learn part-way done.
@@ -73,14 +74,10 @@
       // Continue appears once anything has been typed; the label counts fully answered questions (as the test does).
       function count(responses, started) { return Object.keys(responses || {}).filter(function (k) { return answered(responses[k], started); }).length; }
       var found = [];
-      // Each lesson keeps its own progress (its own storage prefix).
-      var LESSONS = [
-        { id: '2-1', tests: [['math', 'Math Test'], ['vocab', 'Math Words Test']] },
-        { id: '2-2', tests: [['rounding', 'Rounding Test']] }
-      ];
-      LESSONS.forEach(function (lesson) {
-        var key = 'mathbook:v2:lesson-' + lesson.id + ':';
-        var page = 'curriculum/chapter-2/lesson-' + lesson.id + '/';
+      // Each lesson keeps its own progress (its own storage prefix). The list of lessons lives in assets/js/catalog.js.
+      Mathbook.catalog.lessons.forEach(function (lesson) {
+        var key = lesson.key;
+        var page = lesson.path;
         lesson.tests.forEach(function (t) {
           var d = get(key + 'draft-' + t[0]);
           var n = d && d.questions ? count(d.responses) : 0;
@@ -94,7 +91,7 @@
         });
         var w = get(key + 'see-wizard');
         var done = w && w.done ? Object.keys(w.done).length : 0;
-        if (w && (done || w.step) && done < 5) found.push({ href: page + '#see', what: 'Lesson ' + lesson.id + ' · Learn: step ' + ((w.step || 0) + 1) + ' of 5' });
+        if (w && (done || w.step) && done < lesson.steps) found.push({ href: page + '#see', what: 'Lesson ' + lesson.id + ' · Learn: step ' + ((w.step || 0) + 1) + ' of ' + lesson.steps });
       });
       var nw = get('mathbook:v2:number-words:phase-1:draft');
       var nwn = nw && nw.questions ? count(nw.responses) : 0;

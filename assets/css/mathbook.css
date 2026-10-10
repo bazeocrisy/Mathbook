@@ -731,3 +731,9 @@ a.btn.is-disabled { background: #eceef5; color: #545a75; pointer-events: none; }
 @media (max-width: 700px) {
   .home-hero-small .hero-art { order: 2; max-width: 110px; }
 }
+/* Math Lessons: a compact two-column list (one column on phones) with a short progress note per lesson. */
+.choice-grid-lessons .choice-card { min-height: 88px; padding: 0.8rem 1rem; }
+.choice-grid-lessons .choice-num { font-size: 0.95rem; }
+.choice-progress { font-size: 0.89rem; font-weight: 700; color: var(--student); margin-top: 0.15rem; }
+.choice-progress.is-done { color: var(--ok); }
+.choice-progress.is-done::before { content: '✓ '; }
