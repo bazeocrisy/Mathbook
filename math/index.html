@@ -25,20 +25,17 @@
       <p class="lead">Choose a lesson.</p>
     </section>
 
-    <nav class="choice-grid choice-grid-one" aria-label="Lessons">
-      <a class="choice-card" href="../curriculum/chapter-2/lesson-2-1/#menu">
-        <span class="choice-icon choice-num" aria-hidden="true">2-1</span>
-        <span class="choice-text"><span class="choice-title">Represent 4-Digit Numbers</span><span class="choice-desc">Thousands, hundreds, tens, and ones.</span></span>
-      </a>
-      <a class="choice-card" href="../curriculum/chapter-2/lesson-2-2/#menu">
-        <span class="choice-icon choice-num" aria-hidden="true">2-2</span>
-        <span class="choice-text"><span class="choice-title">Round Multi-Digit Numbers</span><span class="choice-desc">Round to the nearest 10 and 100.</span></span>
-      </a>
-    </nav>
-    <p class="coming-later">More lessons are coming later.</p>
+    <nav class="choice-grid choice-grid-lessons" id="lesson-list" aria-label="Lessons"></nav>
+    <p class="coming-later" id="coming-later">More lessons are coming later.</p>
 
     <div class="stage-nav"><a class="btn btn-ghost" href="../">← Back to Home</a><span></span></div>
   </main>
   <footer class="footer"><p>Mathbook · Original learning content · Progress is saved in this browser only.</p></footer>
+  <script src="../assets/js/catalog.js"></script>
+  <script>
+    Mathbook.catalog.renderLessonList(document.getElementById('lesson-list'), '../');
+    // Chapter 2 has 15 lessons plus review pages; the note disappears once they are all listed.
+    if (Mathbook.catalog.lessons.length >= 18) document.getElementById('coming-later').hidden = true;
+  </script>
 </body>
 </html>

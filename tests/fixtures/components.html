@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Mathbook component fixture</title>
+  <link rel="stylesheet" href="../../assets/css/mathbook.css">
+</head>
+<body>
+  <!-- Test fixture: every Chapter 2 figure, and every new question type in guided, test and review modes.
+       Driven by tests/components.browser.mjs. Responses are saved to localStorage so a refresh restores them. -->
+  <main id="fx" class="stage stage-activity stage-learn"></main>
+  <script src="../../assets/js/place-value.js"></script>
+  <script src="../../assets/js/figures.js"></script>
+  <script src="../../assets/js/questions.js"></script>
+  <script src="components-samples.js"></script>
+  <script>
+  (function () {
+    'use strict';
+    const Q = Mathbook.Q;
+    const esc = Q.esc;
+    const main = document.getElementById('fx');
+    const KEY = 'fx-components:';
+    const get = (k) => { try { return JSON.parse(localStorage.getItem(KEY + k) || 'null'); } catch (e) { return null; } };
+    const put = (k, v) => { try { localStorage.setItem(KEY + k, JSON.stringify(v)); } catch (e) { /* ignore */ } };
+    const only = new URLSearchParams(location.search).get('only');
+    const qs = FX.questions.filter((q) => !only || only.split(',').includes(q.id));
+    let html = '';
+    if (!only) {
+      html += `<section class="card" id="figures"><h2>Figures</h2>` +
+        FX.figures.map((f, i) => `<div class="fx-fig" data-fig="${i}"><p class="q-help">${esc(f.fig)}</p>${Mathbook.fig.html(f)}</div>`).join('') + `</section>`;
+    }
+    qs.forEach((q) => {
+      html += `<section class="card" data-sample="${q.id}"><h2>${esc(q.id)} · ${esc(q.type)}${q.preset ? ' · ' + esc(q.preset) : ''}</h2>` +
+        ['guided', 'test', 'review'].map((mode) => `<h3>${mode}</h3><div class="wiz-check fx-mode" data-mode="${mode}"></div>`).join('') + `</section>`;
+    });
+    main.innerHTML = html;
+    qs.forEach((q) => {
+      const sec = main.querySelector(`[data-sample="${q.id}"]`);
+      ['guided', 'test', 'review'].forEach((mode) => {
+        const box = sec.querySelector(`[data-mode="${mode}"]`);
+        const key = `${q.id}-${mode}`;
+        if (mode === 'review') {
+          // Review shows the child's own (here: a half-right) answer with ✓/✗ per box.
+          const saved = get(key);
+          box.innerHTML = Q.render(q, key, { review: true, response: saved || Q.correctResponse(q) });
+          box.insertAdjacentHTML('beforeend', `<p class="fx-describe">${esc(Q.describe(q, saved || Q.correctResponse(q)))}</p><p class="fx-correct">Correct answer: ${esc(Q.correctText(q))}</p>`);
+          return;
+        }
+        box.innerHTML = Q.render(q, key, { response: get(key) || undefined, mode }) +
+          (mode === 'guided' ? `<div class="actions wiz-check-actions"><button type="button" class="btn btn-primary" data-check>Check Answer</button></div><div class="fx-fb" aria-live="polite"></div>` : '');
+        const el = box.querySelector('.q[data-qkey]');
+        Q.bind(el, q, (r) => put(key, r), { autofocus: q.id === 'vadd' && mode === 'test' });
+        const btn = box.querySelector('[data-check]');
+        if (btn) btn.addEventListener('click', () => {
+          const r = Q.read(el, q);
+          const fb = box.querySelector('.fx-fb');
+          if (!Q.isAnswered(q, r)) { fb.innerHTML = '<p class="feedback feedback-info">Type or choose an answer first.</p>'; return; }
+          Q.applyMarks(el, q, r);
+          const ok = Q.grade(q, r);
+          const note = Q.note(q, r);
+          fb.innerHTML = ok ? `<div class="feedback feedback-ok"><p><b>✓ Correct!</b> ${esc(q.explanation)}</p>${note ? `<p class="q-note">${esc(note)}</p>` : ''}</div>`
+            : `<div class="feedback feedback-no"><p><b>Not quite.</b> ${esc(Q.tip(q, r))}</p></div>`;
+        });
+      });
+    });
+    window.FXQ = (id) => FX.questions.find((q) => q.id === id);
+    window.FXREADY = true;
+  })();
+  </script>
+</body>
+</html>

@@ -4,7 +4,7 @@ import http from 'node:http';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { spawn } from 'node:child_process';
+import { spawn, spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 
 export const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..');
@@ -108,7 +108,16 @@ export async function startBrowser() {
       await send('Input.dispatchKeyEvent', { type: 'keyDown', key, code, windowsVirtualKeyCode: vk, modifiers: mods });
       await send('Input.dispatchKeyEvent', { type: 'keyUp', key, code, windowsVirtualKeyCode: vk, modifiers: mods });
     },
-    close() { try { ws.close(); } catch { /* ignore */ } proc.kill(); }
+    // Ask Chrome to quit, then make sure the whole process tree is gone (on Windows, proc.kill() alone can leave
+    // headless Chrome running; hundreds of leftovers eventually stop new browsers from starting).
+    close() {
+      try { ws.send(JSON.stringify({ id: ++nextId, method: 'Browser.close' })); } catch { /* ignore */ }
+      try { ws.close(); } catch { /* ignore */ }
+      try {
+        if (process.platform === 'win32') spawnSync('taskkill', ['/PID', String(proc.pid), '/T', '/F'], { stdio: 'ignore' });
+        else proc.kill();
+      } catch { /* ignore */ }
+    }
   };
   return b;
 }
@@ -133,7 +142,18 @@ export const FILL_HELPERS = `
         if (p.kind === 'num') return String(p.answer + 1);
         if (p.kind === 'round') return pv.fmt(p.target + p.place);
         if (p.kind === 'choice') return p.choices.find((c) => c !== p.answer);
+        if (p.kind === 'symbol') return (p.choices || ['<', '>', '=']).find((c) => c !== p.answer);
         return p.answer.length < p.choices.length ? p.choices.slice() : p.choices.slice(1); });
+      // chain: the final answer (or the last box) one too big; two-ways trees: the same parts twice.
+      case 'chain': { const r = Q.correctResponse(q); const bump = (v) => String((pv.parseWholeNumber(v) || 0) + 1);
+        if (q.preset === 'trees') { r.t[1] = r.t[0].slice(); return r; }
+        if (r.v.f !== undefined) { r.v.f = bump(r.v.f); return r; }
+        const ks = Object.keys(r.v); r.v[ks[ks.length - 1]] = bump(r.v[ks[ks.length - 1]]); return r; }
+      // vcalc: the ones digit (or the first missing digit, or the sum) wrong; regroup marks never matter.
+      case 'vcalc': { const r = Q.correctResponse(q); const b = Object.keys(r.b);
+        if (b.length) { r.b[b[0]] = String((Number(r.b[b[0]]) + 1) % 10); return r; }
+        if (q.input === 'rows') { r.s = String((pv.parseWholeNumber(r.s) || 0) + 1); return r; }
+        const i = r.d.length - 1; r.d[i] = String((Number(r.d[i]) + 1) % 10); return r; }
     }
   }
   function fill(el, q, correct) {
@@ -142,7 +162,7 @@ export const FILL_HELPERS = `
     if (q.type === 'mc') { const i = Array.from(el.querySelectorAll('input[type=radio]')).find((x) => x.value === r); i.click(); }
     else if (q.type === 'select') { const s = el.querySelector('select'); s.value = r; fire(s, 'change'); }
     else if (q.type === 'chart') el.querySelectorAll('.q-chart input').forEach((i, k) => { i.value = r[k]; fire(i, 'input'); });
-    else if (q.type === 'rline') el.mbSetResponse(r);
+    else if (q.type === 'rline' || q.type === 'chain' || q.type === 'vcalc') el.mbSetResponse(r);
     else if (q.type === 'parts') q.parts.forEach((p, i) => {
       if (p.kind === 'num' || p.kind === 'round') { const inp = el.querySelector('.part-input[data-part="' + i + '"]'); inp.value = r[i]; fire(inp, 'input'); return; }
       el.querySelectorAll('fieldset[data-part="' + i + '"] input').forEach((x) => { const want = Array.isArray(r[i]) ? r[i].includes(x.value) : x.value === r[i]; if (x.checked !== want) x.click(); });
