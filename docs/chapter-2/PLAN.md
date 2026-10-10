@@ -85,3 +85,9 @@ Each batch: shared components → builders (one per lesson, parallel, separate f
 26. **Wrong-box marks:** the new controls mark each wrong box after a miss in Learn and Practice Together. The existing `parts` type keeps its approved "Look again at: …" coaching, unchanged.
 27. **2-3 arrows layout** (with "?" boxes) is used in Learn and Practice Together only. On My Own and Test use plain answer fields.
 17. **One shared component per model:** the bar diagram, vertical stack, adjust arrows and equation chains are each built once in the shared engine and reused by every lesson (DESIGN.md is the single specification).
+28. **Re-verification leftovers** (`reviews/batch-*-plan-review.md`, "Re-verification" sections) are part of each lesson's build instructions. Builders apply every "new finding" listed there. Coordinator rulings:
+    - 2-8 O9/T9 (B N-2): the "which is easiest" choices list only valid adjustments (every option keeps the difference), so it cannot reveal the choose-all answer.
+    - 2-5 Learn Step 3 (B N-1): the start number is 4–20.
+    - 2-3 (A N-03): the missing-part and two-step Your Turn templates round to the nearest ten.
+    - 2-3 (A N-04): the book's 575 − 125 pair is excluded.
+    - 2-4 (A N-05): choice lengths are balanced.

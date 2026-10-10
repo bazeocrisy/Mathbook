@@ -45,3 +45,46 @@ Independent math and teaching review. I checked each spec against the scanned pa
   - 2-5 sums above 999 accepted (Decision 8).
 - **Teaching:** the progressions are sensible for Grade 3, and the explanations are correct and child-friendly. These are good choices: the pairs/leftover model and ones-digit reasoning (2-5), "a pattern can catch a wrong sum but cannot prove a right one" (2-5), the number-line gap for subtraction adjusting (2-8), and "parts must add back to the number" (2-7).
 - **Originality:** apart from B-06, app items use new numbers. Book numbers appear only in the Parent Guide and in demo-avoid lists.
+
+## Re-verification
+
+I checked each spec's "§15 Review fixes" against the changed text, diffing against commit 4ec0c28 (2-5 to 2-7 are committed in b4387f9; 2-8 is in the working tree). I recomputed every number that was changed or added.
+
+### Finding status
+
+| id | status | notes |
+|---|---|---|
+| B-01 | verified | 2-7 §13 now ignores blank and 0 boxes and needs 2–4 non-zero parts. Unit tests: 953 − 610 entered as 600/10/0 gives steps 353, 343 ✓; 728 − 460 entered as 400/60/0 gives 328, 268 ✓. The two-trees-must-differ check now compares non-zero parts only, which is correct. |
+| B-02 | verified | O3, O4 and T2 ask about a named decomposition (Lena 200/40/1, Omar 428/32, Kim 300/50/2) in a separate choice part. Keys checked: 728 − 428 = 300 ✓. T2's distractor "Taking away 300 first lands on a hundred" is false (674 − 300 = 374) ✓. |
+| B-03 | verified | 2-5 §13 `eqmake` grades the multiset of parities; either order is noted in Step 4, O2/O4/O5, T2/T3. |
+| B-04 | verified | 2-6 row and stacked lines are labelled Hundreds/Tens/Ones in a fixed order; place values are accepted in any order within a line. |
+| B-05 | verified | The PT4 and T7 keys no longer contain the sum. The new wrong choices are all false. |
+| B-06 | verified | T8 = 263 + 548 → 700, 100, 11 → 811 ✓ (stacked → row, no results shown). New T13 = 384 + 457 → 700, 130, 11 → 841 ✓. O8 = 346 + 271 → 500, 110, 7 → 617 ✓. O9 = 247 + 352 → 599 ✓ (labels only). `hideResults` stops copying. No book numbers remain. |
+| B-07 | verified | The question pictures label only the original endpoints, with no gap label. The wrong band is about 60 shorter, and the gaps 242 / 267 / 229 make that ≥ 20% ✓. The question is now "which picture slides both ends the same amount", which does not depend on the child's own adjustment. |
+| B-08 | verified | The T12 choice text is "124 + 72" only. |
+| B-09 | verified | a is 200–999, so a − b ≥ 91 ✓. |
+| B-10 | verified | The claimed-sum mix is 25 / 35 / 40. With a + b ≤ 989 and S ≥ 110, a 3-digit C is always possible (± chosen to fit) ✓. |
+| B-11 | verified (see N-1) | s may be odd or even and excludes 3, 7, 11, 15. The answer now varies. |
+| B-12 | verified | `even + __ = odd` is in the Step 4 pool and O5 (248 + 135 = 383 ✓). The book's form 5 moved to PT10 (432 + 216 = 648 ✓). |
+| B-13 | verified | The distractor is now "Because 6 is bigger than 3." |
+| B-14 | verified | T13 picks the odd numbers {507, 189, 773} ✓ (362, 940, 618 are even). |
+| B-15 | verified | T4 245 + 526 = 771 (odd) ✓. T12: 216 + 322 = 538, so the claim 539 can't be right ✓; 145 + 233 = 378 ✓; 260 + 117 = 377, so 376 can't be right ✓; 433 + 124 = 557 ✓; 304 + 153 = 457 ✓. Keyed set {539 claim, 376 claim} ✓. No overlap with practice numbers. |
+| B-16 | verified | PT9 247 + 136 = 300 + 70 + 13 = 383 ✓ (373 drops the ten). O13 159 + 324 = 400 + 70 + 13 = 483 ✓. |
+| B-17 | verified | T8 stacked → row, T13 row → stacked, skill `convert` added. |
+| B-18 | verified | The PT7 text is "241 + 306 + 132". |
+| B-19 | verified | Step 4 slide 3: 625 − 197, where 625 − 200 = 425, add 3 → 428 ✓. PT11: 534 − 296, where 534 − 300 = 234, add 4 → 238 ✓. O13: 712 − 399, where 712 − 400 = 312, add 1 → 313 ✓. The Your Turn is now addition or subtraction, with the correct key direction for each. |
+| B-20 | verified (see N-2) | O9/T9 now read "keep the same difference" and add an "easiest and why" choice. Keys 347 − 130 and 407 − 200 are both valid (217 / 207 ✓) and both are the only option that subtracts a multiple of ten. |
+| B-21 | verified | T1 531 − 189 = 342 ✓ (542 − 200 ✓, 532 − 190 ✓). |
+| B-22 | verified | Both numbers must change by a non-zero amount, both must be ≥ 1, and a plain swap is rejected. Soft retry in Learn/Practice, marked wrong in the Test. |
+| B-23 | verified | Two-step story: 236 + 198 → 234 + 200 = 434 ✓, then 434 − 214 → 420 − 200 = 220 ✓. |
+| B-24 | verified | Wrong choices are now listed for every choice item named in B-24, and all of them are false statements. One exception is the s = 21 case in N-1. |
+
+### New findings
+
+| id | severity | spec / item | problem | required correction |
+|---|---|---|---|---|
+| N-1 | minor | 2-5 Learn Step 3 Your Turn | s runs from 4 to 21. When s = 21 the pattern is 21, 21+k, …, so the distractor "They are all bigger than 20." is also true. A child choosing it would be marked wrong. | Limit s to 4–20 (still excluding 3, 7, 11, 15), or replace that distractor with one that is always false (e.g. "Each number is 1 more than the last."). |
+| N-2 | minor | 2-8 O9 and T9 ("easiest and why" choice on the same screen as the choose-all) | The easiest-choice key ("407 − 200, because 200 is a hundred…") tells the child that 407 − 200 keeps the difference. That gives away one of the three choose-all answers in the same item (in the test, T9). | Make "easiest and why" a separate question that comes after the choose-all. Or present it as "Of 427 − 220, 407 − 200 and 430 − 223 (all equal to 426 − 219), which is easiest?", which gives away nothing because the choose-all is already answered. |
+| N-3 | minor | 2-7 §14, last bullet | It still says the "Why did you choose that way?" choice has "one true reason; the child's real reason may differ". This no longer matches the B-02 design and could mislead a builder. | Update the bullet to describe the named-decomposition "Which is a good reason?" question. |
+
+No new math errors, answer leaks (other than N-2), coverage gaps or originality problems were found. All new and changed numbers recompute correctly.
