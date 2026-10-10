@@ -94,7 +94,11 @@ module.exports = {
     { half: true, text: 'Round **951** to the nearest 100.', blocks: [{ lines: [''] }] },
     {
       text: 'Round to the nearest 10. Circle **all** the numbers that round to **470**. Explain your choices.',
-      blocks: [{ p: '468      474      465      476      462      475      471', size: 28, bold: true }, { lines: ['', ''] }],
+      blocks: [{ p: '468      474      465      476      374      475      471', size: 28, bold: true }, { lines: ['', ''] }],
+    },
+    {
+      text: 'Round to the nearest 100. Circle **all** the numbers that round to **600**.',
+      blocks: [{ p: '553      649      650      602      548      695', size: 28, bold: true }, { space: 0.15 }],
     },
     {
       text: 'Ben says that 735 rounded to the nearest 10 is 730. Do you agree? Explain.',
@@ -122,10 +126,11 @@ module.exports = {
       { a: ['**380**'], note: 'Ones digit 4 is less than 5.' },
       { a: ['**200**'], note: 'Tens digit 4 is less than 5. A common mistake is rounding 249 → 250 → 300.' },
       { a: ['**1,000**'], note: '951 is between 900 and 1,000; the tens digit 5 means round up.' },
-      { a: ['Circle **468, 474, 465, 471**.'], note: 'Numbers from 465 to 474 round to 470. 475 and 476 round to 480; 462 rounds to 460. Accept a number line or place-value explanation.' },
+      { a: ['Circle **468, 474, 465, 471**.'], note: 'Numbers from 465 to 474 round to 470. 475 and 476 round to 480. 374 rounds to 370, not 470 (look at every digit, not just the last ones). Accept a number line or place-value explanation.' },
+      { a: ['Circle **553, 649, 602**.'], note: 'Numbers from 550 to 649 round to 600. 650 and 695 round to 700; 548 rounds to 500.' },
       { a: ['**No.** The ones digit is 5, so 735 rounds **up** to **740**.'], note: '735 is exactly halfway between 730 and 740, and halfway numbers round up.' },
       { a: ['**Turtles and rabbits.** 18 → 20 and 22 → 20.'], note: 'Goldfish → 30, hamsters → 30, birds → 40.' },
-      { a: ['$24 → $20, $18 → $20, $13 → $10. About **$50**. **Yes**, she has enough because $50 is less than $60.'], note: 'The exact total is $55, which is also less than $60. Accept a check with exact numbers too.' },
+      { a: ['$24 → $20, $18 → $20, $13 → $10. About **$50**. **Yes**, she has enough because $50 is less than $60.'], note: 'Two prices were rounded down, so it is smart to check the exact total: $55, which is still less than $60. Accept a check with exact numbers too.' },
     ],
   },
 };

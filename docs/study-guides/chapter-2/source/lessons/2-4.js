@@ -30,8 +30,9 @@ module.exports = {
     {
       title: 'Example 2: Switch the order, then group',
       body: [
+        'Start: 18 + 45 + 82. Switch: 18 + 82 + 45.',
         { diagram: groupV({ addends: [18, 82, 45], pair: 0 }), width: 1.8 },
-        '18 + 45 + 82 = 18 + 82 + 45. Group 18 + 82 = 100. Sum: **145**.',
+        'Sum: **145**.',
       ],
     },
     {
@@ -40,7 +41,7 @@ module.exports = {
     },
     {
       title: 'Example 4: Which expressions show the total?',
-      body: ['Days: 58, 67, 42.', '**Yes:** 42 + 67 + 58 and 58 + 42 + 67 (same numbers, only +).', '**No:** 67 − 58 + 42 (subtracts) and 58 + 67 + 24 (24 is not 42).'],
+      body: ['Days: 73, 55, 27.', '**Yes:** 27 + 55 + 73 and 73 + 27 + 55 (same numbers, only +).', '**No:** 55 − 27 + 73 (subtracts) and 73 + 55 + 72 (72 is not 27).'],
     },
   ],
   checklist: [
@@ -80,7 +81,7 @@ module.exports = {
     together: [
       { a: ['**436**'], note: 'No adding needed: both sides must have the same two addends (order property).' },
       { a: ['Circle **A** and **C**.'], note: 'B subtracts. D uses 94 instead of 49. The total is 149.' },
-      { a: ['46 + 54 = 100, then 100 + 125 = **225**'], note: '6 + 4 make a ten, so 46 and 54 are a friendly pair.' },
+      { a: ['46 + 54 = 100, then 100 + 125 = **225**'], note: '6 + 4 make a ten, so 46 and 54 are a friendly pair. Also accept adding left to right if the sum is 225.' },
     ],
     own: [
       { a: ['**347**'] },
@@ -88,7 +89,7 @@ module.exports = {
       { a: ['**153**'] },
       { a: ['**702**'] },
       { a: ['Group 263 + 137 = 400 first (3 + 7 make a ten). Then 400 + 418 = **818**.'], note: 'Accept any explanation that adds a friendly pair first.' },
-      { a: ['28 + 72 = 100; 100 + 165 = **265**'] },
+      { a: ['28 + 72 = 100; 100 + 165 = **265**'], note: 'Items 6–9: accept any grouping with the correct sum; praise a friendly-pair grouping.' },
       { a: ['396 + 204 = 600; 600 + 172 = **772**'] },
       { a: ['243 + 57 = 300; 300 + 316 = **616**'] },
       { a: ['125 + 175 = 300; 300 + 314 = **614**'] },

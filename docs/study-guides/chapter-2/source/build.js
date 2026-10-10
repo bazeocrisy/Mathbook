@@ -165,10 +165,55 @@ function arrowsBlock(b, w, size) {
   void eq;
   const rows = [
     new TableRow({ cantSplit: true, children: top.map((t, i) => cell(t, i)) }),
+    ...(b.arrows.tags ? [new TableRow({ cantSplit: true, children: top.map((t, i) => {
+      const tg = b.arrows.tags === true ? (operand(i) ? '____' : '') : (b.arrows.tags[i] || '');
+      return cell(tg, i, { bold: true });
+    }) })] : []),
     new TableRow({ cantSplit: true, children: top.map((t, i) => cell(operand(i) ? '↓' : '', i)) }),
     new TableRow({ cantSplit: true, height: { value: b.arrows.bottom ? 300 : 560, rule: HeightRule.ATLEAST }, children: bottom.map((t, i) => cell(t, i, { blank: !b.arrows.bottom && isNum(top[i]), bold: !!b.arrows.bottom && i === q })) }),
   ];
   return [new Table({ width: { size: ws.reduce((a, c) => a + c, 0), type: WidthType.DXA }, columnWidths: ws, layout: TableLayoutType.FIXED, borders: NO_BORDERS, rows }), spacer(100)];
+}
+
+// Partial sums (Lesson 2-6 and later): {psum: {nums: [367, 145], mode: 'row'|'stacked', show: true|false}}
+// show=false prints the problem with blank write-on lines for the partial sums and total.
+function psumBlock(b, w, size) {
+  const { nums, mode, show = true } = b.psum;
+  const fmt = n => n.toLocaleString('en-US');
+  const places = [100, 10, 1];
+  const parts = places.map(p => nums.map(n => Math.floor(n / p) % 10 * p));
+  const partials = parts.map(ps => ps.reduce((a, c) => a + c, 0));
+  const total = nums.reduce((a, c) => a + c, 0);
+  const fsz = b.size ?? (size >= 24 ? 26 : 21);
+  const BL = '______';
+  if (mode === 'row') {
+    const lines = [`${nums.join(' + ')} = ${show ? fmt(total) : '?'}`];
+    parts.forEach((ps, i) => lines.push(show ? `${ps.join(' + ')} = ${partials[i]}` : `${ps.map(() => BL).join(' + ')} = ${BL}`));
+    lines.push(show ? `${partials.join(' + ')} = **${fmt(total)}**` : `${partials.map(() => BL).join(' + ')} = ${BL}`);
+    const cw = b.width ?? Math.min(w - 200, show ? 3400 : 5200);
+    return [new Table({
+      width: { size: cw, type: WidthType.DXA }, columnWidths: [cw], layout: TableLayoutType.FIXED, borders: NO_BORDERS,
+      rows: lines.map(l => new TableRow({ cantSplit: true, children: [new TableCell({ width: { size: cw, type: WidthType.DXA }, margins: { left: 0, right: 0 }, children: [para(l, { size: fsz, after: show ? 20 : 150, before: show ? 0 : 60, align: AlignmentType.RIGHT })] })] })),
+    }), spacer(80)];
+  }
+  // stacked: [label | value] columns
+  const lw = b.labelW ?? (fsz >= 24 ? 2300 : 1700), vw = b.valueW ?? (fsz >= 24 ? 1500 : 1100);
+  const cell = (txt, wd, opts = {}) => new TableCell({
+    width: { size: wd, type: WidthType.DXA }, margins: { top: 10, bottom: 10, left: 40, right: 60 },
+    verticalAlign: VerticalAlign.BOTTOM,
+    borders: { top: NONE, left: NONE, right: NONE, bottom: opts.under ? line(opts.thick ? 14 : 8) : NONE },
+    children: [para(txt, { size: fsz, after: 0, align: AlignmentType.RIGHT, bold: opts.bold })],
+  });
+  const h = show ? undefined : { value: 470, rule: HeightRule.ATLEAST };
+  const rows = [];
+  rows.push(new TableRow({ cantSplit: true, children: [cell('', lw), cell(String(nums[0]), vw)] }));
+  nums.slice(1).forEach((n, i) => rows.push(new TableRow({ cantSplit: true, children: [cell('', lw), cell(`${i === nums.length - 2 ? '+   ' : ''}${n}`, vw, { under: i === nums.length - 2, thick: true })] })));
+  parts.forEach((ps, i) => rows.push(new TableRow({ cantSplit: true, height: h, children: [
+    cell(show ? ps.join(' + ') : '', lw, { under: !show }),
+    cell(show ? `${i === 2 ? '+   ' : ''}${partials[i]}` : (i === 2 ? '+' : ''), vw, { under: !show || i === 2, thick: i === 2 }),
+  ] })));
+  rows.push(new TableRow({ cantSplit: true, height: h, children: [cell('', lw), cell(show ? fmt(total) : '', vw, { bold: show, under: !show })] }));
+  return [new Table({ width: { size: lw + vw, type: WidthType.DXA }, columnWidths: [lw, vw], layout: TableLayoutType.FIXED, borders: NO_BORDERS, rows }), spacer(80)];
 }
 
 function blocks(list, w, size) {
@@ -180,6 +225,7 @@ function blocks(list, w, size) {
     else if (b.chart !== undefined) out.push(...chartBlock(b, w, size));
     else if (b.stack) out.push(...stackBlock(b, w, size));
     else if (b.arrows) out.push(...arrowsBlock(b, w, size));
+    else if (b.psum) out.push(...psumBlock(b, w, size));
     else if (b.lines) out.push(...linesBlock(b, w, size));
     else if (b.table) out.push(...tableBlock(b, w, size));
     else if (b.space) out.push(spacer(Math.round(b.space * 1440)));

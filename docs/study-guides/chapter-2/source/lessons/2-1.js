@@ -108,7 +108,7 @@ module.exports = {
       blocks: [{ lines: ['', '', ''] }],
     },
     {
-      text: 'Use the digits **6, 4, 9, 4** to write the number with the **least** value. Write it in standard form, expanded form, and word form.',
+      text: 'Use all four digits **6, 4, 9, 4** to write the 4-digit number with the **least** value. Write it in standard form, expanded form, and word form.',
       blocks: [{ lines: ['Standard form', 'Expanded form', 'Word form', ''] }],
     },
   ],

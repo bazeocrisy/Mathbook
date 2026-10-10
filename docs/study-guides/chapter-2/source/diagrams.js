@@ -202,9 +202,84 @@ function groupV({ addends, pair, size = 26 }) {
   return { svg: svgDoc(Math.ceil(w2), Math.ceil(yBot + 10), s), w: w2, h: yBot + 10 };
 }
 
+// ---------- Pairs model (Lesson 2-5) ----------
+// Dots arranged in pairs (columns of 2); a leftover dot sits alone in the top row.
+function dotGroup(x, y, n, r, gap, ringLeftover) {
+  let s = '';
+  const cols = Math.ceil(n / 2);
+  for (let i = 0; i < n; i++) {
+    const c = Math.floor(i / 2), row = i % 2;
+    const cx = x + c * gap + r, cy = y + row * gap + r;
+    s += `<circle cx="${cx}" cy="${cy}" r="${r}" fill="${n % 2 && i === n - 1 ? '#fff' : '#444'}" stroke="${INK}" stroke-width="2"/>`;
+    if (ringLeftover && n % 2 && i === n - 1) s += `<circle cx="${cx}" cy="${cy}" r="${r + 6}" fill="none" stroke="${INK}" stroke-width="1.5" stroke-dasharray="4 3"/>`;
+  }
+  return { s, w: cols * gap };
+}
+function pairsJoin(a, b) {
+  const r = 10, gap = 30, y = 14;
+  let x = 10, s = '';
+  const g1 = dotGroup(x, y, a, r, gap, true); s += g1.s; s += text(x + g1.w / 2 - 5, y + 2 * gap + 26, String(a), 22, 'middle', 'bold'); x += g1.w + 10;
+  s += text(x + 8, y + gap + 6, '+', 30); x += 34;
+  const g2 = dotGroup(x, y, b, r, gap, true); s += g2.s; s += text(x + g2.w / 2 - 5, y + 2 * gap + 26, String(b), 22, 'middle', 'bold'); x += g2.w + 10;
+  s += text(x + 12, y + gap + 6, '=', 30); x += 40;
+  // combined: pairs from both, leftovers joined into a new pair at the end (circled)
+  const n = a + b;
+  const g3 = dotGroup(x, y, n, r, gap, false); s += g3.s;
+  if (a % 2 && b % 2) {
+    const cx = x + (Math.ceil(n / 2) - 1) * gap + r;
+    s += `<rect x="${cx - r - 6}" y="${y - 6}" width="${2 * r + 12}" height="${gap + 2 * r + 12}" rx="12" fill="none" stroke="${INK}" stroke-width="1.8" stroke-dasharray="5 3"/>`;
+  }
+  s += text(x + g3.w / 2 - 5, y + 2 * gap + 26, String(n), 22, 'middle', 'bold');
+  x += g3.w + 10;
+  return { svg: svgDoc(x, y + 2 * gap + 36, s), w: x, h: y + 2 * gap + 36 };
+}
+
+// ---------- Decomposition tree (Lesson 2-7) ----------
+// tree({ n: 184, parts: [100, 80, 4] }) or tree({ n: 258, count: 3 }) for blank part boxes
+function tree({ n, parts = null, count = 3 }) {
+  const k = parts ? parts.length : count;
+  const bw = 74, bh = 40, gap = 22, size = 22;
+  const W = k * bw + (k - 1) * gap + 20;
+  const topX = W / 2 - bw / 2, topY = 6, rowY = topY + bh + 44;
+  let s = `<rect x="${topX}" y="${topY}" width="${bw}" height="${bh}" rx="6" fill="#eee" stroke="${INK}" stroke-width="2"/>`;
+  s += text(W / 2, topY + bh / 2 + 8, String(n), size, 'middle', 'bold');
+  for (let i = 0; i < k; i++) {
+    const x = 10 + i * (bw + gap), cx = x + bw / 2;
+    s += `<line x1="${W / 2}" y1="${topY + bh}" x2="${cx}" y2="${rowY - 4}" stroke="${INK}" stroke-width="1.8"/>`;
+    const ang = Math.atan2(rowY - 4 - (topY + bh), cx - W / 2);
+    const ax = cx, ay = rowY - 4;
+    s += `<polygon points="${ax},${ay} ${ax - 9 * Math.cos(ang - 0.4)},${ay - 9 * Math.sin(ang - 0.4)} ${ax - 9 * Math.cos(ang + 0.4)},${ay - 9 * Math.sin(ang + 0.4)}" fill="${INK}"/>`;
+    s += `<rect x="${x}" y="${rowY}" width="${bw}" height="${bh}" rx="6" fill="#fff" stroke="${INK}" stroke-width="2"/>`;
+    if (parts) s += text(cx, rowY + bh / 2 + 8, String(parts[i]), size);
+  }
+  return { svg: svgDoc(W, rowY + bh + 6, s), w: W, h: rowY + bh + 6 };
+}
+
+// ---------- Slide both numbers (Lesson 2-8) ----------
+// Original pair labelled above the line, adjusted pair below; both bands the same length.
+function slideLine({ a, b, a2, b2, from, to, width = 600 }) {
+  const pad = 30, y = 62, H = 124;
+  const px = v => pad + ((v - from) / (to - from)) * (width - 2 * pad);
+  let s = `<line x1="${pad - 18}" y1="${y}" x2="${width - pad + 18}" y2="${y}" stroke="${INK}" stroke-width="2"/>`;
+  s += `<polygon points="${pad - 22},${y} ${pad - 12},${y - 6} ${pad - 12},${y + 6}" fill="${INK}"/><polygon points="${width - pad + 22},${y} ${width - pad + 12},${y - 6} ${width - pad + 12},${y + 6}" fill="${INK}"/>`;
+  for (const v of [a, b, a2, b2]) s += `<line x1="${px(v)}" y1="${y - 8}" x2="${px(v)}" y2="${y + 8}" stroke="${INK}" stroke-width="2"/>`;
+  // original band above
+  s += `<rect x="${px(b)}" y="${y - 26}" width="${px(a) - px(b)}" height="9" fill="#bbb" stroke="${INK}" stroke-width="1.2"/>`;
+  s += text(px(b), y - 34, String(b), 17) + text(px(a), y - 34, String(a), 17);
+  // adjusted band below
+  s += `<rect x="${px(b2)}" y="${y + 17}" width="${px(a2) - px(b2)}" height="9" fill="#fff" stroke="${INK}" stroke-width="1.2" stroke-dasharray="4 2"/>`;
+  s += text(px(b2), y + 48, String(b2), 17) + text(px(a2), y + 48, String(a2), 17);
+  return { svg: svgDoc(width, H, s), w: width, h: H };
+}
+function openLine(width = 600) {
+  const y = 30;
+  const s = `<line x1="20" y1="${y}" x2="${width - 20}" y2="${y}" stroke="${INK}" stroke-width="2"/><polygon points="12,${y} 22,${y - 6} 22,${y + 6}" fill="${INK}"/><polygon points="${width - 12},${y} ${width - 22},${y - 6} ${width - 22},${y + 6}" fill="${INK}"/>`;
+  return { svg: svgDoc(width, 60, s), w: width, h: 60 };
+}
+
 function toPng(svg, scale = 3) {
   const r = new Resvg(svg, { fitTo: { mode: 'zoom', value: scale }, font: { loadSystemFonts: true, defaultFontFamily: FONT } });
   return r.render().asPng();
 }
 
-module.exports = { baseTen, numberLine, hopLine, groupV, toPng, svgDoc, text };
+module.exports = { baseTen, numberLine, hopLine, groupV, pairsJoin, tree, slideLine, openLine, toPng, svgDoc, text };
