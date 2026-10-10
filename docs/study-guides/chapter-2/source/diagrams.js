@@ -166,9 +166,45 @@ function hopLine({ points, hops, width = 640, height = 110, min, max }) {
   return { svg: svgDoc(width, height, s), w: width, h: height };
 }
 
+// ---------- Grouping V (Lesson 2-4) ----------
+// addends: [27, 53, 40]; pair: index of first of two adjacent addends added first
+function groupV({ addends, pair, size = 26 }) {
+  const cw = size * 0.62; // approx char width
+  const items = [];
+  addends.forEach((a, i) => { if (i) items.push('+'); items.push(String(a)); });
+  // x positions for each token on the top line
+  let x = 10; const xs = [];
+  const tokW = t => t.length * cw + (t === '+' ? 2 : 0);
+  items.forEach(t => { xs.push(x + tokW(t) / 2); x += tokW(t) + size * 0.55; });
+  const W = Math.max(x + 10, 10);
+  const yTop = size + 4, yV = yTop + size * 1.9, yBot = yV + size * 1.05;
+  let s = items.map((t, i) => text(xs[i], yTop, t, size)).join('');
+  const i1 = pair * 2, i2 = pair * 2 + 2;
+  const mid = (xs[i1] + xs[i2]) / 2;
+  s += `<line x1="${xs[i1]}" y1="${yTop + 8}" x2="${mid}" y2="${yV}" stroke="${INK}" stroke-width="2"/>`;
+  s += `<line x1="${xs[i2]}" y1="${yTop + 8}" x2="${mid}" y2="${yV}" stroke="${INK}" stroke-width="2"/>`;
+  const ps = addends[pair] + addends[pair + 1];
+  const total = addends.reduce((a, c) => a + c, 0);
+  const rest = addends.filter((_, i) => i !== pair && i !== pair + 1);
+  let line2;
+  if (pair === 0) line2 = [ps, ...rest.flatMap(r => ['+', r])];
+  else line2 = [...rest.flatMap(r => [r, '+']), ps];
+  const str = line2.join(' ') + ' = ' + total;
+  // place the pair sum under the V; build the rest of the line around it
+  const before = pair === 0 ? '' : line2.slice(0, -1).join(' ') + ' ';
+  const after = pair === 0 ? ' ' + line2.slice(1).join(' ') + ' = ' + total : ' = ' + total;
+  const sumW = String(ps).length * cw;
+  const startX = mid - sumW / 2 - before.length * cw;
+  void str;
+  s += `<text x="${startX}" y="${yBot}" font-family="${FONT}" font-size="${size}" fill="${INK}" xml:space="preserve">${before}<tspan font-weight="bold">${ps}</tspan>${after}</text>`;
+  const endX = startX + (before.length + String(ps).length + after.length) * cw;
+  const w2 = Math.max(W, endX + 10);
+  return { svg: svgDoc(Math.ceil(w2), Math.ceil(yBot + 10), s), w: w2, h: yBot + 10 };
+}
+
 function toPng(svg, scale = 3) {
   const r = new Resvg(svg, { fitTo: { mode: 'zoom', value: scale }, font: { loadSystemFonts: true, defaultFontFamily: FONT } });
   return r.render().asPng();
 }
 
-module.exports = { baseTen, numberLine, hopLine, toPng, svgDoc, text };
+module.exports = { baseTen, numberLine, hopLine, groupV, toPng, svgDoc, text };

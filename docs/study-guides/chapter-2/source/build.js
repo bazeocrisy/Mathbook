@@ -28,7 +28,7 @@ function runs(str, opt = {}) {
   for (const p of parts) {
     if (p.startsWith('**')) out.push(new TextRun({ text: p.slice(2, -2), bold: true, font: FONT, size: opt.size, italics: opt.italics }));
     else if (p.startsWith('//')) out.push(new TextRun({ text: p.slice(2, -2), italics: true, font: FONT, size: opt.size, bold: opt.bold }));
-    else if (p === '☐') out.push(new TextRun({ text: '☐', font: SYM, size: opt.size }));
+    else if ('☐✓✗'.includes(p)) out.push(new TextRun({ text: p, font: SYM, size: opt.size, bold: opt.bold }));
     else out.push(new TextRun({ text: p, font: FONT, size: opt.size, bold: opt.bold, italics: opt.italics }));
   }
   return out;
@@ -144,6 +144,33 @@ function tableBlock(b, w, size) {
   }), spacer(80)];
 }
 
+// Estimate arrows (book layout): {arrows: {top: '576 − 122 = ?', bottom: '580 − 120 = 460' | null}}
+// A null bottom gives write-on blanks under each number and the answer.
+function arrowsBlock(b, w, size) {
+  const top = b.arrows.top.split(' ');
+  const isNum = t => /^[0-9,$?]+$/.test(t);
+  const eq = top.indexOf('=');
+  const q = top.indexOf('?');
+  const operand = i => isNum(top[i]) && i !== q;
+  const bottom = b.arrows.bottom ? b.arrows.bottom.split(' ') : top.map(t => (isNum(t) ? '' : t));
+  const fsz = b.size ?? (size >= 24 ? 28 : 22);
+  const numW = fsz >= 28 ? 1150 : 820, opW = fsz >= 28 ? 480 : 360;
+  const ws = top.map(t => (isNum(t) ? numW : opW));
+  const cell = (txt, i, opts = {}) => new TableCell({
+    width: { size: ws[i], type: WidthType.DXA },
+    margins: { top: 0, bottom: 0, left: 40, right: 40 }, verticalAlign: VerticalAlign.BOTTOM,
+    borders: { top: NONE, left: NONE, right: NONE, bottom: opts.blank ? line(10) : NONE },
+    children: [new Paragraph({ alignment: AlignmentType.CENTER, spacing: { before: 0, after: 0 }, children: [new TextRun({ text: txt, font: FONT, size: fsz, bold: opts.bold })] })],
+  });
+  void eq;
+  const rows = [
+    new TableRow({ cantSplit: true, children: top.map((t, i) => cell(t, i)) }),
+    new TableRow({ cantSplit: true, children: top.map((t, i) => cell(operand(i) ? '↓' : '', i)) }),
+    new TableRow({ cantSplit: true, height: { value: b.arrows.bottom ? 300 : 560, rule: HeightRule.ATLEAST }, children: bottom.map((t, i) => cell(t, i, { blank: !b.arrows.bottom && isNum(top[i]), bold: !!b.arrows.bottom && i === q })) }),
+  ];
+  return [new Table({ width: { size: ws.reduce((a, c) => a + c, 0), type: WidthType.DXA }, columnWidths: ws, layout: TableLayoutType.FIXED, borders: NO_BORDERS, rows }), spacer(100)];
+}
+
 function blocks(list, w, size) {
   const out = [];
   for (const b of list || []) {
@@ -152,6 +179,7 @@ function blocks(list, w, size) {
     else if (b.diagram) out.push(...imageBlock(b, w));
     else if (b.chart !== undefined) out.push(...chartBlock(b, w, size));
     else if (b.stack) out.push(...stackBlock(b, w, size));
+    else if (b.arrows) out.push(...arrowsBlock(b, w, size));
     else if (b.lines) out.push(...linesBlock(b, w, size));
     else if (b.table) out.push(...tableBlock(b, w, size));
     else if (b.space) out.push(spacer(Math.round(b.space * 1440)));
@@ -274,7 +302,7 @@ function learnSection(L) {
 // ---------- Page 2: Together and On My Own ----------
 const QS = 25; // 12.5 pt for the child's pages
 function questionTable(items, labelFn) {
-  const numW = 560;
+  const numW = 660;
   const rows = [];
   for (let i = 0; i < items.length; i++) {
     const q = items[i];
