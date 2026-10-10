@@ -691,3 +691,43 @@ a.btn.is-disabled { background: #eceef5; color: #545a75; pointer-events: none; }
   .nline-point { font-size: 1.05rem; }
   .rd-num { font-size: 1.8rem; }
 }
+
+/* ---------- Staged number line (one rounding problem, one part at a time) ---------- */
+.rl { margin-top: 0.25rem; }
+.rl-part { margin: 0; font-size: 0.89rem; font-weight: 800; color: var(--student); text-transform: uppercase; letter-spacing: 0.06em; }
+.rl-line { padding: 0 0.6rem; margin: 0.25rem 0 0.5rem; }
+.rl-track { position: relative; height: 116px; }
+.rl-label { position: absolute; top: 64px; font-weight: 900; font-size: 1.15rem; color: var(--heading); white-space: nowrap; padding: 0.1rem 0.4rem; border-radius: 8px; }
+.rl-label.is-start { left: 0; transform: translateX(-0.5rem); }
+.rl-label.is-end { right: 0; transform: translateX(0.5rem); }
+.rl-label.is-mid { left: 50%; transform: translateX(-50%); color: var(--muted); }
+.rl-label.is-answer { background: var(--star); color: #1a1446; }
+.rl-input { position: absolute; top: 62px; width: 5.6rem; min-height: 48px; font: inherit; font-size: 1.2rem; font-weight: 800; text-align: center; padding: 0.3rem; border: 2px solid #b5a8e8; border-radius: 12px; background: #fff; color: var(--ink); }
+.rl-input:focus { outline: 3px solid var(--primary); outline-offset: 1px; border-color: var(--primary); }
+.rl-input.rl-start { left: 0; transform: translateX(-0.6rem); }
+.rl-input.rl-end { right: 0; transform: translateX(0.6rem); }
+.rl-input.rl-mid { left: 50%; transform: translateX(-50%); }
+.rl-task { font-size: 1.1rem; font-weight: 700; color: var(--heading); margin: 0.25rem 0 0.5rem; }
+.rl-task.is-done { font-weight: 400; background: var(--ok-soft); border-left: 6px solid var(--ok); border-radius: 12px; padding: 0.6rem 0.9rem; color: var(--ink); }
+.rl-task:focus { outline: none; }
+.rl-pick { display: flex; flex-wrap: wrap; gap: 0.6rem; margin: 0.25rem 0 0.5rem; }
+.rl-choice { font: inherit; font-size: 1.25rem; font-weight: 900; min-width: 6rem; min-height: 52px; padding: 0.4rem 1.2rem; border-radius: 14px; border: 2px solid #c9bdf5; background: #fff; color: var(--primary); cursor: pointer; }
+.rl-choice[aria-pressed="true"] { background: var(--primary); border-color: var(--primary); color: #fff; }
+.rl-actions { display: flex; flex-wrap: wrap; gap: 0.6rem; margin-top: 0.5rem; }
+.rl-actions:empty { display: none; }
+.rl-feedback .feedback { margin-top: 0.5rem; }
+.rl-nav { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 0.6rem; margin-top: 0.75rem; }
+.rl-over { margin-left: auto; }
+.rl-confirm { width: 100%; background: #fff7ea; border: 2px solid var(--parent-line); border-radius: 14px; padding: 0.6rem 0.9rem; }
+.rl-confirm p { margin: 0 0 0.5rem; }
+.rl-summary { margin: 0.25rem 0 0; font-weight: 700; color: var(--heading); }
+.slide-over { display: flex; justify-content: flex-end; margin-top: 0.5rem; }
+@media (max-width: 400px) {
+  .rl-input { width: 4.8rem; font-size: 1.1rem; }
+  .rl-label { font-size: 1.05rem; }
+  .rl-choice { flex: 1 1 0; }
+}
+/* Home on phones: the heading keeps the wide column; the planet sits beside it in the narrow one. */
+@media (max-width: 700px) {
+  .home-hero-small .hero-art { order: 2; max-width: 110px; }
+}

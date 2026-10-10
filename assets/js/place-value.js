@@ -316,7 +316,7 @@
   }
 
   /**
-   * The rounding number line for n at `place`. show: 'ends' (the two multiples), 'mid' (+ halfway), 'all' (+ which way it rounds).
+   * The rounding number line for n at `place`. show: 'ends' (the two multiples), 'mid' (+ halfway), 'point' (+ n plotted), 'all' (+ which way it rounds).
    */
   function roundLineHTML(n, place, show) {
     const { lo, hi, mid } = roundEnds(n, place);
@@ -325,12 +325,12 @@
     const below = [{ v: lo, text: fmt(lo), cls: 'is-end-label' + (show === 'all' && r === lo ? ' is-answer' : '') },
       { v: hi, text: fmt(hi), cls: 'is-end-label' + (show === 'all' && r === hi ? ' is-answer' : '') }];
     if (show !== 'ends') below.push({ v: mid, text: fmt(mid), cls: 'is-mid' });
-    const parts = [`${fmt(n)} is between ${fmt(lo)} and ${fmt(hi)}`];
+    const parts = [`${fmt(lo)} and ${fmt(hi)} are the ${word}s around ${fmt(n)}`];
     if (show !== 'ends') parts.push(`halfway is ${fmt(mid)}`);
     if (show === 'all') parts.push(`${fmt(n)} rounds to ${fmt(r)}`);
     return numberLineHTML({
       min: lo, max: hi, minor: place / 10, major: show === 'ends' ? [lo, hi] : [lo, mid, hi], below,
-      point: { v: n, text: fmt(n) }, go: show === 'all' ? { from: n, to: r } : null,
+      point: show === 'point' || show === 'all' ? { v: n, text: fmt(n) } : null, go: show === 'all' ? { from: n, to: r } : null,
       label: `Number line from ${fmt(lo)} to ${fmt(hi)} by ${place / 10 === 1 ? 'ones' : 'tens'}: ` + parts.join(', ') + '.',
       caption: show === 'all' ? `<b>${fmt(n)}</b> is closer to <b>${fmt(r)}</b>, so it rounds to <b>${fmt(r)}</b> (nearest ${word}).` : ''
     });

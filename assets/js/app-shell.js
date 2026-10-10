@@ -187,7 +187,9 @@
           (q.listenFor ? `<p><b>Listen for:</b></p><ul>${q.listenFor.map((x) => `<li>${esc(x)}</li>`).join('')}</ul>` : '') + `</details>`
         : '';
       let inner;
-      if (q.type === 'explain') {
+      if (q.type === 'rline') {
+        inner = Q.render(q, cfg.keyPrefix + '-' + q.id, { response: st.response, mode: 'guided' });
+      } else if (q.type === 'explain') {
         inner = `<div class="q"><p class="q-prompt"><span>${esc(q.prompt)}</span></p></div>` +
           `<div class="actions"><button type="button" class="btn btn-primary" data-act="explained">They explained it</button>` +
           `<button type="button" class="btn btn-ghost" data-act="reveal">Show the explanation</button></div>`;
@@ -205,6 +207,7 @@
 
       const resultBox = card.querySelector('.result-box');
       const showResult = () => {
+        if (q.type === 'rline') { resultBox.innerHTML = ''; return; }
         if (st.reveal) {
           const ans = q.type === 'explain' ? '' : `<p><b>Answer:</b> ${esc(Q.correctText(q))}</p>`;
           resultBox.innerHTML = `<div class="feedback feedback-info">${ans}<p><b>Why:</b> ${esc(q.explanation)}</p></div>`;
@@ -224,7 +227,10 @@
       showResult();
 
       const qEl = card.querySelector('.q[data-qkey]');
-      if (qEl) Q.bind(qEl, q, (r) => { st.response = r; });
+      if (qEl && q.type === 'rline') {
+        Q.bind(qEl, q, (r) => { st.response = r; st.result = r.complete ? true : null; changed(); });
+      } else if (qEl) Q.bind(qEl, q, (r) => { st.response = r; changed(); });
+      changed();
 
       card.querySelectorAll('[data-act]').forEach((b) => b.addEventListener('click', () => {
         const act = b.dataset.act;
@@ -253,8 +259,12 @@
         } else if (act === 'next') {
           if (i < cfg.items.length - 1) { cfg.pos.i = i + 1; draw(); toTop(); } else if (cfg.onLast) cfg.onLast();
         }
+        changed();
       }));
     }
+
+    // Lets the lesson save the runner's place and answers (optional).
+    function changed() { if (cfg.onChange) cfg.onChange(); }
 
     // A new question starts at the top of its content.
     function toTop() {
@@ -356,16 +366,16 @@
   }
 
   /** Clear-progress control with an in-page confirmation (no browser dialogs). */
-  function bindClear(main, store, what, onCleared) {
+  function bindClear(main, store, what, onCleared, onCancel, yesLabel) {
     const btn = main.querySelector('#clear');
     if (!btn) return;
     btn.addEventListener('click', () => {
       const area = main.querySelector('#clear-area');
       area.innerHTML = `<div class="confirm" role="alert"><p><b>Delete all saved ${esc(what)} on this device?</b> This cannot be undone. Other lessons and programs are not affected.</p>` +
-        `<button type="button" class="btn btn-danger" id="clear-yes">Yes, delete</button> <button type="button" class="btn btn-ghost" id="clear-no">Cancel</button></div>`;
+        `<button type="button" class="btn btn-danger" id="clear-yes">${esc(yesLabel || 'Yes, delete')}</button> <button type="button" class="btn btn-ghost" id="clear-no">Cancel</button></div>`;
       area.querySelector('#clear-yes').focus();
       area.querySelector('#clear-yes').addEventListener('click', () => { store.clearAll(); onCleared(); });
-      area.querySelector('#clear-no').addEventListener('click', () => onCleared());
+      area.querySelector('#clear-no').addEventListener('click', () => (onCancel || onCleared)());
     });
   }
 
