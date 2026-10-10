@@ -32,7 +32,8 @@
     const h = hund(x) + hund(y) + ct;
     let s = `Ones: ${ones(x)} + ${ones(y)} = ${o}` + (co ? `, so ${o - 10} ones and 1 more ten.` : '.');
     s += ` Tens: ${tens(x)} + ${tens(y)}${co ? ' + 1' : ''} = ${t}` + (ct ? `, so ${t - 10} tens and 1 more hundred.` : '.');
-    if (h) s += ` Hundreds: ${[hund(x), hund(y)].filter(Boolean).concat(ct ? [1] : []).join(' + ')} = ${h}.`;
+    const hs = [hund(x), hund(y)].filter(Boolean).concat(ct ? [1] : []);
+    if (h) s += hs.length > 1 ? ` Hundreds: ${hs.join(' + ')} = ${h}.` : ` Hundreds: ${h}.`;
     return `${s} So ${fmt(x)} + ${fmt(y)} = ${fmt(x + y)}.`;
   }
 
@@ -92,7 +93,7 @@
       prompt: o.prompt || `The table shows the ${o.title.toLowerCase()} each day. Which expressions find the total? Choose all.`,
       figure: { fig: 'table', title: o.title, head: ['Day', 'Number'], rows: o.rows },
       parts: [
-        { kind: 'multi', label: 'Which show the total? Choose all.', answer: rights.map(nb), choices: order(o, rights.concat(wrong)).map(nb), compact: true },
+        { kind: 'multi', label: 'Choose all that show the total:', answer: rights.map(nb), choices: order(o, rights.concat(wrong)).map(nb) },
         { kind: 'num', label: 'Total:', answer: total }
       ],
       hint: o.hint || 'Each one must add the same three numbers.',
@@ -180,7 +181,7 @@
         { kind: 'num', label: 'Total ($):', answer: total }
       ],
       hint: o.hint || 'Find two prices that make a hundred.',
-      explanation: `${pairWhy(ad[i], ad[j])} So ${$(ad[i])} + ${$(ad[j])} = ${$(H)}. Then ${$(H)} + ${$(ad[rest])} = ${$(total)}. ` +
+      explanation: `Add ${$(ad[i])} and ${$(ad[j])} first. ${pairWhy(ad[i], ad[j])} Then ${$(H)} + ${$(ad[rest])} = ${$(total)}. ` +
         `Adding ${$(ad[0])} + ${$(ad[1])} first also works, but it is harder. Subtracting or rounding does not find the exact total.`
     };
   }
@@ -201,7 +202,7 @@
       prompt,
       display: eqText,
       parts: [
-        { kind: 'choice', label: 'Choose the fastest way.', answer: SWITCH, choices: order(o, [SWITCH].concat(o.learn ? SLOW_LEARN : SLOW)) },
+        { kind: 'choice', label: 'Which way is fastest?', answer: SWITCH, choices: order(o, [SWITCH].concat(o.learn ? SLOW_LEARN : SLOW)) },
         { kind: 'num', label: 'The blank:', answer: b }
       ],
       hint: o.hint || 'Are the same numbers on both sides?',
@@ -221,7 +222,7 @@
     return {
       id: o.id, type: 'parts', skill: 'true',
       prompt: 'Which equations are true? Choose all.',
-      parts: [{ kind: 'multi', label: 'Choose every true equation.', answer: right, choices: order(o, all) }],
+      parts: [{ kind: 'multi', label: 'Choose every true equation:', answer: right, choices: order(o, all) }],
       hint: o.hint || 'Check every number on both sides. Watch for switched digits.',
       explanation: why.join(' ')
     };
@@ -344,12 +345,9 @@
   }
 
   // Step 5: alternate between the efficient fill-in (a) and a receipt (b).
-  let effServed = 0;
   const WHO = ['Ava', 'Ben', 'Cora', 'Dev', 'Eli', 'Fay', 'Gus', 'Hana', 'Ivan', 'Jada', 'Kofi', 'Luz', 'Milo', 'Nia', 'Omar', 'Rosa'];
   function efficientCheck(r) {
-    const kind = effServed % 2;
-    effServed += 1;
-    if (kind === 0) {
+    if (r() < 0.5) {
       let a, b;
       do { a = pv.randInt(r, 101, 899); b = pv.randInt(r, 101, 899); } while (a === b || !ok(a) || !ok(b) || !notSwitched(a, b));
       return efficientQ({ id: 'learn-5', a, b, learn: true, r });
@@ -381,8 +379,8 @@
       id: 'order', kind: 'slides', title: 'Switch the order',
       explain: 'You can add numbers in any order. The sum stays the same.',
       slides: [
-        fig({ fig: 'counters', groups: [{ n: 4, kind: 'a', label: '4 circles' }, { n: 3, kind: 'b', label: '3 squares' }], caption: '4 + 3 = 7' }) +
-          fig({ fig: 'counters', groups: [{ n: 3, kind: 'b', label: '3 squares' }, { n: 4, kind: 'a', label: '4 circles' }], caption: '3 + 4 = 7' }) +
+        fig({ fig: 'counters', groups: [{ n: 4, kind: 'a', label: '4 circles' }, { n: 3, kind: 'b', label: '3 squares' }], caption: '4 + 3 = 7', label: '4 circles, then 3 squares. 4 plus 3 equals 7.' }) +
+          fig({ fig: 'counters', groups: [{ n: 3, kind: 'b', label: '3 squares' }, { n: 4, kind: 'a', label: '4 circles' }], caption: '3 + 4 = 7', label: '3 squares, then 4 circles. 3 plus 4 equals 7.' }) +
           say('4 + 3 = <b>7</b>. 3 + 4 = <b>7</b>. Same counters, same sum.'),
         big(`36 + 18 = ${fmt(36 + 18)}`) + big(`18 + 36 = ${fmt(18 + 36)}`) + say('Switch the order of the addends. The sum is the same.'),
         say('This works with big numbers too.') + big(`245 + 132 = 132 + ${BLANK}`) +
@@ -411,7 +409,7 @@
         gv([146, 289, 54], [0, 2], 'top', { look: true }) + say('Look at the ones digits: <b>6</b> and <b>4</b> make 10. Try 146 + 54.'),
         gv([146, 289, 54], [0, 2], 'v', { look: true }) + say(pairWhy(146, 54)),
         gv([146, 289, 54], [0, 2], 'all') + say(`${fmt(200)} + 289 = <b>${fmt(489)}</b>.`),
-        say('A pair that ends in 0 helps too.') + gv([125, 431, 215], [0, 2], 'all', { look: true }) +
+        say('A pair that ends in 0 helps too.') + gv([431, 125, 215], [1, 2], 'all', { look: true }) +
           say(`5 + 5 make 10, so add 125 + 215 = <b>${fmt(340)}</b> first. Then ${fmt(340)} + 431 = <b>${fmt(771)}</b>.`) +
           say(`(The other pairs make ${fmt(125 + 431)} and ${fmt(431 + 215)}. They do not end in 0.)`)
       ],
@@ -439,8 +437,8 @@
           `<div class="money"><p class="muted">Slow way: 643 + 258 = ${fmt(643 + 258)}. Then ${fmt(643 + 258)} − 643 = 258.</p></div>` + say('That works, but it is slow.'),
         big(`643 + 258 = <span class="fig-ans">258</span> + 643`) +
           say('Faster: both sides need the same two addends. 643 is on both sides, so the blank is <b>258</b>. No adding needed!'),
-        fig({ fig: 'table', title: 'Receipt', head: ['Item', 'Price'], rows: [['Book', 215], ['Game', 340], ['Puzzle', 185], ['Total', '?']], money: true }) +
-          gv([215, 340, 185], [0, 2], 'all', { look: true }) +
+        fig({ fig: 'table', title: 'Receipt', head: ['Item', 'Price'], rows: [['Game', 340], ['Book', 215], ['Puzzle', 185], ['Total', '?']], money: true }) +
+          gv([340, 215, 185], [1, 2], 'all', { look: true }) +
           say(`Group $215 + $185 = <b>$${fmt(400)}</b> first (5 + 5 = 10). Then $${fmt(400)} + $340 = <b>$${fmt(740)}</b>.`)
       ],
       check(r) { return efficientCheck(r); }
@@ -455,14 +453,14 @@
     orderQ({ id: 'p4', a: 709, b: 85, form: 3 }),
     sameQ({ id: 'p5', title: 'Cups of Lemonade Sold', rows: [['Friday', 47], ['Saturday', 76], ['Sunday', 53]], rights: [[0, 1, 2], [2, 0, 1], [1, 2, 0]], sub: [1, 2, 0], seed: 5,
       prompt: 'The table shows the cups of lemonade sold each day. Which expressions find the total? Choose all.' }),
-    friendlyQ({ id: 'p6', addends: [263, 418, 137] }),
-    friendlyQ({ id: 'p7', addends: [46, 371, 254] }),
-    friendlyQ({ id: 'p8', addends: [296, 214, 304] }),
-    friendlyQ({ id: 'p9', addends: [562, 175, 38] }),
-    friendlyQ({ id: 'p10', addends: [145, 231, 205], ends: '0' }),
+    friendlyQ({ id: 'p6', addends: [418, 263, 137], seed: 6 }),
+    friendlyQ({ id: 'p7', addends: [46, 254, 371], seed: 7 }),
+    friendlyQ({ id: 'p8', addends: [296, 214, 304], seed: 8 }),
+    friendlyQ({ id: 'p9', addends: [175, 562, 38], seed: 9 }),
+    friendlyQ({ id: 'p10', addends: [145, 205, 231], ends: '0', seed: 10 }),
     moneyQ({ id: 'p11', story: 'A pet shop orders fish food for $276, tanks for $415 and plants for $124.',
-      ask: 'Which two costs should it add first?', items: [['Fish food', 276], ['Tanks', 415], ['Plants', 124]], seed: 11 }),
-    receiptQ({ id: 'p12', who: 'Mr. Lee', his: 'his', pronoun: 'he', prices: [435, 210, 165], names: ['Lamp', 'Chair', 'Rug'], seed: 12 }),
+      ask: 'Which two costs should it add first?', items: [['Fish food', 276], ['Plants', 124], ['Tanks', 415]], seed: 11 }),
+    receiptQ({ id: 'p12', who: 'Mr. Lee', his: 'his', pronoun: 'he', prices: [210, 435, 165], names: ['Chair', 'Lamp', 'Rug'], seed: 12 }),
     efficientQ({ id: 'p13', who: 'Owen', pronoun: 'He', pronoun2: 'he', a: 588, b: 143, shown: true, seed: 13 }),
     trueQ({ id: 'p14', eqs: [[[52, 319], [319, 52]], [[407, 26], [26, 470]], [[140, 60, 25], [25, 140, 60]], [[63, 208], [208, 36]]] })
   ];
@@ -479,7 +477,7 @@
   guided.push(
     {
       id: 'g-e1', type: 'explain', skill: 'friendly',
-      prompt: 'How would you group 418 + 236 + 182 to make it easy? Explain.',
+      prompt: 'How would you group 236 + 418 + 182 to make it easy? Explain.',
       parent: 'Ask which ones digits make 10, then check the tens.',
       listenFor: [`418 + 182 = ${fmt(418 + 182)}, because 8 + 2 make 10 and the tens make 10 too.`, `Then ${fmt(418 + 182)} + 236 = ${fmt(418 + 182 + 236)}.`],
       explanation: `Group 418 and 182 first: ${pairWhy(418, 182)} Then ${fmt(600)} + 236 = ${fmt(836)}.`
@@ -502,14 +500,14 @@
     orderQ({ id: 't4', a: 842, b: 67, form: 3 }),
     sameQ({ id: 't5', title: 'Books Read', rows: [['Monday', 38], ['Tuesday', 85], ['Wednesday', 62]], rights: [[0, 1, 2], [2, 0, 1], [1, 2, 0]], sub: [1, 2, 0],
       prompt: 'The table shows the books read each day. Which expressions find the total? Choose all.' }),
-    friendlyQ({ id: 't6', addends: [345, 271, 155] }),
-    friendlyQ({ id: 't7', addends: [63, 412, 237] }),
+    friendlyQ({ id: 't6', addends: [271, 345, 155] }),
+    friendlyQ({ id: 't7', addends: [63, 237, 412] }),
     friendlyQ({ id: 't8', addends: [397, 186, 203] }),
-    friendlyQ({ id: 't9', addends: [581, 207, 19] }),
-    friendlyQ({ id: 't10', addends: [126, 432, 304], ends: '0' }),
+    friendlyQ({ id: 't9', addends: [207, 581, 19] }),
+    friendlyQ({ id: 't10', addends: [126, 304, 432], ends: '0' }),
     moneyQ({ id: 't11', story: 'A school orders paint for $238, paper for $419 and brushes for $162.',
-      ask: 'Which two costs should it add first?', items: [['Paint', 238], ['Paper', 419], ['Brushes', 162]] }),
-    receiptQ({ id: 't12', who: 'Ms. Park', his: 'her', pronoun: 'she', prices: [255, 320, 145], names: ['Shoes', 'Coat', 'Hat'] }),
+      ask: 'Which two costs should it add first?', items: [['Paint', 238], ['Brushes', 162], ['Paper', 419]] }),
+    receiptQ({ id: 't12', who: 'Ms. Park', his: 'her', pronoun: 'she', prices: [320, 255, 145], names: ['Coat', 'Shoes', 'Hat'] }),
     efficientQ({ id: 't13', who: 'Pia', pronoun: 'She', pronoun2: 'she', a: 675, b: 218 }),
     trueQ({ id: 't14', eqs: [[[74, 506], [506, 74]], [[318, 45], [45, 381]], [[230, 70, 18], [18, 230, 70]], [[96, 125], [125, 69]]] })
   ].map((q) => { const c = Object.assign({}, q); delete c.hint; delete c.parent; return c; });

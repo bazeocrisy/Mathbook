@@ -88,6 +88,18 @@ test('friendly items: exactly one qualifying pair, the last step needs no regrou
   }
 });
 
+test('no position shortcut: the friendly pair is not always the 1st and 3rd addend (review L24-01)', () => {
+  const where = { 0: 0, 1: 0, 2: 0 };
+  for (const q of L.bank.concat(L._testItems).filter((x) => x.skill === 'friendly' || (x.skill === 'money' && x.parts.length === 3))) {
+    const ad = q.skill === 'money' ? q.figure.rows.slice(0, 3).map((r) => r[1]) : q.display.split(' + ').map(Number);
+    where[L._onlyPair(ad, /ending in 0\?/.test(q.parts[0].label) ? '0' : '00')] += 1;
+  }
+  const total = where[0] + where[1] + where[2];
+  assert.ok(Object.values(where).every((n) => n > 0 && n <= total / 2), JSON.stringify(where));
+  const at = L.bank.filter((x) => x.skill === 'friendly').map((q) => q.parts[0].choices.indexOf(q.parts[0].answer));
+  assert.ok(new Set(at).size > 1, `practice: the right choice moves (${at})`);
+});
+
 test('the efficient-way choices name no value and are about the same length (A-03, N-05)', () => {
   for (const q of [L.bank[12], L._testItems[12]]) {
     const c = q.parts[0].choices;
