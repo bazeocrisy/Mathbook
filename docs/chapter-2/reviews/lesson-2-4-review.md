@@ -102,3 +102,9 @@ I re-checked commit `d0a3e14` with the same harness, headless Chrome and simulat
 - **Reset:** Cancel, then Reset, removes only the five `lesson-2-4:*` keys.
 
 2-1, 2-2 and 2-3 pass their full browser suites. After the runs, no `mathbook-chrome-*` or headless Chrome process was left over. The only `chrome.exe` processes running were the owner's own browser (default profile, not headless), and I did not touch them.
+
+### Re-verification 2 (commit ddd5a0e)
+
+| Finding | Status | Evidence |
+|---|---|---|
+| L24-07 | verified | Checked in the running app at 390×844. **P11 (Practice Together):** the story reads "A pet shop orders fish food for $276, plants for $124 and tanks for $415." The table lists Fish food $276, Plants $124, Tanks $415, Total ?. I typed $276 + $124, 400 and 815, and it showed "✓ Correct!" with the "Why" ending "So 276 + 124 = 400. Then $400 + $415 = $815." **T11 (Test):** the story reads "A school orders paint for $238, brushes for $162 and paper for $419." The table lists Paint $238, Brushes $162, Paper $419, Total ?. I answered $238 + $162, 400 and 819 and finished the test with Q1 wrong on purpose: the score was 13/14, and T11 was not among the mistakes. In the data the keys are "$276 + $124" / 400 / 815 and "$238 + $162" / 400 / 819, and the friendly pair is 1st + 2nd in both the story and the table. No page errors. No headless Chrome left running. Screenshots: `r24/shots/rv2/p11.png`, `r24/shots/rv2/t11.png`. |
