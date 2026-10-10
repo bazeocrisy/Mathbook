@@ -46,8 +46,8 @@ Each batch: shared components → builders (one per lesson, parallel, separate f
 ## Decisions (routine, made by the coordinator)
 
 1. **2-2 gaps (from the verification against pp. 37–40):**
-   - Practice p6 duplicates book item 6 (672). Replace it with a 2-digit number to the nearest hundred: 78 → 100, where the lower hundred is 0. This also covers book item 7.
-   - Test t6 becomes 64 → 100.
+   - Practice p6 duplicates book item 6 (672). Replace it with a 2-digit number to the nearest hundred: 87 → 100, where the lower hundred is 0. This covers the skill of book item 7, but 78 itself is the book's number and is not used (review A-05).
+   - Test t6 stays 781 → 800, so the test keeps a 3-digit number that rounds up to the nearest hundred (review A-06).
    - Practice p1 and test t1 become 2-digit numbers on a number line (book item 1).
    - Practice p12 gets a new name.
    - The "choose all that round to a ten" gap is covered by the rounding probe set (2 below).
@@ -72,4 +72,13 @@ Each batch: shared components → builders (one per lesson, parallel, separate f
 20. **Catalog entries:** Unit Review, Performance Task and Fluency Practice are three separate entries after 2-15 (simple for the child; each has its own progress).
 21. **Fluency:** no countdown and no timer. Fluency is accuracy with a quick strategy, and the pages show no time limit.
 22. **5-digit items** that appear on the pages (e.g. 17,016 + 1,111) are kept, even though the unit title says "within 1,000".
+23. **Shared design (DESIGN.md):** adopted as the single spec for screens and components:
+    - Figures go in a `q.figure` slot drawn by `assets/js/figures.js`.
+    - `___` is drawn as a blank box, and `parts` gains `compact` and `anyOrder`.
+    - The proposed `eqmake`, `pstack` (row mode), `dsub` and `adjust` types are all presets of one `chain` control. Stacked partial sums and the algorithm are one `vcalc` control.
+    - The grading rules in the lesson specs stay as written. Builders read each spec through DESIGN.md §2.
+24. **Support in tests:** running totals, live adjust tags and similar helpers are hidden in Test mode.
+25. **Digit boxes:** at least 48px tall everywhere. On a 320px phone they may be as narrow as 40px when a 5-digit layout needs it.
+26. **Wrong-box marks:** the new controls mark each wrong box after a miss in Learn and Practice Together. The existing `parts` type keeps its approved "Look again at: …" coaching, unchanged.
+27. **2-3 arrows layout** (with "?" boxes) is used in Learn and Practice Together only. On My Own and Test use plain answer fields.
 17. **One shared component per model:** the bar diagram, vertical stack, adjust arrows and equation chains are each built once in the shared engine and reused by every lesson (DESIGN.md is the single specification).

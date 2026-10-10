@@ -67,3 +67,27 @@ Book answers (recomputed): 1) 30. 2) 900. 3) 50. 4) 270. 5) 400. 6) 700. 7) To t
 - Practice: p1 364 → 360; p2 396 → 400; p3 63 → 60; p4 485 → 490; p5 438 → 400; p6 672 → 700; p7 249 → 250 / 200; p8 375–384; p9 561 → 600 (past 550); p10 650 → 700; p11 249 → 200, 251 → 300 ✓, 300 ✓, 342 ✓, 350 → 400, 399 → 400; p12 estimate $10 + $20 + $10 = $40, exact $14 + $23 + $12 = $49 > $45, not enough.
 - Test: t1 583 → 580; t2 297 → 300; t3 621 → 620; t4 735 → 740; t5 314 → 300; t6 781 → 800; t7 347 → 350 / 300; t8 515–524; t9 849 → 800 (before 850); t10 85 → 90; t11 449 → 400, 450 ✓, 482 ✓, 500 ✓, 538 ✓, 551 → 600; t12 estimate $30 + $20 + $10 = $60, exact $27 + $16 + $14 = $57 ≤ $60, $3 left.
 - Generated Learn checks: step 5 length pool T−6 (no), T−5, T−2, T, T+4 (yes), T+5 (no) is correct for every T; the money check's "enough" test (exact ≤ estimate = budget) is correct.
+
+## 6. Recommended 2-2 changes (follows PLAN.md Decision 1)
+
+| Item | Now | Change to | Check |
+|---|---|---|---|
+| p6 (number line, nearest 100) | 672 → 700 (book item 6 verbatim) | **87 → 100** (2-digit, lower hundred is 0). `lineQ(87, 100, 'p6')`. Do **not** use 78 (book item 7's number). | 87 is between 0 and 100; halfway 50; 87 is past halfway, so 100. floor((87 + 50) / 100) × 100 = 100. |
+| t6 | 781 → 800 | **No change.** Keeps a 3-digit number that rounds up to the nearest hundred (book items 6 and 9). | floor(831 / 100) × 100 = 800. |
+| p1 (number line, nearest 10) | 364 → 360 | A 2-digit number on a number line (book item 1), e.g. **46 → 50** (not 27 or 48, the book's numbers). | 40 and 50; halfway 45; 46 is past halfway, so 50. floor(51 / 10) × 10 = 50. |
+| t1 | 583 → 580 | A 2-digit number on a number line, e.g. **72 → 70**. | 70 and 80; halfway 75; 72 is before halfway, so 70. floor(77 / 10) × 10 = 70. |
+| p12 (money) | name "Sam" (book's name) | A new name, e.g. "Dev". Numbers unchanged ($45; $14, $23, $12; estimate $40; exact $49; not enough). | 10 + 20 + 10 = 40; 14 + 23 + 12 = 49 > 45. |
+| p5 (number line, nearest 100, rounds down) | 438 (very close to book item 5's 436) | **418 → 400** (review A-07). | 400 and 500; halfway 450; 418 is before halfway, so 400. |
+| Parent Guide `ask` | — | Add the book's Choosing Tools question: "Why is a number line helpful for rounding?" (review A-07). | — |
+| Select-all to the nearest ten (gap 3.3) | Learn only | Covered by the Rounding Check-Up set and test (`2-2-probe.md`: PR1, PR3, TR1, TR3). | — |
+| Learn examples taken from the book (127, 255, 896, 235–244, 315, $15 + $22 + $12) | — | **Stay** (Decision 1: the owner's 2-2 instructions named them). Gap 3.1 is therefore closed for Learn. It is fixed for practice by p6 and p12 above. | — |
+
+Coverage after these changes: 2-digit on a number line (p1, t1); 2-digit to the nearest hundred (p6); 3-digit rounding up to the nearest hundred on a number line (t6 781, and the Learn step 2 generator); rounding down to the nearest hundred (p5 418, t5 314). No practice item and no test item uses a book On My Own number.
+
+## Review fixes
+
+| Finding | Change |
+|---|---|
+| A-05 (PLAN Decision 1, p6 → 78) | Section 6 recommends p6 = 87 → 100, and says not to use 78. |
+| A-06 (t6 coverage) | Section 6 keeps t6 = 781 → 800, as Decision 1 now states. |
+| A-07 (Choosing Tools; p5 close to book) | Section 6 adds the Choosing Tools question to the Parent Guide `ask` list and changes p5 to 418 → 400. |
