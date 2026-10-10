@@ -101,7 +101,7 @@ try {
     lessons: Array.from(document.querySelectorAll('.choice-card')).map((a) => a.innerText.replace(/\\s+/g, ' ').trim() + ' → ' + a.getAttribute('href')),
     back: Array.from(document.querySelectorAll('a')).filter((a) => /Back to Home/.test(a.textContent)).map((a) => a.getAttribute('href')),
     later: document.querySelector('.coming-later')?.tagName, laterLinks: document.querySelectorAll('.coming-later a, .coming-later button').length };`);
-  check('Math Lessons: its own screen with Lessons 2-1, 2-2, 2-3 and 2-4 and Back to Home', math.path === '/Mathbook/math/' && math.h1 === 'Math Lessons' && math.lessons.length === 4 && /2-1/.test(math.lessons[0]) && /#menu$/.test(math.lessons[0]) && /2-2 Round Multi-Digit Numbers/.test(math.lessons[1]) && /2-3 Estimate Sums and Differences/.test(math.lessons[2]) && /2-4 Use Addition Properties to Add/.test(math.lessons[3]) && math.back[0] === '../', math);
+  check('Math Lessons: its own screen with Lessons 2-1 to 2-5 and Back to Home', math.path === '/Mathbook/math/' && math.h1 === 'Math Lessons' && math.lessons.length === 5 && /2-1/.test(math.lessons[0]) && /#menu$/.test(math.lessons[0]) && /2-2 Round Multi-Digit Numbers/.test(math.lessons[1]) && /2-3 Estimate Sums and Differences/.test(math.lessons[2]) && /2-4 Use Addition Properties to Add/.test(math.lessons[3]) && /2-5 Addition Patterns/.test(math.lessons[4]) && math.back[0] === '../', math);
   check('Math Lessons: unavailable lessons are an unobtrusive note, not interactive', math.later === 'P' && math.laterLinks === 0, math);
   await b.navigate(`document.querySelector('.choice-card').click();`);
 
