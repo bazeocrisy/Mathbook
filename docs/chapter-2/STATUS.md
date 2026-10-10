@@ -65,7 +65,7 @@ Legend: ✅ done · ⏳ in progress · — not started · ❌ blocked
 
 - Lessons 2-4 … 2-15, Unit Review, Performance Task, Fluency: specs reviewed and ready (docs/chapter-2/lessons/).
 - 2-2 fixes + Rounding Check-Up (PLAN Decision 1–2, spec 2-2-verification.md §6 and 2-2-probe.md).
-- Note for 2-7: the shared  steps preset rejects a 0 part; the reviewed 2-7 spec (B-01) says ignore 0/blank parts when ≥2 non-zero parts remain — adjust the preset when 2-7 is built.
+- Note for 2-7: the shared `chain` steps preset rejects a 0 part; the reviewed 2-7 spec (B-01) says ignore 0/blank parts when ≥2 non-zero parts remain — adjust the preset when 2-7 is built.
 - Shared-components builder notes: F8 wide-label callout not built (segments have an 18% minimum width); optional desktop figure-left layout not built.
 
 ## Blockers
