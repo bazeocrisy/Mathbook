@@ -25,7 +25,7 @@ No new method. Each part names the operation; the child picks any strategy from 
 
 ## 5. Activity screens
 
-The task appears in the lesson menu as **Performance Task** with three activities:
+The task is its own catalog entry, **Unit 2 Performance Task**, listed after the Unit Review in Math Lessons (Decision 20). Its menu has three activities:
 
 1. **Do It Together** (guided; hints, Check, Show Answer, Parent Help) — Version 1 (Juice Stand).
 2. **Do It Myself** (no hints until the end; checked at the end with explanations) — Version 2 (Lemonade Stand). Recorded in My Results as "Performance Task" with a per-part score.
@@ -43,7 +43,7 @@ Table "Juice Stand Customers": Week 1 · 436 · Week 2 · 378 · Week 3 · ?
 |---|---|---|---|---|---|
 | A | "How many customers came in Weeks 1 and 2 in all?" | choice: Add / Subtract / Compare only · num | Add · **814** | "In all" means put together. | 436 + 378: 6 + 8 = 14 → 4, regroup; 1 + 3 + 7 = 11 → 1, regroup; 1 + 4 + 3 = 8 → 814. |
 | B | "How many more customers came in Week 1 than in Week 2?" | choice: Subtract / Add · num | Subtract · **58** | "How many more" means find the difference. | 436 − 378: add up from 378: + 2 = 380, + 20 = 400, + 36 = 436; 2 + 20 + 36 = 58. |
-| C | "The stand's goal is 1,000 customers in the first 3 weeks. How many must come in Week 3 to reach the goal?" | choice: "1,000 − 814" ✓ / "1,000 + 814" / "814 − 436" · num | **186** | Use your answer from Part A. What is still missing to make 1,000? | 814 + 186 = 1,000 (814 + 6 = 820, + 80 = 900, + 100 = 1,000 → 186). |
+| C | "The stand's goal is 1,000 customers in the first 3 weeks. How many must come in Week 3 to reach the goal?" | choice: "Subtract the Weeks 1 and 2 total from 1,000" ✓ / "Add the Weeks 1 and 2 total to 1,000" / "Subtract Week 2 from Week 1" · num | Subtract the total from 1,000 · **186** | Use your answer from Part A. What is still missing to make 1,000? | 814 + 186 = 1,000 (814 + 6 = 820, + 80 = 900, + 100 = 1,000 → 186). |
 | D | "Suppose the stand has 1,050 customers in the first 3 weeks. Which week had more customers, Week 1 or Week 3? How many more?" | num "Week 3 customers" · choice Week 1 / Week 3 · num "How many more?" | **236** · **Week 1** · **200** | First find Week 3: take Weeks 1 and 2 away from 1,050. Then compare. | Week 3 = 1,050 − 814 = 236. 436 > 236, so Week 1 had more. 436 − 236 = 200. |
 
 Parent Help per part: A — "Ask which strategy they will use. Any correct strategy is fine." B — "Ask: is adding up or taking away easier here?" C — "Point to Part A's answer. Do we need to add Weeks 1 and 2 again?" D — "This part has two steps. Ask: what do we need to find first?"
@@ -58,7 +58,7 @@ Table "Lemonade Stand Customers": Week 1 · 463 · Week 2 · 395 · Week 3 · ?
 |---|---|---|
 | A | Customers in Weeks 1 and 2 in all? | Add · **858** |
 | B | How many more in Week 1 than Week 2? | Subtract · **68** |
-| C | Goal: 1,000 in the first 3 weeks. How many in Week 3? | 1,000 − 858 · **142** |
+| C | Goal: 1,000 in the first 3 weeks. How many in Week 3? (same three worded choices as V1-C) | Subtract the Weeks 1 and 2 total from 1,000 · **142** |
 | D | Suppose 1,075 customers in the first 3 weeks. Week 3? Which week had more, Week 1 or Week 3? How many more? | **217** · **Week 1** · **246** |
 
 ### Talk About It (Reflect)
@@ -104,11 +104,21 @@ Table "Lemonade Stand Customers": Week 1 · 463 · Week 2 · 395 · Week 3 · ?
 
 ## 13. New interaction or model needed
 
-- **Data table (static)** in the prompt: `tableHTML({ title, columns: ['Week', 'Customers'], rows: [[1, 436], [2, 378], [3, '?']] })` — plain HTML table styled like the place-value chart. Shared with 2-15 (p12/t12).
-- **Multi-part task runner**: the existing guided runner (Practice Together) with a `context` block (intro + table) rendered above every question of the set. If the guided runner can't show a shared header, put the intro + table into each question's prompt.
-- Everything else reuses `parts` (`choice`, `num`) and `explain`.
+No new model. Uses the shared components in DESIGN.md:
+
+- **F4 Table** (`fig: 'table'`) for the customer table.
+- **DESIGN §4.4.4 shared task header**: the guided set carries `context: { title, text, figure }` (intro + F4 table), drawn as "The story" box at the top of every part.
+- **`parts`** with `choice` (`compact` for Add / Subtract and Week 1 / Week 3) and `num`; one `explain` item for Talk About It (parent-marked, Decision 6).
 
 ## 14. Open questions / assumptions
 
-- Placement: as its own item in the Math Lessons list after the Unit Review, or as a fifth choice inside the Unit Review menu. I suggest inside Unit Review ("Performance Task") to keep the list short — builder/owner's call.
+- Placement follows Decision 20: a separate catalog entry after the Unit Review.
 - The book uses "customers" and "visitors" interchangeably in Part D; the app uses "customers" throughout to avoid confusion.
+
+## 15. Review fixes (batch-D-plan-review.md)
+
+| Finding | Change |
+|---|---|
+| D-14 | Dropped the "inside the Unit Review menu" suggestion. The task is its own catalog entry (Decision 20); §5 and §14 say so. |
+| Coordinator (no keyed choice shows a number the child must enter) | The Part C operation choices used to show "1,000 − 814", which gives away Part A's answer (814). They are now worded ("Subtract the Weeks 1 and 2 total from 1,000"). No other choice shows an answer. |
+| DESIGN.md §2 | §13 now names F4, the §4.4.4 shared task header and `parts`. |

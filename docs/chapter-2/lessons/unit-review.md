@@ -58,7 +58,7 @@ Two parts: **Math Words** (vocabPractice, V1–V5) and **Mixed Review** (R6–R2
 | # | Sentence | Answer |
 |---|---|---|
 | V1 | "To ___ 846, you can break it into 800 + 40 + 6." | decompose |
-| V2 | "When you only need an answer that is close, you can ___." | estimate |
+| V2 | "An answer that is close but not exact is an ___." | estimate |
 | V3 | "To ___ 73 to the nearest ten, you change it to 70." | round |
 | V4 | "450 is a ___ for 448, because it is close and easy to add." | compatible number |
 | V5 | "3,000 + 200 + 50 + 7 is 3,257 written in ___." | expanded form |
@@ -74,8 +74,8 @@ Two parts: **Math Words** (vocabPractice, V1–V5) and **Mixed Review** (R6–R2
 | R10 | 2-4 | "347 + 518 = 518 + ___" (`number`) | **347** | Changing the order does not change the sum. |
 | R11 | 2-3 | "Ava read for 372 minutes one week and 219 minutes the next. Round each number to the nearest hundred to estimate the total." (`parts`: `num` 372 → , `num` 219 → , `num` estimate) | **400**, **200**, **600** | Look at the tens digit to round to the nearest hundred. |
 | R12 | 2-5 | `parts` with two `choice` (even / odd): "Will 253 + 471 be even or odd?" · "Will 318 + 145 be even or odd?" | **even**; **odd** | Is each addend even or odd? odd + odd = even; even + odd = odd. |
-| R13 | 2-6 | "Use partial sums: 704 + 253." (`parts`: hundreds, tens, ones, total) | **900**, **50**, **7**, **957** | Add hundreds, then tens, then ones. |
-| R14 | 2-7 | "Decompose 217 to find 452 − 217." (`parts`: "452 − 200 =", "… − 10 =", "… − 7 =") | **252**, **242**, **235** | Take away the hundreds, then the tens, then the ones. |
+| R13 | 2-6 | "Use partial sums: 704 + 253." (A3 `vcalc` `rows`, as in 2-6: hundreds, tens, ones rows + total) | **900**, **50**, **7**, **957** | Add hundreds, then tens, then ones. |
+| R14 | 2-7 | "Decompose 217 to find 452 − 217." (A2 `chain` preset `steps`, parts 200, 10, 7 printed; rows `[452] − [200] = [r1]`, `[echo r1] − [10] = [r2]`, `[echo r2] − [7] = [r3]`; each row checked against the child's own previous entry, final exact — Decision 9) | **252**, **242**, **235** | Take away the hundreds, then the tens, then the ones. |
 | R15 | 2-8 | "Ken wants to solve 348 + 285. Which equation shows how he could adjust the addends?" `mc`: 350 + 280 · 350 + 283 · 350 + 287 · 350 + 290 | **350 + 283** | If you add 2 to one addend, take 2 from the other. |
 | R16 | 2-9 | Bar diagram: whole 560; parts 238 and ?. `parts`: "238 + ___ = 560", "560 − ___ = 238" | **322**, **322** | The two parts make the whole. |
 | R17 | 2-10 | "Which way is easier for 497 + 365? Show it." `parts`: `choice` ("Adjust both: 497 + 3 = 500 and 365 − 3 = 362" ✓ / "Adjust: 497 + 3 = 500 and 365 + 3 = 368" / "Decompose: 400 + 300 + 90 + 60 + 7 + 5 is the only way") + `num` sum | adjust · **862** | 497 is very close to 500. |
@@ -87,7 +87,37 @@ Parent coaching: R17 — "Ask: would you rather decompose or adjust here? Why?" 
 
 ## 7. On My Own practice set
 
-Two `bankSets`: **Math Words** (V1–V5) and **Mixed Review** (R6–R20, 15 items). Same items as §6.
+Two `bankSets` with **their own items** (Decision 13): **Math Words** (V1′–V5′) and **Mixed Review** (R6′–R20′, 15 items). Same skills, formats and lessons as §6, new numbers and sentences not used in Practice Together or the tests.
+
+### Math Words (On My Own)
+
+| # | Sentence | Answer |
+|---|---|---|
+| V1′ | "To make 63 + 28 easier, you can ___ 28 into 20 and 8." | decompose |
+| V2′ | "Mia's answer, 'about 500 people,' is an ___, not an exact count." | estimate |
+| V3′ | "If you ___ 1,462 to the nearest hundred, you get 1,500." | round |
+| V4′ | "75 is a ___ for 77, because it is close and easy to use with 25." | compatible number |
+| V5′ | "8,000 + 600 + 4 shows 8,604 in ___." | expanded form |
+
+### Mixed Review (On My Own)
+
+| # | Lesson | Item | Answer |
+|---|---|---|---|
+| R6′ | 2-1 | Standard form of "nine thousand, four hundred six": 946 · 9,046 · 9,406 · 9,460 | **9,406** |
+| R7′ | 2-2 | Correct rounding to the nearest 10: 433 → 430 · 758 → 750 · 145 → 140 · 682 → 700 | **433 → 430** |
+| R8′ | 2-14 | 5,279 + 2,846 (`vcalc`) | **8,125** |
+| R9′ | 2-15 | 86,974 − 41,523 (`vcalc`) | **45,451** |
+| R10′ | 2-4 | "628 + 193 = ___ + 628" | **193** |
+| R11′ | 2-3 | "A bakery sold 254 muffins and 438 rolls. Round each to the nearest hundred to estimate the total." | **300**, **400**, **700** |
+| R12′ | 2-5 | "361 + 425: even or odd?" · "274 + 153: even or odd?" | **even**; **odd** |
+| R13′ | 2-6 | Partial sums 623 + 145 (`vcalc` `rows`) | **700**, **60**, **8**, **768** |
+| R14′ | 2-7 | Decompose 328 to find 645 − 328 (`chain` `steps`, parts 300, 20, 8 printed; Decision 9) | **345**, **325**, **317** |
+| R15′ | 2-8 | Adjust 198 + 367: 200 + 360 · 200 + 365 · 200 + 367 · 200 + 369 | **200 + 365** |
+| R16′ | 2-9 | Bar: whole 830, part 457: "457 + ___ = 830", "830 − ___ = 457" | **373**, **373** |
+| R17′ | 2-10 | 396 + 248: choice ("Adjust both: 396 + 4 = 400 and 248 − 4 = 244" ✓ / "Adjust: 396 + 4 = 400 and 248 + 4 = 252" / "Decompose is the only way") + sum | adjust · **644** |
+| R18′ | 2-11 | "Which equation solves 634 − 278 = ?" 278 + 356 = 634 · 356 − 278 = 634 · 634 + 356 = 278 · 356 − 634 = 278 | **278 + 356 = 634** |
+| R19′ | 2-12 | "A game needs 850 points to win. Jo scored 214 points in round 1 and 309 in round 2. How many more points does she need?" A 850 − 214 = 636; 636 + 309 = 945 · B 214 + 309 = 523; 850 − 523 = 327 · C 309 + 214 = 523; 850 − 309 = 541 · D 850 − 309 = 541; 541 + 214 = 755 | **B** (327 more) |
+| R20′ | 2-13 | "5,617 ◯ 5,671" (`symbol`) | **<** |
 
 ## 8. Test — "Unit 2 Test" (results reported by lesson)
 
@@ -99,7 +129,7 @@ Two tests, as in 2-1: **Math Words Test** (W1–W5) and **Unit Test** (T6–T20)
 |---|---|---|
 | W1 | "Writing 6,408 as 6,000 + 400 + 8 shows it in ___." | expanded form |
 | W2 | "If you ___ 268 to the nearest hundred, you get 300." | round |
-| W3 | "Dad asked about how many people came, so I made an ___." | estimate |
+| W3 | "I don't need the exact number of people, so I will ___ how many came." | estimate |
 | W4 | "A ___ is close to the real number and easy to use, like 25 for 24." | compatible number |
 | W5 | "When you ___ 52 into 50 and 2, you break it into parts." | decompose |
 
@@ -114,8 +144,8 @@ Two tests, as in 2-1: **Math Words Test** (W1–W5) and **Unit Test** (T6–T20)
 | T10 | 2-4 | "456 + 279 = ___ + 456" | **279** |
 | T11 | 2-3 | "A shop sold 428 apples and 361 pears. Round each to the nearest hundred to estimate the total." | **400**, **400**, **800** |
 | T12 | 2-5 | "517 + 229: even or odd?" · "432 + 117: even or odd?" | **even**; **odd** |
-| T13 | 2-6 | Partial sums 512 + 376 | **800**, **80**, **8**, **888** |
-| T14 | 2-7 | Decompose 238 to find 563 − 238: "563 − 200 =", "… − 30 =", "… − 8 =" | **363**, **333**, **325** |
+| T13 | 2-6 | Partial sums 512 + 376 (`vcalc` `rows`) | **800**, **80**, **8**, **888** |
+| T14 | 2-7 | Decompose 238 to find 563 − 238 (`chain` `steps`, parts 200, 30, 8 printed; Decision 9; final exact) | **363**, **333**, **325** |
 | T15 | 2-8 | Adjust 297 + 456: 300 + 450 · 300 + 453 · 300 + 456 · 300 + 459 | **300 + 453** |
 | T16 | 2-9 | Bar: whole 740, part 315: "315 + ___ = 740", "740 − ___ = 315" | **425**, **425** |
 | T17 | 2-10 | 598 + 236: choice (adjust: 600 and 234 ✓ / 600 and 238 / decompose is the only way) + sum | adjust · **834** |
@@ -150,6 +180,8 @@ No test item needs parent review.
 | 19 | 2-12 two-step, choose equation set | R19 | T19 |
 | 20 | 2-13 compare (book label says 2-3) | R20 | T20 |
 
+On My Own covers every row again: Vn → Vn′ and Rn → Rn′.
+
 ## 10. Common mistakes and coaching
 
 - 2-1: writing 4,071 as 471 or 4,710 (forgetting the 0 hundreds).
@@ -176,17 +208,33 @@ No test item needs parent review.
 - R8 4,186 + 3,527: 6+7=13 → 3 r1; 1+8+2=11 → 1 r1; 1+1+5=7; 4+3=7 → 7,713 ✓. R9 58,367 − 23,145: 2, 2, 2, 5, 3 → 35,222 ✓ (no regrouping). R10 347 ✓. R11 372 → 400 (tens 7), 219 → 200 (tens 1), 600; exact 591 ✓. R12 253 + 471 = 724 even ✓; 318 + 145 = 463 odd ✓. R13 700+200=900, 0+50=50, 4+3=7 → 957 = 704 + 253 ✓. R14 452−200=252, −10=242, −7=235; 452−217 = 235 ✓. R15 348+2 = 350, 285−2 = 283; 350+283 = 633 = 348+285 ✓. R16 560 − 238 = 322; 238 + 322 = 560 ✓. R17 497+365 = 862; 500 + 362 = 862 ✓. R18 742 − 386 = 356; 386 + 356 = 742 ✓. R19 168+245 = 413; 712−413 = 299 ✓; distractor arithmetic true: 712−245 = 467, 712−168 = 544, 544+245 = 789, 467+168 = 635 ✓. R20 2 < 6 thousands ✓.
 - T6 4 thousands, 0 hundreds, 7 tens, 1 one → 4,071 ✓. T7 386 → 390 ✓; 724 → 720; 455 → 460; 918 → 920 ✓ (only one correct). T8 3,658 + 2,775: 8+5=13 r1; 1+5+7=13 r1; 1+6+7=14 r1; 1+3+2=6 → 6,433 ✓. T9 79,586 − 35,243: 3, 4, 3, 4, 4 → 44,343 ✓. T10 279 ✓. T11 428 → 400, 361 → 400, 800; exact 789 ✓. T12 517+229 = 746 even ✓; 432+117 = 549 odd ✓. T13 500+300 = 800, 10+70 = 80, 2+6 = 8 → 888 ✓. T14 563−200 = 363, −30 = 333, −8 = 325; 563−238 = 325 ✓. T15 297+3 = 300, 456−3 = 453; 753 = 297+456 ✓. T16 740−315 = 425 ✓. T17 598+236 = 834 = 600+234 ✓. T18 921−457 = 464; 457+464 = 921 ✓. T19 275+318 = 593; 900−593 = 307 ✓; distractors true: 900−275 = 625, 625+318 = 943, 900−318 = 582, 582+275 = 857 ✓. T20 8,104 vs 8,099: Th 8 = 8, H 1 > 0 → > ✓.
 
+- On My Own: R6′ 9 thousands, 4 hundreds, 0 tens, 6 ones → 9,406 ✓. R7′ 433 → 430 ✓; 758 → 760; 145 → 150 (halfway up); 682 → 680 (700 is nearest 100) — only one correct ✓. R8′ 5,279 + 2,846: 9+6=15 r1; 1+7+4=12 r1; 1+2+8=11 r1; 1+5+2=8 → 8,125 ✓. R9′ 86,974 − 41,523: 1, 5, 4, 5, 4 → 45,451 ✓ (no regrouping). R10′ 193 ✓. R11′ 254 → 300 (tens 5, rounds up), 438 → 400, 700; exact 692 ✓. R12′ 361 + 425 = 786 even ✓; 274 + 153 = 427 odd ✓. R13′ 600+100 = 700, 20+40 = 60, 3+5 = 8 → 768 = 623 + 145 ✓. R14′ 645−300 = 345, −20 = 325, −8 = 317; 645 − 328 = 317 ✓. R15′ 198+2 = 200, 367−2 = 365; 565 = 198 + 367 ✓ (only one choice keeps the sum). R16′ 830 − 457 = 373; 457 + 373 = 830 ✓. R17′ 396 + 248 = 644 = 400 + 244 ✓. R18′ 634 − 278 = 356; 278 + 356 = 634 ✓. R19′ 214 + 309 = 523; 850 − 523 = 327 ✓; distractors true: 850−214 = 636, 636+309 = 945, 850−309 = 541, 541+214 = 755 ✓. R20′ 5,617 vs 5,671: Th 5 = 5, H 6 = 6, T 1 < 7 → < ✓. (All checked by script.)
+
 ## 13. New interaction or model needed
 
-- Reuses `vcalc` (2-14 §13 A) and `symbol` (2-13 §13 A).
-- **Bar diagram (static)** for R16/T16: a rectangle split into two labeled parts with a bracket labeled with the whole. If 2-9 defines a bar-diagram helper, reuse it; otherwise `barHTML({ whole: 560, parts: [238, '?'] })`, parts widths proportional.
-- **Results by lesson** (small engine change): a test whose questions carry `skill: '2-7'` etc. already groups by skill; add an optional `skillLinks: { '2-7': '../lesson-2-7/#menu', … }` on the lesson so My Results' "Practice this skill" button becomes **Review this lesson** and opens that lesson. Only lessons that exist are linked.
-- **Review screen** (§5): a Learn wizard of `kind: 'slides'` steps without a `check` (Example only, Next goes straight on). If the engine requires `check`, give each slide a one-click "I remember" acknowledgement instead.
-- **Two-equation choices** (R19/T19): `mc` choices containing a line break — needs `mc` to allow `<br>` (or render each option as two lines).
+No new model. Everything uses the shared components in DESIGN.md §2–4:
+
+- **A3 `vcalc`**: `input: 'digits'` for R8/R9 and twins (regroup boxes on for addition, off for 2-15 subtraction); `input: 'rows'` for the partial sums R13/T13/R13′.
+- **A2 `chain`** preset `steps` (parts printed) for R14/T14/R14′: each row checked against the child's own previous entry (Decision 9), final exact.
+- **`parts`** with `symbol` (R20/T20/R20′), `compact` choices (even/odd, adjusted equations) and `num`.
+- **F8 Bar diagram** (`ppw`) for R16/T16/R16′.
+- **DESIGN §4.4 small engine additions:** (1) Learn steps with no check for the "Remind Me" slides; (2) results by lesson with `skillLinks` ("Review this lesson (2-7)"); (3) two-line choices (`\n`) for R19/T19/R19′.
 
 ## 14. Open questions / assumptions
 
-- Book item 20 is labeled "(Lesson 2-3)" but it is a comparison item (2-13); mapped to 2-13.
-- Book items 8, 11, 17 ask for written explanations; graded parts are structured and the explanation is a parent-marked explain item in Practice Together only.
-- Book 11 accepts any reasonable estimate; I fixed the method (nearest hundred) to make it auto-gradable. If 2-3 teaches a different default (e.g. compatible numbers), switch R11/T11 to that method.
-- Lesson ids for the earlier lessons are assumed to be `2-1` … `2-15`, folders `curriculum/chapter-2/lesson-2-N/`.
+- Book item 20 is labeled "(Lesson 2-3)" but it is a comparison item; mapped to 2-13 (Decision 19).
+- Book items 8, 11, 17 ask for written explanations; graded parts are structured and the explanation is a parent-marked explain item in Practice Together only (Decision 6).
+- Book 11 accepts any reasonable estimate; the item names the method (nearest hundred), as 2-3 does.
+- The Unit Test has 15 items (one per book item 6–20), allowed by Decision 5.
+- The Performance Task and Fluency Practice are separate catalog entries (Decision 20), not part of this review.
+
+## 15. Review fixes (batch-D-plan-review.md)
+
+| Finding | Change |
+|---|---|
+| D-1 | §7 now has its own On My Own sets: Math Words V1′–V5′ and Mixed Review R6′–R20′ (same lessons and formats, new numbers and sentences). §12 checks every answer. |
+| D-12 | V2 is now "An answer that is close but not exact is an ___." (only "estimate" fits). W3 is now "I don't need the exact number of people, so I will ___ how many came." (no article before the blank; "round … how many came" does not fit). |
+| D-13 | The Unit Test keeps 15 items, as Decision 5 now allows. |
+| Coordinator (Decision 9) | R14/T14/R14′ decomposition steps use `chain` `steps`: each step is checked against the child's own previous entry. Labels no longer show earlier answers. |
+| Coordinator (no keyed choice shows an answer) | Checked: R17/T17/R17′ choices show the adjusted addends, not the sum; R19/T19 options are only multiple choice. |
+| DESIGN.md §2 | §13 now names A2 `chain`, A3 `vcalc` (`digits`/`rows`), `parts` + `symbol`/`compact`, F8 and the §4.4 additions. |
