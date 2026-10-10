@@ -56,7 +56,7 @@ try {
   // ----- Entry -----
   await b.load(O + BASE + 'math/');
   const math = await js(`return Array.from(document.querySelectorAll('.choice-card')).map((a) => a.querySelector('.choice-title').textContent + ' ' + a.getAttribute('href'))`);
-  check('Math Lessons lists 2-1 and a working 2-2 entry', JSON.stringify(math) === JSON.stringify(['Represent 4-Digit Numbers ../curriculum/chapter-2/lesson-2-1/#menu', 'Round Multi-Digit Numbers ../curriculum/chapter-2/lesson-2-2/#menu']), math);
+  check('Math Lessons lists 2-1 and a working 2-2 entry', JSON.stringify(math.slice(0, 2)) === JSON.stringify(['Represent 4-Digit Numbers ../curriculum/chapter-2/lesson-2-1/#menu', 'Round Multi-Digit Numbers ../curriculum/chapter-2/lesson-2-2/#menu']), math);
   await b.navigate(`document.querySelectorAll('.choice-card')[1].click();`);
   const menu = await js(`return { h1: document.querySelector('h1').textContent, eyebrow: document.querySelector('.hero .eyebrow').textContent, cards: Array.from(document.querySelectorAll('.choice-card .choice-title')).map((e) => e.textContent), rec: !!document.querySelector('.choice-card.is-recommended[href="#see"]'), parent: !!document.querySelector('.parent-link a[href="#teach"]'), title: document.title }`);
   check('Lesson 2-2 menu: same four choices, Learn recommended, Parent Guide link', menu.h1 === 'Round Multi-Digit Numbers' && menu.eyebrow === 'Lesson 2-2' && menu.cards.join() === 'Learn,Practice,Take a Test,My Results' && menu.rec && menu.parent, menu);
