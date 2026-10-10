@@ -34,3 +34,51 @@ Independent review of `lessons/2-9.md`, `2-10.md`, `2-11.md` and `2-12.md`. I ch
 - **Most generation rules can only produce valid numbers.** This holds for 2-9 Steps 1–6, 2-10 Steps 2, 3 and 5, 2-11 Steps 1, 3, 4 and 5 (remainder 20–200, ≠ 100), and 2-12 Steps 1–3. Each rule guarantees positive results within 999. The exceptions are C-3, C-6 and C-7.
 - **Explanations and common-mistake examples are correct and child-friendly**, apart from C-12. Checked: 400 − 153 → 353, 153 − 79 → 126, 760 > 458, 635 + 260, the "sliding both ends of a ruler" wording, and "both orders work" for spend twice.
 - **The book problems themselves are not copied word for word into app items.**
+
+## Re-verification
+
+I re-read the current `2-9.md`, `2-10.md`, `2-11.md` and `2-12.md` in full, including each "Review fixes" section. I recomputed every number that changed.
+
+**Result:** all 15 original findings are fixed. The fixes introduced one new major problem (N-1, a wrong worked solution in 2-12 P8) and three new minor ones.
+
+### Original findings
+
+| ID | Status | Evidence |
+|---|---|---|
+| C-1 | verified | 2-9 T12 now shows `356 + 287 = 643`, keyed to `643 − 356 = 287` and `643 − 287 = 356` (both correct). No other test item uses 356, 287 or 643, so T5's answer (462) is no longer given away. |
+| C-2 | verified | **Named fields.** Add-then-subtract and more-than-together fields are named after what they hold ("a = money he has now", "Ben has:", "Together:"). With those names, each field has only one correct value. **Final answer only.** Spend twice (Learn 5, P7, O6, T7) and work backward (Learn 5, P11, O10, T11) ask for and grade only the final answer. **Consistency.** §5 and §14 now agree. |
+| C-3 | verified | The ranges guarantee valid numbers. **Spend twice:** whatever is left is always at least $10. **More than, then together:** the together total is 2x + d ≤ 999. **Work backward:** the afternoon amount is (s + l) − m ≥ 50, and s + l is at most 690. |
+| C-4 | verified | Distractors are now defined for each equation form. For `W − b = R`, the wrong pictures mean b = W + R or are impossible. For `P + a = W`, the wrong pictures mean a = P + W. No wrong picture is a valid picture of the equation, and the no-valid-picture rule is stated. The answer is always at least 60. |
+| C-5 | verified | **Learn steps.** 2-10 Learn Step 3 and 2-11 Learn Step 2 now use a keep-the-sum or keep-the-difference pair: any pair that keeps the sum (or difference) is accepted, and the final answer is graded exactly. **Items.** 2-10 P4 and T5, and 2-11 P3 and T2, also name the target ("Make 398 a whole hundred", "so 297 becomes 300"). **Values.** 300/455 → 755 ✓, 400/265 → 665 ✓, 625/200 → 425 ✓, 535/300 → 235 ✓. |
+| C-6 | verified | 2-12 Step 6 now requires x + y + z ≤ 999. |
+| C-7 | verified | 2-10 Step 4 now requires a + b + 2k ≤ 999, which covers both the S shown on screen and the wrong total S + k. |
+| C-8 | verified | **Step 1:** tens digits add to 9 or less, ones digits add to 10 or more; the largest possible sum is 908. **Step 2:** tens digits add to 10 or more; the largest possible sum is 998. Both ranges stay within 999. |
+| C-9 | verified | 2-9 Step 3 hint now says "…next hundred if you can". The Step 4 hint stays correct because H is always a multiple of 100. The Step 5 and 6 hints don't mention hundreds. |
+| C-10 | verified | 2-11 Step 2: a 300–990; b 106–(a − 40) with ones digit 6–9; a + k ≤ 999. |
+| C-11 | verified | **P13:** `142 − 57 = 85` (count up 3 + 40 + 42; check 141 − 56 = 85). **T4:** `163 − 84 = 79` (count up 6 + 10 + 63). **Map:** the coverage map is updated. |
+| C-12 | verified | The mistake now reads `424 − 5` done as 421. That is the result of taking 4 from 5 in the ones place; the correct answer is 419. |
+| C-13 | verified | Every test item in all four lessons now has a skill tag that is a key in that lesson's map, and every key is used at least once. |
+| C-14 | verified | 2-9 §14 now says the fixed frame decides the order. It also says a free-order frame must accept both orders and the whole on either side of = (Decision 15). |
+| C-15 | verified (see N-3) | Contexts and names changed as listed. **2-9:** the zoo example is now 268/541 → 273 (count up 2 + 30 + 241). **2-12:** Mark/Heidi → Nina/Theo; balloons → crayons; the bakeries → a garden and two food stands. |
+
+### Recomputed changed numbers
+
+All correct except where N-1 notes otherwise.
+
+- **2-9:** 541 − 268 = 273; 600 − 358 = 242 (beads); 900 − 438 = 462; 356 + 287 = 643.
+- **2-10:** 368 + 257 = 625; 476 + 347 = 823; 274 + 419 = 693; 356 + 389 = 745; 121 + 246 = 367, 367 + 110 = 477. Step 1 largest sum 908; Step 2 largest sum 998.
+- **2-11 Learn:** 564 − 145 = 419 three ways: 464 → 424 → 420 → 419; 569 − 150 = 419; 5 + 50 + 364 = 419.
+- **2-11 items:** P2 563 − 125 gives 463, 443, 440, 438. P13 142 − 57 = 85. T4 163 − 84 = 79. The mistake 424 − 5 → 421 (correct 419).
+- **2-12 Learn and practice:** Learn 5 497 + 43 = 540, 540 − 238 = 302 (and 497 − 238 = 259, 259 + 43 = 302). P6 248 + 135 = 383, 500 − 383 = 117. P8 238 + 157 = 395, 238 + 395 = 633.
+- **2-12 On My Own and test:** O5 326 + 488 = 814, 814 − 439 = 375. T5 318 + 157 = 475, 600 − 475 = 125. T7 260 − 176 = 84, 84 − 38 = 46 (also 176 + 38 = 214, 260 − 214 = 46).
+
+### New findings
+
+| ID | Severity | Spec · section/item | Problem | Required correction |
+|---|---|---|---|---|
+| N-1 | major | 2-12 · P8 "Why" column | The answer was changed to 395 / 633, but the Why still shows the old numbers: "238 + 157 = 395; **236 + 393 = 629**". The child would see a wrong worked solution right after a correct answer. | Change the Why to "238 + 157 = 395; 238 + 395 = 633." |
+| N-2 | minor | 2-10 §5 Step 3 Your Turn, P4, T5 and §13 item 3 (keep-the-sum pair); 2-11 Step 2, P3, T2 (keep-the-difference pair) | **Trivial pairs pass.** The rule accepts any whole-number pair (x, y) ≠ (a, b) that keeps the sum or difference. That lets through answers where nothing was adjusted: the addends swapped (456 / 299 for 299 + 456), a zero (0 / 755), or for subtraction (425 / 0). **Hint not wired.** The "not friendlier" gentle tip from Decision 10 isn't connected. | Require x ≥ 1 and y ≥ 1, and require {x, y} ≠ {a, b} as an unordered pair. Optionally show the Decision 10 tip when neither number ends in 0. |
+| N-3 | minor | 2-10 §5 Step 4 slide 2 and §10 | The compensation example uses the name **Priya** in the same problem type as book #5 ("Priya … adds 3 … then subtracts 3 from the sum"). The original review missed this. | Rename her (e.g. "Lucy") in Step 4 and in the §10 "Priya/Ty type" mention. |
+| N-4 | minor | 2-12 · P11 hint | P11 is now a juice stand that "makes" cups, but the hint still says "Sold + left = **baked**." | Change it to "Sold + left = all the cups made." |
+
+Nothing else was broken by the changes. The 2-11 example-number list still includes 236, which isn't used in 2-11's Learn. That's harmless because the list only rules numbers out.

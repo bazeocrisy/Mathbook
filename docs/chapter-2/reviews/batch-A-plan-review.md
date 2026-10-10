@@ -38,3 +38,49 @@ Counts: **1 critical, 4 major, 17 minor.**
 - **2-3:** all book answers (454; 900/930, exact 931; items 1–12) correct. Learn examples 312 + 465 (800/780/777), 674 − 231 (440/500/443), 526 − 274 (250/252), 247 + 352 (600/599), 284 + 517 (800), 640 − 390 (250), 389 + 205 (600, 594, Leo 794) correct. P1–P14 and T1–T14 roundings, estimates, exact values and choice keys all correct (except the wording issues above); compatible pairs unique. Coverage map complete for Learn, Choosing Tools, Work Together, items 1–12 and Reflect.
 - **2-4:** all book answers (WT 111; 1–4: 218, 78, 407, 505; 5: A and C, 167; 6: 864; 7: 957; 8: 855; 9: 635; 10: 657; 11: 867; 12: 850) correct. Learn examples, P1–P14, T1–T14 (pair sums, other pairs, totals, select-all keys, true/false equations) and G-E1 (836) all correct; each friendly item has exactly one qualifying pair; final steps need no regrouping as claimed. Coverage map complete. Property naming follows Decision 4.
 - **Originality:** no 2-3 or 2-4 practice/test item copies a book problem; book numbers appear only in the source/Parent Guide sections (exception: A-05 in the PLAN decision for 2-2).
+
+## Re-verification
+
+Re-checked the revised `2-2-verification.md` (section 6), `2-2-probe.md`, `2-3.md`, `2-4.md` and PLAN.md Decision 1 against the findings above and the page scans. Every changed number was recomputed.
+
+### Status of A-01 … A-22
+
+| id | status | notes (recomputed values) |
+|---|---|---|
+| A-01 | verified | G-E1: 573 → 600, 248 → 200, 600 − 200 = 400; 573 → 570, 248 → 250, 570 − 250 = 320; exact 325; Max's is closer (5 vs 75). |
+| A-02 | verified | P12/T12 choices are "Yes. It is close to the estimate." / "No. It is far from the estimate." / "Yes. Any answer with three digits is reasonable."; P12 tip no longer names 700; Learn step 6 states the same rule. Keys unchanged (700, 400; both "No"). |
+| A-03 | verified | P13, T13 and Learn step 5 (a) ✓ choice names no value; distractors number-free. Blank answers 143 / 218 unchanged and correct. (See N-05 on length.) |
+| A-04 | verified | PR2/TR2 ✓ state the range rule (650–749 / 350–449) and PR4/TR4 ✓ "Only numbers from 350 to 449 (750 to 849) round to 400 (800). Some of his/her numbers are outside that range." None names an item number; the select-all still has to be done by rounding. |
+| A-05 | verified | p6 = 87: between 0 and 100, halfway 50, 87 > 50, so 100 (floor(137/100) × 100 = 100). 87 is not a book number (book: 27, 896, 48, 273, 436, 672, 78, 240, 678, 315). |
+| A-06 | verified | t6 stays 781 → 800 (floor(831/100) × 100), so the test keeps a 3-digit round-up to the nearest hundred. (See N-01 for the side effect.) |
+| A-07 | verified | p5 = 418 → 400 (between 400 and 500, halfway 450, before halfway). Choosing Tools question added to the Parent Guide `ask` list. |
+| A-08 | verified | TR1 ✓ "Numbers from 255 to 264 round to 260 (255 is halfway and rounds up)"; PR1 ✓ also changed to "round to". |
+| A-09 | verified | PR3 asks "Why does 75 round to 80 and not to 70?", TR3 "Why does 35 round to 40 and not to 30?"; 75 and 35 are not in their lists. 75 → 80, 35 → 40 correct; ✓ "exactly halfway … rounds up" correct; distractors ("closer to 80", "tens digit is 7/3, so up", "every number with a 5 rounds up") are all false. |
+| A-10 | verified | All eight probe items use the single skill `probe`. |
+| A-11 | verified | P7/T7 stem "… without finding the exact sum"; choices number-free; "Add the two numbers first. Then round the answer you get." is now clearly wrong. Estimates 700 (300 + 400) and 900 (400 + 500) correct; "round each down" gives 600 / 800, so it cannot be confused with the key. |
+| A-12 | verified | P5, P6, T5, T6 and Learn step 4 Your Turn all state "(numbers ending in 00, 25, 50 or 75)". |
+| A-13 | verified | Learn step 5 slides: 560 − 213 → 560 − 210 = 350 (exact 347); 820 − 394 → 820 − 390 = 430; 455 → 460, 29 → 30, 460 − 30 − 30 = 400 (exact 455 − 58 = 397). Your Turn templates include all three; coverage map updated. (See N-03.) |
+| A-14 | verified | Step 6 generator uses a − b half the time with roundTo(a,100) > roundTo(b,100). |
+| A-15 | verified | P10: 318 → 320; 710 − 320 = 390 (exact 710 − 318 = 392). Rounded part and estimate now differ. |
+| A-16 | verified (hint) | Practice hint now "first friend … second friend". The P11 **parent tip** still says "what happens at each stop? How many stops?" (see N-02). |
+| A-17 | verified | Step 2 constraint reads "roundTo(a,10) + roundTo(b,10) ≤ 1,000". |
+| A-18 | verified | New slide: 750 − 300 = 450, 450 − 25 = 425; 375 + 400 = 775, 775 + 50 = 825. First Your Turn: subtraction needs (25k mod 100) ≥ (25m mod 100), addition needs the sum of the last two digits ≤ 75, which is exactly "no regrouping in the last two digits". (See N-04.) |
+| A-19 | verified | Slide: 125 + 215 = 340, 340 + 431 = 771 (no regrouping); other pairs 556 and 646 do not end in 0. Generator's ends-in-0 kind requires exactly one pair ending in 0 and (tens of H) + (tens of z) ≤ 9 with H + z ≤ 999, which guarantees no regrouping. |
+| A-20 | verified | Pair total from {60, 70, 80, 90, 100, 200, 300}, pair position random. Examples: 37 + 63 = 100, + 40 = 140; 26 + 44 = 70, + 300 = 370; 154 + 46 = 200, + 50 = 250. Third-addend rules (z = 20–90 by 10s when P is a multiple of 100; z = 100–600 by 100s otherwise) always avoid regrouping. |
+| A-21 | verified | ✓ choices "Add $435 and $165 first, then add $210." / "Add $255 and $145 first, then add $320."; totals $810 and $720 correct. |
+| A-22 | verified | Vocabulary: "two addends whose sum ends in 0 or 00, like 46 and 54 (100) or 135 and 215 (350)" (135 + 215 = 350 ✓). Step 5 (b) receipt generator has step 3's constraints. |
+
+Unchanged items spot-checked again (2-3 P1–P4, P8, P9, P13, P14, T1–T4, T8–T11, T13, T14; 2-4 P1–P11, P14, T1–T11, T14; probe answer sets): still correct.
+
+### New findings
+
+| id | severity | spec / item | problem | required correction |
+|---|---|---|---|---|
+| N-01 | minor | 2-2 test (PLAN Decision 1 / verification §6) | With t6 kept at 781, no test item rounds a 2-digit number to the nearest hundred (lower hundred 0; book item 7's skill). It is now only in practice (p6 = 87). | Change one other test item to that case, e.g. t9 (explain100Q, 849) → **68 → 100** (past halfway 50), or t5 314 stays and t9 becomes 2-digit. Do not use 78. |
+| N-02 | minor | 2-3 §6 parent tip for P11 | Still says "Ask: what happens at each stop? How many stops?" but P11 is about giving stickers to 2 friends (the residue of A-16). | "Ask: what happens for each friend? How many friends?" |
+| N-03 | minor | 2-3 §5 Step 5 Your Turn (missing-part and two-step templates) | The estimate part's label is "round each number to the nearest [ten/hundred]", with the place chosen at random. For the missing-part template the spec says "round only Y; X is a multiple of 10", and for the two-step template the per-item amount is 2-digit (e.g. 29), which rounds to 0 to the nearest hundred. A random "hundred" makes these questions wrong or confusing. | Fix the place to **ten** for those two templates and use their own labels: "Round Y to the nearest ten." / "Round each number to the nearest ten." |
+| N-04 | minor | 2-3 §5 Step 4 Your Turn generator | The generator can produce the book's own compatible pair 575 − 125 = 450 (e.g. 577 − 124), and the spec cites 575 − 125 as its example. | Add 575/125 to the excluded pairs (alongside the practice, test and slide pairs). |
+| N-05 | minor | 2-4 P13, T13, Learn step 5 (a) | The ✓ choice ("Switch the order. Both sides must have the same two addends, so the blank is the addend missing from that side.", about 105 characters) is roughly twice as long as each distractor, so it can be picked by length. | Shorten the ✓ (e.g. "Switch the order. The same two addends are on both sides.") or lengthen the distractors to match. |
+| N-06 | minor | 2-2 practice p1 vs probe TR3; probe PR3 vs 2-2 test t10 | The new p1 (46 → 50) is also a choice in the Check-Up test TR3 (46 → 50 ✓), and probe practice PR3 includes 85 → 90, the answer to Rounding Test t10 (85 → 90). A practised number reappears in a test with the same answer. | Use a different p1, e.g. **36 → 40** (not 27 or 48, and not in any probe list). Change t10 to another 2-digit halfway number not used in the probe, e.g. **65 → 70** (Leo says 65 rounds to 60). Keep 85 in PR3, since it is the only number that tests "halfway rounds up into 90". |
+
+Re-verification result: **all 22 findings fixed**; **6 new minor findings**, no critical or major ones. Originality holds: no new practice, test or slide number is a book number (checked against pp. 37–50).

@@ -48,7 +48,10 @@ Each batch: shared components → builders (one per lesson, parallel, separate f
 1. **2-2 gaps (from the verification against pp. 37–40):**
    - Practice p6 duplicates book item 6 (672). Replace it with a 2-digit number to the nearest hundred: 87 → 100, where the lower hundred is 0. This covers the skill of book item 7, but 78 itself is the book's number and is not used (review A-05).
    - Test t6 stays 781 → 800, so the test keeps a 3-digit number that rounds up to the nearest hundred (review A-06).
-   - Practice p1 and test t1 become 2-digit numbers on a number line (book item 1).
+   - Practice p1 and test t1 become 2-digit numbers on a number line (book item 1): p1 = 36 → 40 and t1 = 72 → 70. 46 is avoided because it is a Check-Up choice (re-verification N-06).
+   - Test t9 (explain a nearest-hundred result) becomes 68 → 100, so the test keeps a 2-digit number to the nearest hundred (N-01).
+   - Test t10 (halfway claim) becomes 65 → 70 instead of 85, because 85 appears in the Check-Up practice (N-06).
+   - Practice p5 becomes 418 → 400.
    - Practice p12 gets a new name.
    - The "choose all that round to a ten" gap is covered by the rounding probe set (2 below).
    - The Learn examples taken from the book (127, 255, 896, 235–244, 315, $15 + $22 + $12) stay. The owner's 2-2 instructions named them explicitly.
