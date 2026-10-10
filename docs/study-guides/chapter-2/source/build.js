@@ -116,7 +116,7 @@ function linesBlock(b, w, size) {
     tabStops: [{ type: TabStopType.RIGHT, position: tab, leader: 'underscore' }],
     spacing: { before: b.gap ?? 220, after: 40 },
     keepLines: true,
-    children: [...runs(lbl ? `${lbl}: ` : '', { size: size ?? 24 }), new TextRun({ text: '\t', font: FONT, size: size ?? 24 })],
+    children: [...runs(lbl ? (/=$/.test(lbl) ? `${lbl} ` : `${lbl}: `) : '', { size: size ?? 24 }), new TextRun({ text: '\t', font: FONT, size: size ?? 24 })],
   }));
 }
 
@@ -453,7 +453,7 @@ function buildDoc(L) {
 
 function fileName(L) {
   const [a, b] = L.id.split('-');
-  return `Lesson-${a}-${b.padStart(2, '0')}-${L.title.replace(/[^A-Za-z0-9]+/g, '-').replace(/-+$/, '')}`;
+  return `Lesson-${a}-${b.padStart(2, '0')}-${L.title.replace(/(\d),(\d)/g, '$1$2').replace(/[^A-Za-z0-9]+/g, '-').replace(/-+$/, '')}`;
 }
 
 async function main() {

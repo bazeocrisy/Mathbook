@@ -79,13 +79,13 @@ module.exports = {
   ],
   answers: {
     together: [
-      { a: ['Two different trees whose parts add to 258, e.g., **200, 50, 8** and **158, 100**.'], note: 'Accept any 2–4 parts that add to 258, as long as the two trees are different.' },
+      { a: ['Two different trees whose parts add to 258, e.g., **200, 50, 8** and **150, 100, 8**.'], note: 'Accept any 3 parts that add to 258, as long as the two trees use different parts (the same parts in a new order do not count).' },
       { a: ['Tree: 200, 30, 5. 462 − 200 = 262; 262 − 30 = 232; 232 − 5 = 227. Difference: **227**'] },
       { a: ['Way 1: 263 → 200, 60, 3: 541 − 200 = 341; 341 − 60 = 281; 281 − 3 = 278.', 'Way 2: 263 → 241, 22: 541 − 241 = 300; 300 − 22 = 278. Difference: **278**'], note: 'Accept any two correct trees that give 278.' },
     ],
     own: [
-      { a: ['Sample: **400, 80, 6** and **386, 100**'], note: 'Items 1–2: accept any two different trees whose parts add to the number.' },
-      { a: ['Sample: **700, 30, 5** and **635, 100**'] },
+      { a: ['Sample: **400, 80, 6** and **386, 90, 10**'], note: 'Items 1–2: accept any two trees whose parts add to the number. Reordering the same parts is not a different way.' },
+      { a: ['Sample: **700, 30, 5** and **635, 90, 10**'] },
       { a: ['Sample: 241 → 200, 40, 1: 386, 346, **345**.'], note: 'Reason: place-value parts are easy to take away because no regrouping is needed. Accept other correct trees with a sensible reason.' },
       { a: ['Sample: 460 → 428, 32: 728 − 428 = 300; 300 − 32 = **268**. Or 400, 60: 328, **268**.'], note: 'Reason: taking away 428 lands on 300, a friendly number. Accept any sensible reason.' },
       { a: ['**223**  (e.g., 395 − 100 = 295; 295 − 70 = 225; 225 − 2 = 223)'] },

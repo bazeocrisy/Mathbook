@@ -80,7 +80,7 @@ module.exports = {
       { a: ['Add 3 to both: 587 − 300 = **287**. On the number line, both ends slide 3 to the right, so the distance stays 287.'], note: 'Accept any correct same-move adjustment drawn on the line (e.g., 584 − 297 → 587 − 300).' },
       { a: ['Sample: add 2 to both → 347 − 130 = **217**. It is easier because 130 is a friendly number.'], note: 'Accept any same-move adjustment, e.g., 342 − 125 = 217 or 350 − 133 = 217.' },
       { a: ['**Sam (407).** Tia added 1 to both numbers, so her sum is 2 too big. Sam took 1 from 268 and gave it to 139.'] },
-      { a: ['935 − 674. Sample: add 26 to both → 961 − 700 = **261** more books.'], note: 'Also accept 935 − 674 → 931 − 670 = 261 or any correct method.' },
+      { a: ['935 − 674. Sample: take 4 from both → 931 − 670 = **261** more books.'], note: 'Also accept 961 − 700 = 261 (add 26 to both) or any correct method.' },
       { a: ['He added 1 too many (200 instead of 199), so he should subtract 1: 824 − 1 = **823**.'] },
     ],
   },

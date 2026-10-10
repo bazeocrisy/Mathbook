@@ -43,7 +43,7 @@ module.exports = {
   together: [
     { text: 'Break apart each addend. Find the partial sums in a row. Then find the sum.', blocks: [{ psum: { nums: [256, 318], mode: 'row', show: false } }] },
     { text: 'Stack the addends. Find the partial sums. Then find the sum.', blocks: [{ psum: { nums: [427, 165], mode: 'stacked', show: false } }] },
-    { text: 'Kai adds 406 + 237. His partial sums are 600, 30, and 13. Kai says the sum is 600. Do you agree? Explain.', blocks: [{ lines: ['', ''] }] },
+    { text: 'Kai adds 518 + 341. His partial sums are 800, 50, and 9. Kai says the sum is 800. Do you agree? Explain.', blocks: [{ lines: ['', ''] }] },
   ],
   own: [
     { half: true, text: 'Use partial sums in a row.', blocks: [{ psum: { nums: [358, 426], mode: 'row', show: false, width: 4300 }, size: 24 }] },
@@ -58,7 +58,7 @@ module.exports = {
     { text: 'A library lent 186 books on Monday. It lent the same number of books on Tuesday. How many books did it lend in the two days?', blocks: [{ space: 1.0 }, { lines: ['Books'] }] },
     {
       text: 'Find the sum in a different way. The work in a row is shown. Show it stacked.',
-      blocks: [{ row: [[{ psum: { nums: [352, 436], mode: 'row' }, size: 24 }], [{ space: 1.6 }]] }],
+      blocks: [{ row: [[{ psum: { nums: [352, 436], mode: 'row' }, size: 24 }], [{ psum: { nums: [352, 436], mode: 'stacked', show: false }, size: 24 }]] }],
     },
     { text: 'Max adds 457 + 231. He adds 400 + 200 = 600 and writes 457 + 231 = 600. Explain his mistake. What is the correct sum?', blocks: [{ space: 0.4 }, { lines: ['', 'Sum'] }] },
     { text: 'How can you find 213 + 342 + 125 using partial sums? Show your work.', blocks: [{ space: 1.3 }, { lines: ['Sum'] }] },
@@ -67,7 +67,7 @@ module.exports = {
     together: [
       { a: ['200 + 300 = 500;  50 + 10 = 60;  6 + 8 = 14', '500 + 60 + 14 = **574**'] },
       { a: ['400 + 100 = 500;  20 + 60 = 80;  7 + 5 = 12', '500 + 80 + 12 = **592**'] },
-      { a: ['**No.** 600 is only the hundreds partial sum. Add all three: 600 + 30 + 13 = **643**.'] },
+      { a: ['**No.** 800 is only the hundreds partial sum. Add all three: 800 + 50 + 9 = **859**.'] },
     ],
     own: [
       { a: ['300 + 400 = 700;  50 + 20 = 70;  8 + 6 = 14;  sum **784**'], note: 'Items 1–4: the two numbers on each line may be in either order.' },

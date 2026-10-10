@@ -146,7 +146,9 @@ function hopLine({ points, hops, width = 640, height = 110, min, max }) {
   const y = 72;
   const lo = min ?? Math.min(...points.map(p => p.v));
   const hi = max ?? Math.max(...points.map(p => p.v));
-  const px = v => pad + ((v - lo) / (hi - lo)) * (width - 2 * pad);
+  const scale = v => pad + ((v - lo) / (hi - lo)) * (width - 2 * pad);
+  const at = new Map(points.filter(p => p.at !== undefined).map(p => [p.v, pad + p.at * (width - 2 * pad)]));
+  const px = v => (at.has(v) ? at.get(v) : scale(v));
   let s = `<line x1="${pad - 20}" y1="${y}" x2="${width - pad + 20}" y2="${y}" stroke="${INK}" stroke-width="2"/>`;
   for (const p of points) {
     s += `<line x1="${px(p.v)}" y1="${y - 9}" x2="${px(p.v)}" y2="${y + 9}" stroke="${INK}" stroke-width="2"/>`;
@@ -277,9 +279,52 @@ function openLine(width = 600) {
   return { svg: svgDoc(width, 60, s), w: width, h: 60 };
 }
 
+// ---------- Bar diagram (Lessons 2-9, 2-12) ----------
+// Whole bar on top; part bar below (left-aligned) with a dashed "?" bracket to the end.
+function barDiagram({ whole = '', part = '', frac = 0.45, q = '?', width = 520 }) {
+  const x0 = 10, W = width - 20, h = 40, y1 = 8, y2 = y1 + h + 18;
+  const pw = W * frac;
+  let s = `<rect x="${x0}" y="${y1}" width="${W}" height="${h}" fill="#e6e6e6" stroke="${INK}" stroke-width="2"/>`;
+  s += text(x0 + W / 2, y1 + h / 2 + 8, whole, 22, 'middle', 'bold');
+  s += `<rect x="${x0}" y="${y2}" width="${pw}" height="${h}" fill="#e6e6e6" stroke="${INK}" stroke-width="2"/>`;
+  s += text(x0 + pw / 2, y2 + h / 2 + 8, part, 22, 'middle', 'bold');
+  const ym = y2 + h / 2;
+  s += `<line x1="${x0 + pw}" y1="${ym}" x2="${x0 + W}" y2="${ym}" stroke="${INK}" stroke-width="1.8" stroke-dasharray="7 5"/>`;
+  s += `<line x1="${x0 + W}" y1="${ym - 12}" x2="${x0 + W}" y2="${ym + 12}" stroke="${INK}" stroke-width="2"/>`;
+  s += `<rect x="${x0 + pw + (W - pw) / 2 - 16}" y="${ym - 14}" width="32" height="26" fill="#fff"/>`;
+  s += `<text x="${x0 + pw + (W - pw) / 2}" y="${ym + 8}" font-family="${FONT}" font-size="22" font-weight="bold" ${/^[a-z]$/.test(q) ? 'font-style="italic" ' : ''}text-anchor="middle" fill="${INK}">${q}</text>`;
+  return { svg: svgDoc(width, y2 + h + 8, s), w: width, h: y2 + h + 8 };
+}
+
+// Part-part-whole bar with a dashed bracket for the whole (above or below).
+function ppwBar({ parts, sizes = null, whole = '', bracket = 'above', caption = '', width = 480 }) {
+  const x0 = 10, W = width - 20, h = 40;
+  const sz = sizes || parts.map(() => 1);
+  const tot = sz.reduce((a, c) => a + c, 0);
+  const ws = sz.map(v => Math.max(W * 0.18, W * v / tot));
+  const k = W / ws.reduce((a, c) => a + c, 0);
+  const capH = caption ? 24 : 0;
+  const yBar = bracket === 'above' ? 40 + capH : 8;
+  const yBr = bracket === 'above' ? 22 + capH : yBar + h + 20;
+  let s = '', x = x0;
+  parts.forEach((p, i) => {
+    const w = ws[i] * k;
+    s += `<rect x="${x}" y="${yBar}" width="${w}" height="${h}" fill="${p === '' ? '#fff' : '#e6e6e6'}" stroke="${INK}" stroke-width="2"/>`;
+    s += text(x + w / 2, yBar + h / 2 + 8, String(p), 22, 'middle', 'bold');
+    x += w;
+  });
+  s += `<line x1="${x0}" y1="${yBr}" x2="${x0 + W}" y2="${yBr}" stroke="${INK}" stroke-width="1.8" stroke-dasharray="7 5"/>`;
+  s += `<line x1="${x0}" y1="${yBr - 10}" x2="${x0}" y2="${yBr + 10}" stroke="${INK}" stroke-width="2"/><line x1="${x0 + W}" y1="${yBr - 10}" x2="${x0 + W}" y2="${yBr + 10}" stroke="${INK}" stroke-width="2"/>`;
+  s += `<rect x="${x0 + W / 2 - 18}" y="${yBr - 13}" width="36" height="26" fill="#fff"/>`;
+  s += `<text x="${x0 + W / 2}" y="${yBr + 8}" font-family="${FONT}" font-size="22" font-style="italic" font-weight="bold" text-anchor="middle" fill="${INK}">${whole}</text>`;
+  if (caption) s += text(x0 + W / 2, 18, caption, 17);
+  const H = bracket === 'above' ? yBar + h + 8 : yBr + 16;
+  return { svg: svgDoc(width, H, s), w: width, h: H };
+}
+
 function toPng(svg, scale = 3) {
   const r = new Resvg(svg, { fitTo: { mode: 'zoom', value: scale }, font: { loadSystemFonts: true, defaultFontFamily: FONT } });
   return r.render().asPng();
 }
 
-module.exports = { baseTen, numberLine, hopLine, groupV, pairsJoin, tree, slideLine, openLine, toPng, svgDoc, text };
+module.exports = { baseTen, numberLine, hopLine, groupV, pairsJoin, tree, slideLine, openLine, barDiagram, ppwBar, toPng, svgDoc, text };

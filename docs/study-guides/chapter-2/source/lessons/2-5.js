@@ -66,7 +66,7 @@ module.exports = {
     pattern('even + ________ = odd'),
     pattern('odd + ________ = odd'),
     pattern('________ + odd = even'),
-    pattern('odd + odd = ________'),
+    pattern('________ = odd + odd'),
     { half: true, text: 'Find the sum. Use a pattern to check your answer.', blocks: [{ p: '352 + 417 = ________', size: 28 }, { space: 0.6 }] },
     { half: true, text: 'Find the sum. Use a pattern to check your answer.', blocks: [{ p: '263 + 525 = ________', size: 28 }, { space: 0.6 }] },
     { text: 'Why is the sum of a number with a **5** in the ones place and a number with a **2** in the ones place always odd?', blocks: [{ lines: ['', ''] }] },
@@ -80,7 +80,7 @@ module.exports = {
       { a: ['**No.** The pattern is right (the sum should be odd), but 243 + 316 = **559**, not 549.'], note: 'A sum can match the pattern and still be wrong. You have to add to be sure.' },
     ],
     own: [
-      { a: ['**odd**. Samples: 214 + 133 = 347; 405 + 122 = 527'], note: 'For items 1–6, accept any 3-digit equations that fit the pattern and are added correctly.' },
+      { a: ['**odd**. Samples: 347 = 133 + 214; 527 = 405 + 122'], note: 'For items 1–6, accept any 3-digit equations that fit the pattern and are added correctly.' },
       { a: ['**even**. Samples: 312 + 124 = 436; 250 + 406 = 656'] },
       { a: ['**odd**. Samples: 132 + 215 = 347; 400 + 301 = 701'] },
       { a: ['**even**. Samples: 213 + 104 = 317; 121 + 340 = 461'] },
