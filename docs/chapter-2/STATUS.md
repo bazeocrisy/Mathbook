@@ -17,7 +17,7 @@ Finish and verify the shared components, then complete **Lesson 2-3 only** (one 
 | 2-1 Represent 4-Digit Numbers | 33–36 | ✅ | ✅ | ✅ | ✅ | ✅ | Locked design reference | — |
 | 2-2 Round Multi-Digit Numbers | 37–40 | ✅ | ✅ | ⏳ re-check against the real pages | ✅ | ✅ (PR #8) | Content was written before the textbook was available | Curriculum + math review vs pp. 37–40 |
 | Rounding extension (Math Probe: Rounding Numbers) | 41–42 | ✅ spec reviewed + re-verified | — | — | — | — | | Build (after shared components) |
-| 2-3 Estimate Sums and Differences | 43–46 | ✅ spec reviewed + re-verified | ✅ | ✅ 0 critical / 1 major (L23-09) / 8 minor; all fixed and re-verified except L23-04 (deferred) | ✅ npm test 67/67; browser 2-3 122/122 | ✅ (main c755418) | L23-04 deferred: "Practice this skill" opens the whole Set 1 (engine enhancement) | — (stopped here per owner scope) |
+| 2-3 Estimate Sums and Differences | 43–46 | ✅ spec reviewed + re-verified | ✅ | ✅ 0 critical / 1 major / 10 minor (L23-01 … L23-11); all fixed and re-verified | ✅ npm test 67/67; browser 2-3 122/122, skill practice 71/71 | ✅ (main 567997f) | **Complete.** L23-04 closed | — |
 | 2-4 Use Addition Properties to Add | 47–50 | ✅ spec reviewed + re-verified | — | — | — | — | | Build (after shared components) |
 | 2-5 Addition Patterns | 51–54 | ✅ spec reviewed + re-verified | — | — | — | — | | Build (after shared components) |
 | 2-6 Use Partial Sums to Add | 55–58 | ✅ spec reviewed + re-verified | — | — | — | — | | Build (after shared components) |
@@ -51,11 +51,12 @@ Legend: ✅ done · ⏳ in progress · — not started · ❌ blocked
 | Independent math & teaching reviewer D | general-purpose subagent | Batch D/E plan review vs pp. 83–100 | Done — reviews/batch-D-plan-review.md; fixes re-verified (leftovers → Decision 28) |
 | Design agent | general-purpose subagent | DESIGN.md: global patterns, shared models, Batch A screens | Done (DESIGN.md; decisions 23–27) |
 | Builder (Lesson 2-3) | general-purpose subagent, worktree ../Mathbook-23, branch claude/lesson-2-3 | Lesson 2-3 build + review fixes | Done (ecfce0d, 4142219, 0a881a0) |
-| Independent reviewer (Lesson 2-3) | general-purpose subagent | Build review + 2 re-verifications | Done — reviews/lesson-2-3-review.md |
+| Independent reviewer (Lesson 2-3) | general-purpose subagent | Build review + 2 re-verifications; L23-04 fix review + re-verification | Done — reviews/lesson-2-3-review.md |
 | Builder (shared components) | general-purpose subagent, worktree ../Mathbook-shared, branch claude/ch2-shared | figures.js F1–F10, chain, vcalc, parts additions, engine additions, component tests | Done; merged (21c157d) and re-verified by the coordinator: npm test 54/54, components 52/52, 2-1 198/198, 2-2 96/96, Number Words 64/64 |
 
 ## Log
 
+- 2026-10-10 — **Lesson 2-3 complete.** L23-04 fixed: "Practice this skill" opens only that skill (`#practice/skill-<skill>`, opt-in `skillPractice` engine option, saved apart as `skill-practice`), plus "Practice all 14 questions". Independent review: 0 critical / 0 major / 2 minor (L23-10 damaged saved data, L23-11 skill name in the heading), both fixed and re-verified. All suites green (unit 67; browser 2-1 198, 2-2 96, 2-3 122, skill practice 71, Number Words 64, components 52). Merged to main (567997f); the skill-practice browser test passed 71/71 against the live site; home, 2-1, 2-2 load with no errors. Stopped; 2-4 not started.
 - 2026-10-10 — Resumed after a computer restart. Committed the reviewer's harness fix (Chrome closes reliably on Windows) and the 2-3 review. Re-ran everything: npm test 67/67; browser 2-1 198, 2-2 96, 2-3 122, Number Words 64, components 52; no leftover Chrome. Merged to main (c755418); Pages deployed; live check at 390 and 1366 px: home, 2-1, 2-2, 2-3 menu and Estimation Test load, no sideways scroll, no JavaScript errors. Scope complete; stopping.
 - 2026-10-10 — Shared components merged and verified (21c157d). 2-3 builder starting (worktree ../Mathbook-23, branch claude/lesson-2-3).
 - 2026-10-10 — Owner narrowed scope: shared components + 2-3 only, then stop. No lesson builders had started.
