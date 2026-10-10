@@ -76,6 +76,22 @@
   function start(L, opts) {
     opts = opts || {};
     const store = shell.makeStore(L.storageKey);
+    /** Saved skill practice, keeping only well-formed records (a damaged one is dropped, never breaking the full sets). */
+    function loadSkillBank() {
+      const v = store.get('skill-practice', {});
+      const out = {};
+      if (!v || typeof v !== 'object' || Array.isArray(v)) return out;
+      const known = (id) => L.bank && L.bank.some((q) => q.id === id);
+      const list = (x) => Array.isArray(x) && x.every((r) => r && typeof r === 'object' && Array.isArray(r.order) && r.order.every(known) && Array.isArray(r.correct));
+      Object.keys(v).forEach((k) => {
+        const st = v[k];
+        if (!st || typeof st !== 'object' || !list(st.attempts) || !list(st.retries)) return;
+        const a = st.active;
+        if (a && (typeof a !== 'object' || !Array.isArray(a.order) || !a.order.length || !a.order.every(known) || !a.responses || typeof a.responses !== 'object')) st.active = null;
+        out[k] = st;
+      });
+      return out;
+    }
     const S = {
       see: { ex: 0, step: 0 },
       builder: digitsOf(L.seeIt.builderStart || 0),
@@ -86,7 +102,7 @@
       vocabStates: {},
       vocabItems: L.vocabPractice ? L.vocabPractice(shell.newSeed()) : [],
       bank: store.get('bank-sets', {}),
-      skillBank: store.get('skill-practice', {}),
+      skillBank: loadSkillBank(),
       openSet: store.get('bank-open', null),
       activeTest: null,
       pendingStart: null,
@@ -640,7 +656,7 @@
       S.openSet = id;
       saveBank();
       main.innerHTML = (set.skillOnly
-        ? ctx.hero(lessonEyebrow(), 'Practice One Skill', esc(set.blurb)) +
+        ? ctx.hero(lessonEyebrow(), esc(set.title), `<span class="skill-banner-tag">Practicing one skill</span> ${esc(set.blurb)}`) +
           `<section class="card activity-card"><div id="indep"></div></section>` + menuNav('#results', 'My Results')
         : ctx.hero(lessonEyebrow(), `Set ${L.bankSets.indexOf(set) + 1}: ${esc(set.title)}`, esc(set.blurb)) +
           `<section class="card activity-card"><div id="indep"></div></section>` + menuNav('#practice/own', 'Choose a set'));
@@ -673,7 +689,7 @@
     const setState = (id) => { const B = isSkillId(id) ? S.skillBank : S.bank; return B[id] || (B[id] = { attempts: [], retries: [], active: null }); };
     const saveBank = () => {
       store.set('bank-sets', S.bank); store.set('bank-open', S.openSet);
-      if (Object.keys(S.skillBank).length) store.set('skill-practice', S.skillBank);
+      if (S.skillBank && Object.keys(S.skillBank).length) store.set('skill-practice', S.skillBank);
     };
 
     // ----- Skill practice (lessons with skillPractice: true) -----
@@ -689,7 +705,7 @@
       const ids = skillIds(skill);
       if (!ids.length || !L.skills[skill]) return null;
       return { id, skill, skillOnly: true, ids, title: L.skills[skill],
-        blurb: `Only the ${plural(ids.length, 'question')} for this skill. Answer, then check your work. No hints until you check.` };
+        blurb: `${ids.length === 1 ? 'Just 1 question' : `${ids.length} questions`} on this skill. Answer, then check your work. No hints until you check.` };
     }
 
     /** Start a new attempt at a whole set, in a new random order (each question once). */
@@ -759,7 +775,7 @@
       const parent = isRetry ? st.attempts.find((a) => a.id === A.parentId) : null;
       const attemptNo = isRetry ? null : (checked ? st.attempts.findIndex((a) => a.id === A.attemptId) + 1 : st.attempts.length + 1);
       let title = isRetry ? `${name} — Practice My Misses (${plural(qs.length, 'question')})` : `${name} — attempt ${attemptNo}`;
-      let intro = (set.skillOnly ? `<p class="skill-banner"><span class="skill-banner-tag">Practicing one skill</span> <b>${esc(set.title)}</b></p>` : '') + (isRetry
+      let intro = (isRetry
         ? `<p class="parent-tip"><b>On your own:</b> these are the questions missed before. Answer them again without help. Explanations appear after you check.</p>`
         : '');
       let score = '';
@@ -1050,7 +1066,7 @@
 
     function cleared() {
       if (!store.get('attempts', null)) forgetProgress(); // a confirmed reset (Cancel leaves the attempts in place)
-      else { S.bank = store.get('bank-sets', {}); S.skillBank = store.get('skill-practice', {}); S.view = null; S.unsaved = null; }
+      else { S.bank = store.get('bank-sets', {}); S.skillBank = loadSkillBank(); S.view = null; S.unsaved = null; }
       resultsView();
     }
 

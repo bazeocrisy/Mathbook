@@ -79,14 +79,14 @@ try {
     await b.load(URL + '#results'); await b.reload(); await wait(200);
     await js(`document.querySelector('[data-practice="${item.skill}"]').click();`); await wait(250);
     const r = await js(`${H}
-      const banner = (document.querySelector('.skill-banner') || {}).innerText || '';
+      const banner = document.querySelector('.hero').innerText;
       const h1 = document.querySelector('h1').textContent; const c0 = count(); const hash = location.hash;
       const ids = await answerAll([]);
       return { hash, h1, banner, c0, ids, skills: ids.map((id) => bq(id).skill), score: (document.querySelector('.set-score') || {}).innerText || '', title: (document.querySelector('.set-title') || {}).textContent,
         again: (document.querySelector('#set-again') || {}).textContent, full: (document.querySelector('#choose-set') || {}).textContent };`);
     const n = res.bankCounts[item.skill];
     check(`skill ${item.skill}: opens #practice/skill-${item.skill}, shows "${item.name}", Question 1 of ${n}`,
-      r.hash === `#practice/skill-${item.skill}` && r.h1 === 'Practice One Skill' && r.banner.includes(item.name) && /Practicing one skill/i.test(r.banner) && r.c0 === `Question 1 of ${n}`, r);
+      r.hash === `#practice/skill-${item.skill}` && r.h1 === item.name && r.banner.includes(item.name) && new RegExp(n === 1 ? 'Just 1 question on this skill' : n + ' questions on this skill').test(r.banner) && /Practicing one skill/i.test(r.banner) && r.c0 === `Question 1 of ${n}`, r);
     check(`skill ${item.skill}: only its ${n} question(s), each once`, r.ids.length === n && new Set(r.ids).size === n && r.skills.every((s) => s === item.skill), r.ids);
     check(`skill ${item.skill}: all right → ${n} of ${n} correct; titled with the skill; full set offered`,
       new RegExp(`^${n} of ${n} correct`).test(r.score) && /^Skill practice — attempt 1/.test(r.title) && r.banner.includes(item.name) && r.again === 'Practice this skill again' && r.full === 'Practice all 14 questions', r);
@@ -121,7 +121,7 @@ try {
   await js(`document.querySelector('[data-practice="round100"]').click();`); await wait(250);
   const mid = await js(`${H} const id = curId(); fill(one(), bq(id), true); const v = one().querySelector('input').value; document.querySelector('[data-q="next"]').click(); return { id, v, c: count() };`);
   await b.reload(); await wait(250);
-  const resumed = await js(`${H} const c = count(); const hash = location.hash; const banner = document.querySelector('.skill-banner').innerText;
+  const resumed = await js(`${H} const c = count(); const hash = location.hash; const banner = document.querySelector('.hero').innerText;
     document.querySelector('[data-q="prev"]').click(); await sleep(50);
     return { c, hash, banner, back: curId(), v: one().querySelector('input').value };`);
   check('refresh: stays in the round100 skill on Question 2 of 2, banner still shown', resumed.c === 'Question 2 of 2' && resumed.hash === '#practice/skill-round100' && /nearest 100/.test(resumed.banner), resumed);
@@ -133,7 +133,7 @@ try {
   // ----- The normal full set is unchanged and continues where it was -----
   await b.load(URL + '#results'); await b.reload(); await wait(200);
   await js(`document.querySelector('[data-fullset]').click();`); await wait(250);
-  const full = await js(`${H} return { hash: location.hash, c: count(), banner: !!document.querySelector('.skill-banner'), h1: document.querySelector('h1').textContent, answered: Object.keys(get('bank-sets').s1.active.responses).length };`);
+  const full = await js(`${H} return { hash: location.hash, c: count(), banner: !!document.querySelector('.skill-banner-tag'), h1: document.querySelector('h1').textContent, answered: Object.keys(get('bank-sets').s1.active.responses).length };`);
   check('"Practice all 14 questions" continues the full set at Question 4 of 14 with its 3 answers', full.hash === '#practice/s1' && full.c === 'Question 4 of 14' && !full.banner && /Set 1: Estimation Practice/.test(full.h1) && full.answered === 3, full);
   const fullDone = await js(`${H} await answerAll([]); return document.querySelector('.set-score').innerText;`);
   check('the full set grades all 14 on its own', /^14 of 14 correct/.test(fullDone), fullDone);
@@ -159,6 +159,20 @@ try {
     if (w === 1920 || w === 390) await b.shot(`tests/screenshots/2-3-results-skills-${w}.png`);
   }
   await b.viewport(1366, 768, false);
+
+  // ----- Damaged saved skill practice never breaks the full set or the skill screens (L23-10) -----
+  const bad = { null: 'null', array: '[]', string: '"x"', number: '5', badOrder: JSON.stringify({ 'skill-round100': { attempts: [], retries: [], active: { kind: 'set', order: ['zz'], responses: {}, checked: false } } }),
+    badRecord: JSON.stringify({ 'skill-round100': 7, 'skill-round10': { attempts: 'x', retries: [] } }) };
+  for (const [name, val] of Object.entries(bad)) {
+    await b.load(server.origin + BASE); await js(`localStorage.setItem('${KEY}:skill-practice', ${JSON.stringify(val)});`); await b.reload(); await wait(150);
+    await b.load(URL + '#practice/s1'); await b.reload(); await wait(200);
+    const fullOk = await js(`return /Set 1: Estimation Practice/.test(document.querySelector('h1').textContent) && (/Question \d+ of 14/.test((document.querySelector('.q-count') || {}).textContent || '') || /of 14 correct/.test((document.querySelector('.set-score') || {}).textContent || ''))`);
+    await b.load(URL + '#practice/skill-round100'); await b.reload(); await wait(200);
+    const r = await js(`${H} if (!one()) return { text: text().slice(0, 300), store: localStorage.getItem('${KEY}:skill-practice') }; const c0 = count(); fill(one(), bq(curId()), true); document.querySelector('[data-q="next"]').click(); return { c0, c1: count() };`);
+    await b.reload(); await wait(200);
+    const kept = await js(`return (document.querySelector('.q-count') || {}).textContent`);
+    check(`damaged skill-practice (${name}): full set works; skill starts fresh, saves and resumes`, fullOk && r.c0 === 'Question 1 of 2' && r.c1 === 'Question 2 of 2' && kept === 'Question 2 of 2', { fullOk, r, kept });
+  }
 
   // ----- Reset Lesson Progress erases skill practice too, and nothing else -----
   await b.load(URL + '#teach'); await b.reload(); await wait(200);
