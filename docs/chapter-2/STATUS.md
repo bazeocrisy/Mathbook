@@ -8,7 +8,7 @@ Single source of truth for Chapter 2 progress. Updated by the coordinator after 
 
 ## Current scope (owner, 2026-10-10, updated)
 
-Lesson 2-3 is **locked as complete**. Then build **Lesson 2-4 only** (one builder, one independent reviewer, the existing automated checks plus skill practice), publish, verify live, and stop. Everything else stays planned and saved for later. All specs, design and review findings are kept.
+Lessons 2-3 and 2-4 are complete. Then build **Lesson 2-5 only** (one builder, one independent reviewer, the existing automated checks plus skill practice), publish, verify live, and stop before 2-6. Owner decision for 2-5: the even/odd word question and its written equation are separate, connected questions (same pattern, same example, separate skills); Learn completes only when both are right; no new question type and no engine expansion for this. Everything else stays planned and saved for later.
 
 ## Lessons
 
@@ -19,7 +19,7 @@ Lesson 2-3 is **locked as complete**. Then build **Lesson 2-4 only** (one builde
 | Rounding extension (Math Probe: Rounding Numbers) | 41–42 | ✅ spec reviewed + re-verified | — | — | — | — | | Build (after shared components) |
 | 2-3 Estimate Sums and Differences | 43–46 | ✅ spec reviewed + re-verified | ✅ | ✅ 0 critical / 1 major / 10 minor (L23-01 … L23-11); all fixed and re-verified | ✅ npm test 67/67; browser 2-3 122/122, skill practice 71/71 | ✅ (main 567997f) | **Complete (locked).** L23-04 closed | — |
 | 2-4 Use Addition Properties to Add | 47–50 | ✅ spec reviewed + re-verified | ✅ | ✅ 0 critical / 1 major (L24-01) / 6 minor; all fixed and re-verified (L24-05 avoided in 2-4; the shared-engine part stays open) | ✅ npm test 77/77; browser 2-4 109/109, skill practice 62/62 | ✅ (main 53d7f30) | **Complete.** | — |
-| 2-5 Addition Patterns | 51–54 | ✅ spec reviewed + re-verified | — | — | — | — | | Build (after shared components) |
+| 2-5 Addition Patterns | 51–54 | ✅ spec reviewed + re-verified | ✅ | ✅ 0 critical / 1 major (L25-05) / 6 minor (L25-01…L25-07); all fixed and re-verified | ✅ npm test 87/87; browser 2-5 122/122, skill practice 68/68 | ✅ (main 927b8c2) | **Complete.** 6 Learn steps (word, then equation for the same pattern) | — |
 | 2-6 Use Partial Sums to Add | 55–58 | ✅ spec reviewed + re-verified | — | — | — | — | | Build (after shared components) |
 | 2-7 Decompose to Subtract | 59–62 | ✅ spec reviewed + re-verified | — | — | — | — | | Build (after shared components) |
 | 2-8 Adjust Numbers to Add or Subtract | 63–66 | ✅ spec reviewed + re-verified | — | — | — | — | | Build (after shared components) |
@@ -50,6 +50,8 @@ Legend: ✅ done · ⏳ in progress · — not started · ❌ blocked
 | Independent math & teaching reviewer C | general-purpose subagent | Batch C plan review vs pp. 67–82 | Done — reviews/batch-C-plan-review.md; fixes re-verified (leftovers → Decision 28) |
 | Independent math & teaching reviewer D | general-purpose subagent | Batch D/E plan review vs pp. 83–100 | Done — reviews/batch-D-plan-review.md; fixes re-verified (leftovers → Decision 28) |
 | Design agent | general-purpose subagent | DESIGN.md: global patterns, shared models, Batch A screens | Done (DESIGN.md; decisions 23–27) |
+| Builder (Lesson 2-5) | coordinator (this session), worktree ../Mathbook-25, branch claude/lesson-2-5 | Lesson 2-5 build, owner's pairing, review fixes | Done (364eb0f, ae56b7f, 86419dd, 87e3cfd) |
+| Independent reviewer (Lesson 2-5) | general-purpose subagent | Build review + 2 re-verifications | Done — reviews/lesson-2-5-review.md |
 | Builder (Lesson 2-4) | coordinator (this session), worktree ../Mathbook-24, branch claude/lesson-2-4 | Lesson 2-4 build + review fixes | Done (353a40f, d0a3e14, ddd5a0e) |
 | Independent reviewer (Lesson 2-4) | general-purpose subagent | Build review + 2 re-verifications | Done — reviews/lesson-2-4-review.md |
 | Builder (Lesson 2-3) | general-purpose subagent, worktree ../Mathbook-23, branch claude/lesson-2-3 | Lesson 2-3 build + review fixes | Done (ecfce0d, 4142219, 0a881a0) |
@@ -58,6 +60,7 @@ Legend: ✅ done · ⏳ in progress · — not started · ❌ blocked
 
 ## Log
 
+- 2026-10-10 — **Lesson 2-5 complete.** Built from the reviewed spec (pp. 51–54) with pairs pictures (counters `pairs`/`join`): 6 Learn steps (even or odd; even + even and odd + odd; even + odd and cube trains, start 4–20 never 7/11/15 per PLAN decision 28; the ones digits decide (word question); write an equation for the same pattern; check a sum), Practice Together 13, On My Own 19, Addition Patterns Test 14, skill practice on. Owner decision: each pattern is a word question (skill `rules`) and a connected equation question (skill `write`, chain preset `free`) with the same example; Learn step 5 uses step 4's sentence and unlocks only after it. Independent review: 0 critical / 1 major (L25-05 O18 key) / 6 minor; all fixed and re-verified. Shared fixes it exposed (no other lesson changes): blanks in part labels draw as the blank box (L25-02); Home Continue counts written-equation answers and no longer counts an empty select-all (L25-04). A full background browser run was once stopped for low memory; suites were then run one at a time. Suites: unit 87; browser 2-1 + home 198, 2-2 96, 2-3/2-4/2-5 349, skill practice 71/62/68, Number Words 64, components 52. Merged to main (927b8c2); live: 2-5 journey 122/122, 2-5 skill practice 68/68, 2-4 journey 109/109, home + 2-1 198/198; no JavaScript errors. Stopped; 2-6 not started.
 - 2026-10-10 — **Lesson 2-4 complete.** Built from the reviewed spec (pp. 47–50): 5 Learn steps (switch the order, group the addends, friendly pair, same addends same total, add more efficiently), Practice Together 14 + 2 explain, On My Own 14, Addition Properties Test 14, skill practice on. Independent review: 0 critical / 1 major (L24-01 position shortcut) / 6 minor (L24-02…L24-07); all fixed and re-verified. Suites: unit 77; browser 2-1 198, 2-2 96, 2-3 + 2-4 229, skill practice 2-3 71 / 2-4 62, Number Words 64, components 52. Merged to main (53d7f30); live: 2-4 journey 109/109 and skill practice 62/62 against the live site; home, 2-1, 2-2, 2-3 load with no errors. Lesson 2-3 locked. Stopped; 2-5 not started.
 - 2026-10-10 — **Lesson 2-3 complete.** L23-04 fixed: "Practice this skill" opens only that skill (`#practice/skill-<skill>`, opt-in `skillPractice` engine option, saved apart as `skill-practice`), plus "Practice all 14 questions". Independent review: 0 critical / 0 major / 2 minor (L23-10 damaged saved data, L23-11 skill name in the heading), both fixed and re-verified. All suites green (unit 67; browser 2-1 198, 2-2 96, 2-3 122, skill practice 71, Number Words 64, components 52). Merged to main (567997f); the skill-practice browser test passed 71/71 against the live site; home, 2-1, 2-2 load with no errors. Stopped; 2-4 not started.
 - 2026-10-10 — Resumed after a computer restart. Committed the reviewer's harness fix (Chrome closes reliably on Windows) and the 2-3 review. Re-ran everything: npm test 67/67; browser 2-1 198, 2-2 96, 2-3 122, Number Words 64, components 52; no leftover Chrome. Merged to main (c755418); Pages deployed; live check at 390 and 1366 px: home, 2-1, 2-2, 2-3 menu and Estimation Test load, no sideways scroll, no JavaScript errors. Scope complete; stopping.
@@ -71,7 +74,7 @@ Legend: ✅ done · ⏳ in progress · — not started · ❌ blocked
 ## Saved for later (not started)
 
 - Shared engine (L24-05): `partsTip` in assets/js/questions.js strips a trailing ":" or "?" from a part label but not ".", so a label ending in "." prints a doubled period in "Look again at: …". 2-4 avoids it; 2-3's "Choose the best way." label still shows it. One-character fix (`/[:?.]$/`), left for an engine batch so completed lessons are not changed.
-- Lessons 2-5 … 2-15, Unit Review, Performance Task, Fluency: specs reviewed and ready (docs/chapter-2/lessons/).
+- Lessons 2-6 … 2-15, Unit Review, Performance Task, Fluency: specs reviewed and ready (docs/chapter-2/lessons/).
 - 2-2 fixes + Rounding Check-Up (PLAN Decision 1–2, spec 2-2-verification.md §6 and 2-2-probe.md).
 - Note for 2-7: the shared `chain` steps preset rejects a 0 part; the reviewed 2-7 spec (B-01) says ignore 0/blank parts when ≥2 non-zero parts remain — adjust the preset when 2-7 is built.
 - Shared-components builder notes: F8 wide-label callout not built (segments have an 18% minimum width); optional desktop figure-left layout not built.
