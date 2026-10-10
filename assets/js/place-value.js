@@ -295,7 +295,16 @@
    *   below: [{ v, text, cls }] labels under the line, point: { v, text } marked above the line,
    *   go: { from, to } arrow along the line, band: { from, to } shaded stretch, label (accessible description), caption }
    */
+  /**
+   * Chapter 2 extensions (all optional; a cfg without them draws exactly what it always did):
+   *   points: [{ v, text, cls }]  several dots, labels above (alternating below when two are within 12%)
+   *   hops:   [{ from, to, text }] arcs above the line (right = solid primary, left = dashed red, label always signed)
+   *   open: true, marks: [37, 40, 85]  open line: no scale ticks, a tick and label at each mark, 12% minimum gaps
+   *   bands:  [{ from, to, text }] several shaded stretches, each labelled under the line
+   */
   function numberLineHTML(cfg) {
+    const ext = cfg.points || cfg.hops || cfg.open || cfg.bands;
+    if (ext) return numberLineExt(cfg);
     const pos = (v) => ((v - cfg.min) / (cfg.max - cfg.min)) * 100;
     const at = (v) => `left:${pos(v).toFixed(3)}%`;
     // Labels near the ends are aligned inward so they never run off the line.
@@ -311,6 +320,102 @@
     }
     if (cfg.point) html += `<span class="nline-dot" style="${at(cfg.point.v)}" aria-hidden="true"></span><span class="nline-point${edge(cfg.point.v)}" style="${at(cfg.point.v)}" aria-hidden="true">${cfg.point.text}</span>`;
     (cfg.below || []).forEach((l) => { html += `<span class="nline-label${edge(l.v)} ${l.cls || ''}" style="${at(l.v)}" aria-hidden="true">${l.text}</span>`; });
+    html += `</div>${cfg.caption ? `<figcaption class="nline-caption">${cfg.caption}</figcaption>` : ''}</figure>`;
+    return html;
+  }
+
+  function escText(s) {
+    return String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  }
+
+  /** Number line with several points, hop arcs, an open (unscaled) layout, or several bands. */
+  function numberLineExt(cfg) {
+    let pos;
+    const marks = cfg.open ? (cfg.marks || []).slice().sort((a, b) => a - b) : null;
+    if (cfg.open && marks.length >= 2) {
+      // Proportional positions inside 4%–96%, stretched so neighbouring marks are at least 12% apart (the line is a sketch).
+      const span = marks[marks.length - 1] - marks[0] || 1;
+      const raw = marks.slice(1).map((m, i) => ((m - marks[i]) / span) * 92);
+      const minGap = Math.min(12, 92 / raw.length);
+      // Short gaps are stretched to exactly the minimum; the rest share what is left in proportion.
+      const fixed = raw.map((g) => g < minGap);
+      let gaps = raw;
+      for (let k = 0; k <= raw.length; k++) {
+        const free = raw.reduce((a, g, i) => a + (fixed[i] ? 0 : g), 0);
+        const room = 92 - minGap * fixed.filter(Boolean).length;
+        gaps = raw.map((g, i) => (fixed[i] ? minGap : (g * room) / (free || 1)));
+        const more = gaps.map((g, i) => !fixed[i] && g < minGap);
+        if (!more.some(Boolean)) break;
+        more.forEach((m, i) => { if (m) fixed[i] = true; });
+      }
+      const P = [4];
+      gaps.forEach((g) => P.push(P[P.length - 1] + g));
+      pos = (v) => {
+        if (v <= marks[0]) return P[0];
+        for (let i = 1; i < marks.length; i++) if (v <= marks[i]) return P[i - 1] + ((v - marks[i - 1]) / ((marks[i] - marks[i - 1]) || 1)) * (P[i] - P[i - 1]);
+        return P[P.length - 1];
+      };
+    } else {
+      const min = cfg.min !== undefined ? cfg.min : (marks ? marks[0] - 1 : 0);
+      const max = cfg.max !== undefined ? cfg.max : (marks ? marks[0] + 1 : 100);
+      pos = (v) => ((v - min) / (max - min)) * 100;
+    }
+    const at = (v) => `left:${pos(v).toFixed(3)}%`;
+    const edge = (v) => (pos(v) < 8 ? ' is-start' : pos(v) > 92 ? ' is-end' : '');
+    const hops = cfg.hops || [];
+    // Hop arcs: height grows with length; labels of close neighbours are nudged up so they never overlap.
+    const H = hops.map((j) => {
+      const x1 = pos(j.from), x2 = pos(j.to);
+      const left = j.to < j.from;
+      let text = String(j.text !== undefined ? j.text : (left ? '−' : '+') + fmt(Math.abs(j.to - j.from)));
+      if (left && !/^[−-]/.test(text)) text = '−' + text;
+      return { x1, x2, mid: (x1 + x2) / 2, h: 24 + Math.min(34, Math.abs(x2 - x1) * 0.6), left, text, nudge: 0 };
+    });
+    const byMid = H.slice().sort((a, b) => a.mid - b.mid);
+    for (let i = 1; i < byMid.length; i++) {
+      const p = byMid[i - 1], c = byMid[i];
+      if (Math.abs(c.mid - p.mid) < 14 && Math.abs((c.h + c.nudge) - (p.h + p.nudge)) < 26) c.nudge = p.h + p.nudge - c.h + 28;
+    }
+    const layer = H.length ? Math.max(...H.map((j) => j.h + j.nudge + 30)) + 2 : 0;
+    const bandText = (cfg.bands || []).some((b) => b.text);
+    const pointsBelow = H.length > 0;
+    let label = cfg.label;
+    if (!label) {
+      const words = [];
+      if (cfg.open && H.length) words.push(`Number line: from ${fmt(hops[0].from)} ` + hops.map((j, i) => `${i ? 'then ' : ''}jump ${H[i].text} to ${fmt(j.to)}`).join(', ') + '.');
+      else words.push(cfg.open ? `Number line with ${marks.map(fmt).join(', ')}.` : `Number line from ${fmt(cfg.min)} to ${fmt(cfg.max)}.`);
+      if (!(cfg.open && H.length) && H.length) words.push(hops.map((j, i) => `Jump ${H[i].text} from ${fmt(j.from)} to ${fmt(j.to)}.`).join(' '));
+      (cfg.points || []).forEach((p) => words.push(`Point ${p.text} at ${fmt(p.v)}.`));
+      (cfg.bands || []).forEach((b) => words.push(`From ${fmt(b.from)} to ${fmt(b.to)}${b.text ? ': ' + b.text : ''}.`));
+      label = words.join(' ');
+    }
+    let html = `<figure class="nline nline-x${bandText ? ' has-bandtext' : ''}"${layer > 40 ? ` style="padding-top:${layer - 40}px"` : ''}><div class="nline-track" role="img" aria-label="${escText(label)}">`;
+    html += `<span class="nline-bar" aria-hidden="true"></span>`;
+    (cfg.bands || []).concat(cfg.band ? [cfg.band] : []).forEach((b) => {
+      html += `<span class="nline-band" style="${at(b.from)};width:${(pos(b.to) - pos(b.from)).toFixed(3)}%" aria-hidden="true"></span>`;
+      if (b.text) html += `<span class="nline-bandtext" style="left:${((pos(b.from) + pos(b.to)) / 2).toFixed(3)}%" aria-hidden="true">${escText(b.text)}</span>`;
+    });
+    if (!cfg.open && cfg.minor) for (let v = cfg.min; v <= cfg.max; v += cfg.minor) html += `<span class="nline-tick" style="${at(v)}" aria-hidden="true"></span>`;
+    (cfg.open ? marks : (cfg.major || [])).forEach((v) => { html += `<span class="nline-tick is-major" style="${at(v)}" aria-hidden="true"></span>`; });
+    // Open-line marks sit at 4%–96%, so their labels stay centred under the tick (the line's side padding holds them).
+    if (cfg.open) marks.forEach((v) => { html += `<span class="nline-label" style="${at(v)}" aria-hidden="true">${fmt(v)}</span>`; });
+    (cfg.below || []).forEach((l) => { html += `<span class="nline-label${edge(l.v)} ${l.cls || ''}" style="${at(l.v)}" aria-hidden="true">${l.text}</span>`; });
+    // Points: labels above the line (below when hops use the space above); close neighbours alternate.
+    const pts = (cfg.points || []).slice().sort((a, b) => a.v - b.v);
+    let flip = false;
+    pts.forEach((p, i) => {
+      flip = i > 0 && Math.abs(pos(p.v) - pos(pts[i - 1].v)) < 12 ? !flip : false;
+      const below = pointsBelow !== flip;
+      html += `<span class="nline-pt" style="${at(p.v)}" aria-hidden="true"></span>` +
+        `<span class="nline-ptlabel${below ? ' is-below' : ''}${edge(p.v)} ${p.cls || ''}" style="${at(p.v)}" aria-hidden="true">${escText(p.text !== undefined ? p.text : fmt(p.v))}</span>`;
+    });
+    if (cfg.point) html += `<span class="nline-dot" style="${at(cfg.point.v)}" aria-hidden="true"></span><span class="nline-point${edge(cfg.point.v)}" style="${at(cfg.point.v)}" aria-hidden="true">${cfg.point.text}</span>`;
+    if (H.length) {
+      html += `<span class="nline-hops" style="height:${layer}px" aria-hidden="true"><svg viewBox="0 0 100 ${layer}" preserveAspectRatio="none" focusable="false">` +
+        H.map((j) => `<path d="M${j.x1.toFixed(2)} ${layer} Q${j.mid.toFixed(2)} ${(layer - 2 * j.h).toFixed(1)} ${j.x2.toFixed(2)} ${layer}" class="${j.left ? 'is-left' : 'is-right'}" vector-effect="non-scaling-stroke"/>`).join('') + `</svg>` +
+        H.map((j) => `<span class="nline-hophead ${j.left ? 'is-left' : 'is-right'}" style="left:${j.x2.toFixed(3)}%"></span>` +
+          `<span class="nline-hoplabel ${j.left ? 'is-left' : 'is-right'}" style="left:${j.mid.toFixed(3)}%;top:${(layer - j.h - j.nudge - 28).toFixed(1)}px">${escText(j.text)}</span>`).join('') + `</span>`;
+    }
     html += `</div>${cfg.caption ? `<figcaption class="nline-caption">${cfg.caption}</figcaption>` : ''}</figure>`;
     return html;
   }
@@ -341,6 +446,6 @@
     PLACES, digitsOf, fromDigits, fmt, expandedTerms, expandedForm, numberToWords,
     parseWholeNumber, checkExpanded, rng, randInt, pick, shuffle, randomFourDigit,
     placeSVG, blocksHTML, singleBlockSVG,
-    roundTo, roundRange, roundEnds, numberLineHTML, roundLineHTML
+    roundTo, roundRange, roundEnds, numberLineHTML, roundLineHTML, escText
   };
 })(typeof window !== 'undefined' ? window : globalThis);
