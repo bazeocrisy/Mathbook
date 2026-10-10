@@ -4,7 +4,7 @@ import http from 'node:http';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { spawn } from 'node:child_process';
+import { spawn, spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 
 export const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..');
@@ -108,7 +108,16 @@ export async function startBrowser() {
       await send('Input.dispatchKeyEvent', { type: 'keyDown', key, code, windowsVirtualKeyCode: vk, modifiers: mods });
       await send('Input.dispatchKeyEvent', { type: 'keyUp', key, code, windowsVirtualKeyCode: vk, modifiers: mods });
     },
-    close() { try { ws.close(); } catch { /* ignore */ } proc.kill(); }
+    // Ask Chrome to quit, then make sure the whole process tree is gone (on Windows, proc.kill() alone can leave
+    // headless Chrome running; hundreds of leftovers eventually stop new browsers from starting).
+    close() {
+      try { ws.send(JSON.stringify({ id: ++nextId, method: 'Browser.close' })); } catch { /* ignore */ }
+      try { ws.close(); } catch { /* ignore */ }
+      try {
+        if (process.platform === 'win32') spawnSync('taskkill', ['/PID', String(proc.pid), '/T', '/F'], { stdio: 'ignore' });
+        else proc.kill();
+      } catch { /* ignore */ }
+    }
   };
   return b;
 }
