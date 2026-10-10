@@ -17,7 +17,7 @@ Finish and verify the shared components, then complete **Lesson 2-3 only** (one 
 | 2-1 Represent 4-Digit Numbers | 33–36 | ✅ | ✅ | ✅ | ✅ | ✅ | Locked design reference | — |
 | 2-2 Round Multi-Digit Numbers | 37–40 | ✅ | ✅ | ⏳ re-check against the real pages | ✅ | ✅ (PR #8) | Content was written before the textbook was available | Curriculum + math review vs pp. 37–40 |
 | Rounding extension (Math Probe: Rounding Numbers) | 41–42 | ✅ spec reviewed + re-verified | — | — | — | — | | Build (after shared components) |
-| 2-3 Estimate Sums and Differences | 43–46 | ✅ spec reviewed + re-verified | ✅ | ✅ 0 critical / 1 major (L23-09) / 8 minor; all fixed and re-verified except L23-04 (deferred) | ✅ npm test 67/67; browser 2-3 122/122 | ⏳ | L23-04 deferred: "Practice this skill" opens the whole Set 1 (engine enhancement) | Merge to main, verify live |
+| 2-3 Estimate Sums and Differences | 43–46 | ✅ spec reviewed + re-verified | ✅ | ✅ 0 critical / 1 major (L23-09) / 8 minor; all fixed and re-verified except L23-04 (deferred) | ✅ npm test 67/67; browser 2-3 122/122 | ✅ (main c755418) | L23-04 deferred: "Practice this skill" opens the whole Set 1 (engine enhancement) | — (stopped here per owner scope) |
 | 2-4 Use Addition Properties to Add | 47–50 | ✅ spec reviewed + re-verified | — | — | — | — | | Build (after shared components) |
 | 2-5 Addition Patterns | 51–54 | ✅ spec reviewed + re-verified | — | — | — | — | | Build (after shared components) |
 | 2-6 Use Partial Sums to Add | 55–58 | ✅ spec reviewed + re-verified | — | — | — | — | | Build (after shared components) |
@@ -56,7 +56,7 @@ Legend: ✅ done · ⏳ in progress · — not started · ❌ blocked
 
 ## Log
 
-- 2026-10-10 — Resumed after a computer restart. Committed the reviewer's harness fix (Chrome closes reliably on Windows) and the 2-3 review. Re-ran everything: npm test 67/67; browser 2-1 198, 2-2 96, 2-3 122, Number Words 64, components 52; no leftover Chrome. Merging 2-3 to main.
+- 2026-10-10 — Resumed after a computer restart. Committed the reviewer's harness fix (Chrome closes reliably on Windows) and the 2-3 review. Re-ran everything: npm test 67/67; browser 2-1 198, 2-2 96, 2-3 122, Number Words 64, components 52; no leftover Chrome. Merged to main (c755418); Pages deployed; live check at 390 and 1366 px: home, 2-1, 2-2, 2-3 menu and Estimation Test load, no sideways scroll, no JavaScript errors. Scope complete; stopping.
 - 2026-10-10 — Shared components merged and verified (21c157d). 2-3 builder starting (worktree ../Mathbook-23, branch claude/lesson-2-3).
 - 2026-10-10 — Owner narrowed scope: shared components + 2-3 only, then stop. No lesson builders had started.
 - 2026-10-10 — All plan fixes re-verified by the original reviewers; specs committed (28f8e3f). Waiting for shared components to start Batch A builders.
