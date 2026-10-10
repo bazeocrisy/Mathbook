@@ -8,6 +8,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 
 require('../assets/js/place-value.js');
+require('../assets/js/figures.js');
 require('../assets/js/questions.js');
 require('../assets/js/catalog.js');
 const MB = globalThis.Mathbook;

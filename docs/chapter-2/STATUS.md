@@ -50,15 +50,23 @@ Legend: ✅ done · ⏳ in progress · — not started · ❌ blocked
 | Independent math & teaching reviewer C | general-purpose subagent | Batch C plan review vs pp. 67–82 | Done — reviews/batch-C-plan-review.md; fixes re-verified (leftovers → Decision 28) |
 | Independent math & teaching reviewer D | general-purpose subagent | Batch D/E plan review vs pp. 83–100 | Done — reviews/batch-D-plan-review.md; fixes re-verified (leftovers → Decision 28) |
 | Design agent | general-purpose subagent | DESIGN.md: global patterns, shared models, Batch A screens | Done (DESIGN.md; decisions 23–27) |
-| Builder (shared components) | general-purpose subagent, worktree ../Mathbook-shared, branch claude/ch2-shared | figures.js F1–F10, chain, vcalc, parts additions, engine additions, component tests | Running |
+| Builder (shared components) | general-purpose subagent, worktree ../Mathbook-shared, branch claude/ch2-shared | figures.js F1–F10, chain, vcalc, parts additions, engine additions, component tests | Done; merged (21c157d) and re-verified by the coordinator: npm test 54/54, components 52/52, 2-1 198/198, 2-2 96/96, Number Words 64/64 |
 
 ## Log
 
+- 2026-10-10 — Shared components merged and verified (21c157d). 2-3 builder starting (worktree ../Mathbook-23, branch claude/lesson-2-3).
 - 2026-10-10 — Owner narrowed scope: shared components + 2-3 only, then stop. No lesson builders had started.
 - 2026-10-10 — All plan fixes re-verified by the original reviewers; specs committed (28f8e3f). Waiting for shared components to start Batch A builders.
 - 2026-10-10 — Plan reviews: A 1 critical/4 major, B 0/7, C 0/5, D 0/4 (no arithmetic errors outside A-01). Fixes assigned to the authoring curriculum agents. DESIGN.md adopted. Shared-components builder started in worktree claude/ch2-shared.
 - 2026-10-10 — All 19 specs written by 4 curriculum agents (docs/chapter-2/lessons/). Coordinator decisions 1–22 in PLAN.md. Catalog + generic lesson tests committed. Math reviews (4) and design (DESIGN.md) running.
 - 2026-10-10 — Session start. main at `3f214fb` (textbook scans added). Textbook pages extracted and rotated upright (68 pages). Lesson/page map recorded above.
+
+## Saved for later (not started)
+
+- Lessons 2-4 … 2-15, Unit Review, Performance Task, Fluency: specs reviewed and ready (docs/chapter-2/lessons/).
+- 2-2 fixes + Rounding Check-Up (PLAN Decision 1–2, spec 2-2-verification.md §6 and 2-2-probe.md).
+- Note for 2-7: the shared  steps preset rejects a 0 part; the reviewed 2-7 spec (B-01) says ignore 0/blank parts when ≥2 non-zero parts remain — adjust the preset when 2-7 is built.
+- Shared-components builder notes: F8 wide-label callout not built (segments have an 18% minimum width); optional desktop figure-left layout not built.
 
 ## Blockers
 
