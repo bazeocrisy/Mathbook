@@ -6,6 +6,10 @@ Single source of truth for Chapter 2 progress. Updated by the coordinator after 
 - Plan: [PLAN.md](PLAN.md) · Per-lesson specs: [lessons/](lessons/) · Shared design: [DESIGN.md](DESIGN.md)
 - Live site: https://bazeocrisy.github.io/Mathbook/ · Approved template: Section 2-1 (commit `b826b91`)
 
+## Current scope (owner, 2026-10-10)
+
+Finish and verify the shared components, then complete **Lesson 2-3 only** (one builder, one independent reviewer, existing automated device/functional checks), publish and verify it live, and stop. Everything else stays planned and saved for later. All specs, design and review findings are kept.
+
 ## Lessons
 
 | Lesson | Pages | Planned | Implemented | Independent review | Tests | Live-verified | Findings / blockers | Next action |
@@ -50,6 +54,7 @@ Legend: ✅ done · ⏳ in progress · — not started · ❌ blocked
 
 ## Log
 
+- 2026-10-10 — Owner narrowed scope: shared components + 2-3 only, then stop. No lesson builders had started.
 - 2026-10-10 — All plan fixes re-verified by the original reviewers; specs committed (28f8e3f). Waiting for shared components to start Batch A builders.
 - 2026-10-10 — Plan reviews: A 1 critical/4 major, B 0/7, C 0/5, D 0/4 (no arithmetic errors outside A-01). Fixes assigned to the authoring curriculum agents. DESIGN.md adopted. Shared-components builder started in worktree claude/ch2-shared.
 - 2026-10-10 — All 19 specs written by 4 curriculum agents (docs/chapter-2/lessons/). Coordinator decisions 1–22 in PLAN.md. Catalog + generic lesson tests committed. Math reviews (4) and design (DESIGN.md) running.
