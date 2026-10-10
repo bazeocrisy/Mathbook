@@ -1,0 +1,20 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Fixture lesson · Mathbook</title>
+  <link rel="stylesheet" href="../../../assets/css/mathbook.css">
+</head>
+<body>
+  <!-- Test-only lesson page (same script order as a real lesson page). Driven by tests/components.browser.mjs. -->
+  <div id="mathbook"></div>
+  <script src="../../../assets/js/place-value.js"></script>
+  <script src="../../../assets/js/figures.js"></script>
+  <script src="../../../assets/js/questions.js"></script>
+  <script src="../../../assets/js/app-shell.js"></script>
+  <script src="lesson.js"></script>
+  <script src="../../../assets/js/lesson-app.js"></script>
+  <script>Mathbook.startLesson('fx-ch2', { homeHref: '../../../', path: 'tests/fixtures/lesson-ch2/' });</script>
+</body>
+</html>

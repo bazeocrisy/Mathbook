@@ -3,8 +3,8 @@
   "private": true,
   "description": "Mathbook: parent-led Grade 3 math lessons (static site for GitHub Pages).",
   "scripts": {
-    "test": "node --test tests/math.test.js tests/rounding.test.js tests/lessons.test.js tests/lesson-*.test.js tests/number-words.test.js",
-    "test:browser": "node tests/browser.test.mjs && node tests/lesson-2-2.browser.mjs && node tests/lessons.browser.mjs && node tests/number-words.browser.mjs",
+    "test": "node --test tests/math.test.js tests/rounding.test.js tests/lessons.test.js tests/lesson-*.test.js tests/number-words.test.js tests/components.test.js",
+    "test:browser": "node tests/browser.test.mjs && node tests/lesson-2-2.browser.mjs && node tests/lessons.browser.mjs && node tests/number-words.browser.mjs && node tests/components.browser.mjs",
     "audit": "node tests/audit.mjs"
   }
 }
