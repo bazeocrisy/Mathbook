@@ -2,10 +2,12 @@
  * Mathbook — Chapter 2, Lesson 2-5: Addition Patterns (even and odd sums)
  * Teaching content only. The reusable engine lives in assets/js/.
  * Spec: docs/chapter-2/lessons/2-5.md (with the batch-B review fixes B-03, B-05, B-10…B-15, B-24, N-1).
- * The spec's "word + equation" items are two kinds of question here, because the shared engine keeps a written
- * equation (chain preset 'free', DESIGN §4.2) as its own question: word-fill items choose even/odd for pattern
- * sentences, and equation items keep the blank in the sentence ("odd + ___ = even. Write one equation…"), so the
- * child must work out the missing word to write a fitting equation.
+ * The spec's "word + equation" items are a connected pair of questions here (owner's decision, 2026-10-10), because
+ * the shared engine keeps a written equation (chain preset 'free', DESIGN §4.2) as its own question:
+ *   1. a word question: "Pattern: odd + ___ = even. Which word goes in the blank?" (skill 'rules'), then
+ *   2. an equation question for the same pattern, blank kept: "Write your own equation … that fits" (skill 'write').
+ * Both use the same example equation: the one the engine shows when it reveals the answer. In Learn, step 4 asks the
+ * word and step 5 the equation for the same sentence, so Learn completes only when both are right.
  * Every answer, choice key and explanation is computed from the numbers. See tests/lesson-2-5.test.js.
  */
 (function (root) {
@@ -57,35 +59,43 @@
     'e+B=o': { text: 'even + ___ = odd', answer: ODD, types: [EVEN, ODD] }
   };
 
-  /** Fill the missing word in two or three pattern sentences. o: { id, keys: [...], hint?, seed?, r? } */
-  function wordFillQ(o) {
+  /** The pattern's equation question (chain preset 'free'); it carries the sentence key so its word question can match. */
+  function equationShell(key) {
+    const [ta, tb] = SENTENCES[key].types;
+    return { type: 'chain', preset: 'free', addends: [{ digits: 3, parity: ta }, { digits: 3, parity: tb }], anyOrder: true };
+  }
+  /** The one example equation for a pattern: the numbers the engine shows when it reveals the equation answer. */
+  function exampleFor(key) {
+    const v = MB.Q.correctResponse(equationShell(key)).v;
+    const [a, b, sum] = [v.a, v.b, v.s].map((x) => pv.parseWholeNumber(x));
+    return { a, b, sum, text: `${plus([a, b])} = ${fmt(sum)}` };
+  }
+  const needs = (key) => { const [ta, tb] = SENTENCES[key].types; return ta === tb ? `two ${ta} numbers` : 'one even and one odd number (in either order)'; };
+
+  /** Part 1 of a pair: which word goes in the blank. o: { id, key, hint?, next? } */
+  function wordQ(o) {
+    const S = SENTENCES[o.key];
+    const eg = exampleFor(o.key);
     return {
-      id: o.id, type: 'parts', skill: 'rules',
-      prompt: 'Write even or odd to make each pattern true.',
-      parts: o.keys.map((k) => ({ kind: 'choice', label: SENTENCES[k].text, answer: SENTENCES[k].answer, choices: WORDS.slice(), compact: true })),
+      id: o.id, type: 'parts', skill: 'rules', sentence: o.key,
+      prompt: `Pattern: ${S.text}. Which word goes in the blank?${o.next ? ' ' + o.next : ''}`,
+      parts: [{ kind: 'choice', label: 'The missing word is', answer: S.answer, choices: WORDS.slice(), compact: true }],
       hint: o.hint || 'Think about pairs. Does a number have one left over?',
-      explanation: o.keys.map((k) => `In "${SENTENCES[k].text}" the blank is ${SENTENCES[k].answer}.`).join(' ') +
-        ' Even + even = even, odd + odd = even, and even + odd = odd (in either order).'
+      explanation: `The blank is ${S.answer}. ${ruleWhy(...S.types)} For example, ${eg.text}.`
     };
   }
 
-  /**
-   * Write one equation that fits a sentence with a blank (chain preset 'free'). o: { id, key, hint? }
-   * The explanation names the missing word and the rule; the example equation comes from the engine's answer reveal,
-   * so the child never sees two different examples (review L25-01).
-   */
+  /** Part 2 of a pair: write an equation that fits the same pattern, with the same example. o: { id, key, hint?, lead? } */
   function equationQ(o) {
     const S = SENTENCES[o.key];
     const [ta, tb] = S.types;
-    const mixed = ta !== tb;
-    return {
-      id: o.id, type: 'chain', preset: 'free', skill: 'rules',
-      prompt: `${S.text}. Write one equation with 3-digit numbers that fits.`,
-      addends: [{ digits: 3, parity: ta }, { digits: 3, parity: tb }], anyOrder: true,
-      hint: o.hint || (mixed ? 'You need one even and one odd number. Then add.' : `Choose two ${ta} numbers. Look at the ones digits. Then add.`),
-      explanation: `The blank is ${S.answer}. ${ruleWhy(ta, tb)} Any ${mixed ? 'even and odd 3-digit numbers, in either order,' : `two ${ta} 3-digit numbers`} fit` +
-        ' when the sum is added correctly.'
-    };
+    const eg = exampleFor(o.key);
+    return Object.assign(equationShell(o.key), {
+      id: o.id, skill: 'write', sentence: o.key,
+      prompt: `${o.lead || 'Pattern'}: ${S.text}. Write your own equation with 3-digit numbers that fits this pattern.`,
+      hint: o.hint || (ta !== tb ? 'You need one even and one odd number. Then add.' : `Choose two ${ta} numbers. Look at the ones digits. Then add.`),
+      explanation: `The blank is ${S.answer}, so you need ${needs(o.key)}. ${ruleWhy(ta, tb)} For example, ${eg.text}. Any numbers that fit work, if the sum is added correctly.`
+    });
   }
 
   /** Predict even or odd, then add. o: { id, a, b, skill? } */
@@ -224,7 +234,7 @@
   const RULE_CARD = '<div class="money"><p><b>Even:</b> the ones digit is 0, 2, 4, 6 or 8.</p><p><b>Odd:</b> the ones digit is 1, 3, 5, 7 or 9.</p></div>';
 
   // Numbers used in the Learn examples; Your Turn never repeats them.
-  const DEMO = [6, 7, 348, 563, 214, 352, 135, 221, 412, 235, 3, 11, 15, 125, 302, 243, 124, 362, 316, 151, 457, 627, 154, 467, 367];
+  const DEMO = [6, 7, 348, 563, 214, 352, 135, 221, 412, 235, 3, 11, 15, 125, 302, 243, 124, 362, 316, 151, 457, 627, 154, 467, 367, 248, 133, 381];
   const ok = (n) => !DEMO.includes(n);
   /** A 3-digit number of the given type (or any), not a demo number. */
   function num3(r, type, min, max) {
@@ -292,11 +302,24 @@
     });
   }
 
-  // Step 4: write an equation for a sentence with a missing addend (the blank decides which numbers fit).
-  const BLANK_ADDEND = ['o+B=e', 'e+B=e', 'e+B=o'];
-  function equationCheck(r) {
-    const key = pv.pick(r, BLANK_ADDEND);
-    return equationQ({ id: 'learn-4', key, hint: 'First decide: even or odd? Then pick 3-digit numbers that end in the right digits, and add.' });
+  // Step 4: which word goes in the blank (any of the seven sentences).
+  function wordCheck(r) {
+    return wordQ({ id: 'learn-4', key: pv.pick(r, Object.keys(SENTENCES)), next: 'In the next step you will write an equation for this pattern.' });
+  }
+  // Step 5: an equation for the same sentence as step 4's question (read from this lesson's saved Learn progress;
+  // a fresh one when there is none, e.g. in the unit tests).
+  function learnSentence(r) {
+    try {
+      const W = JSON.parse(root.localStorage.getItem('mathbook:v2:lesson-2-5:see-wizard') || 'null');
+      const c = W && W.checks && W.checks['ones-decide'];
+      const k = c && c.q && c.q.sentence;
+      if (k && SENTENCES[k]) return k;
+    } catch (e) { /* no saved Learn progress */ }
+    return pv.pick(r, Object.keys(SENTENCES));
+  }
+  function writeCheck(r) {
+    return equationQ({ id: 'learn-5', key: learnSentence(r), lead: 'Same pattern as step 4',
+      hint: 'You found the missing word in step 4. Pick 3-digit numbers that end in the right digits, and add.' });
   }
 
   // Step 5: check a sum with patterns (B-10: 25% right, 35% off by 1, 40% off by 10 or 100; always 3-digit).
@@ -376,7 +399,19 @@
         big('odd + even = <b>odd</b>') + say(`One example: 125 + 302 = ${fmt(125 + 302)}. 125 is odd, 302 is even, and ${fmt(427)} is odd.`) +
           say('You can write your own example with any numbers that fit.')
       ],
-      check(r) { return equationCheck(r); }
+      check(r) { return wordCheck(r); }
+    },
+    {
+      id: 'write-equation', kind: 'slides', title: 'Write an equation that fits',
+      explain: 'Find the missing word first. Then choose numbers of the right kinds and add them.',
+      slides: [
+        big('even + ___ = odd'.replace('___', '<span class="blank" role="img" aria-label="blank"></span>')) +
+          say('First the missing word: even + odd = odd, so the blank is <b>odd</b>.'),
+        say('Now pick numbers that fit: an <b>even</b> 3-digit number (it ends in 0, 2, 4, 6 or 8) and an <b>odd</b> one (it ends in 1, 3, 5, 7 or 9).') +
+          big(`248 + 133 = ${fmt(248 + 133)}`) + say(`248 is even, 133 is odd, and ${fmt(381)} is odd. It fits!`),
+        say('Check two things: each number is the right kind, and the sum is added correctly.')
+      ],
+      check(r) { return writeCheck(r); }
     },
     {
       id: 'check-sum', kind: 'slides', title: 'Check a sum with patterns',
@@ -392,85 +427,84 @@
     }
   ];
 
-  // ---------- Practice Together (10), On My Own (13), Test (13) ----------
+  // ---------- Practice Together (13), On My Own (19), Test (14) ----------
+  // Pairs: [word question, equation question] for the same pattern.
+  const pair = (ids, key, hint) => [wordQ({ id: ids[0], key, hint }), equationQ({ id: ids[1], key, hint })];
   const O9 = 'Because 3 + 6 = 9 in the ones place, and 9 is odd.';
   const guided = [
-    wordFillQ({ id: 'pt1', keys: ['e+B=e', 'e+o=S'], hint: 'Even numbers have no leftover. An odd number has one.' }),
-    equationQ({ id: 'pt2', key: 'o+B=e', hint: 'What do you add to one leftover to make a pair?' }),
-    sumQ({ id: 'pt3', a: 357, b: 214 }),
-    proveQ({ id: 'pt4', who: 'Kai', pronoun: 'He', a: 254, b: 413, c: 657, seed: 4 }),
-    whyQ({ id: 'pt5', skill: 'ones', prompt: 'A number with 5 in the ones place plus a number with 2 in the ones place. Why is the sum always odd?',
+    ...pair(['pt1', 'pt2'], 'e+B=e', 'Which kind of number adds no leftover?'),
+    ...pair(['pt3', 'pt4'], 'o+B=e', 'What do you add to one leftover to make a pair?'),
+    ...pair(['pt5', 'pt6'], 'e+o=S', 'Even numbers have no leftover. An odd number has one.'),
+    sumQ({ id: 'pt7', a: 357, b: 214 }),
+    proveQ({ id: 'pt8', who: 'Kai', pronoun: 'He', a: 254, b: 413, c: 657, seed: 4 }),
+    whyQ({ id: 'pt9', skill: 'ones', prompt: 'A number with 5 in the ones place plus a number with 2 in the ones place. Why is the sum always odd?',
       right: 'Because 5 + 2 = 7 in the ones place, and 7 is odd.', wrong: ['Because 5 is bigger than 2.', 'Because every sum with a 5 is odd.', 'Because 2 is odd.'],
       hint: 'Only the ones digits matter.', explanation: '5 + 2 = 7 in the ones place, and 7 is odd. Tens and hundreds are always even, so they never change it.', seed: 5 }),
-    whyQ({ id: 'pt6', skill: 'ones', prompt: 'Why do the ones digits decide if a sum is even or odd?',
+    whyQ({ id: 'pt10', skill: 'ones', prompt: 'Why do the ones digits decide if a sum is even or odd?',
       right: 'Tens and hundreds are always even, so only the ones can leave one left over.',
       wrong: ['The ones digit is the smallest digit.', 'The hundreds digit is always even.', 'The ones digit is always odd.'],
       hint: 'Is 10 even or odd? Is 300?', explanation: 'Tens and hundreds are groups of ten, and ten is even, so they always make pairs. Only the ones can leave a leftover.', seed: 6 }),
-    totalsQ({ id: 'pt7', story: 'Tess bakes cookies on 2 trays. She wants an even number of cookies in all.', want: EVEN,
+    totalsQ({ id: 'pt11', story: 'Tess bakes cookies on 2 trays. She wants an even number of cookies in all.', want: EVEN,
       pairs: [[12, 14], [13, 15], [12, 15], [11, 16], [9, 13], [10, 20]] }),
-    threeQ({ id: 'pt8', story: 'A bracelet has 121 red, 122 green and 124 white beads. Is the number of beads even or odd? How many beads?', nums: [121, 122, 124] }),
-    { id: 'pt9', type: 'explain', skill: 'reason', prompt: 'Why is odd + odd always even?',
+    threeQ({ id: 'pt12', story: 'A bracelet has 121 red, 122 green and 124 white beads. Is the number of beads even or odd? How many beads?', nums: [121, 122, 124] }),
+    { id: 'pt13', type: 'explain', skill: 'reason', prompt: 'Why is odd + odd always even?',
       parent: 'Have your child show it with real objects.',
       listenFor: ['Each odd number has one left over.', 'The two leftovers make a pair, so nothing is left over.'],
-      explanation: 'Each odd number has one left over. The two leftovers make a new pair, so the total has none left over: it is even.' },
-    equationQ({ id: 'pt10', key: 'e+B=e', hint: 'Which kind of number adds no leftover?' })
+      explanation: 'Each odd number has one left over. The two leftovers make a new pair, so the total has none left over: it is even.' }
   ];
-  const parentTips = { pt1: 'Ask for a second example out loud.', pt4: 'Ask: what can the pattern tell us for sure?', pt6: 'Listen for: tens and hundreds are even; leftovers come only from the ones.', pt7: 'Ask: what rule did you use?' };
+  const parentTips = { pt2: 'Ask for a second example out loud.', pt8: 'Ask: what can the pattern tell us for sure?', pt10: 'Listen for: tens and hundreds are even; leftovers come only from the ones.', pt11: 'Ask: what rule did you use?' };
   guided.forEach((q) => { if (parentTips[q.id]) q.parent = parentTips[q.id]; });
 
   const bank = [
-    wordFillQ({ id: 'o1', keys: ['S=e+e', 'o+e=S', 'o+B=e'] }),
-    wordFillQ({ id: 'o2', keys: ['e+o=S', 'e+B=o', 'S=o+o'] }),
-    equationQ({ id: 'o3', key: 'S=e+e' }),
-    equationQ({ id: 'o4', key: 'o+B=e' }),
-    equationQ({ id: 'o5', key: 'e+o=S' }),
-    equationQ({ id: 'o6', key: 'e+B=o' }),
-    sumQ({ id: 'o7', a: 375, b: 214 }),
-    sumQ({ id: 'o8', a: 162, b: 324 }),
-    whyQ({ id: 'o9', skill: 'ones', prompt: 'Why is a number ending in 3 plus a number ending in 6 always odd?',
+    ...pair(['o1', 'o2'], 'S=e+e'),
+    ...pair(['o3', 'o4'], 'o+e=S'),
+    ...pair(['o5', 'o6'], 'e+B=o'),
+    ...pair(['o7', 'o8'], 'S=o+o'),
+    sumQ({ id: 'o9', a: 375, b: 214 }),
+    sumQ({ id: 'o10', a: 162, b: 324 }),
+    whyQ({ id: 'o11', skill: 'ones', prompt: 'Why is a number ending in 3 plus a number ending in 6 always odd?',
       right: O9, wrong: ['Because 6 is bigger than 3.', 'Because 3 is smaller than 6.', 'Because the hundreds are odd.'],
       hint: 'Only the ones digits matter.', explanation: '3 + 6 = 9 in the ones place, and 9 is odd. Tens and hundreds are always even.', seed: 9 }),
-    whyQ({ id: 'o10', skill: 'ones', prompt: 'Which digits tell you if a sum is even or odd?', label: 'Choose one.',
+    whyQ({ id: 'o12', skill: 'ones', prompt: 'Which digits tell you if a sum is even or odd?', label: 'Choose one.',
       right: 'The ones digits of the addends', wrong: ['The hundreds digits of the addends', 'The tens digits of the addends', 'The biggest digit'],
       hint: 'Tens and hundreds always make pairs.', explanation: 'The ones digits decide. Tens and hundreds are groups of ten, and ten is even.', seed: 10 }),
-    totalsQ({ id: 'o11', story: 'Max puts muffins in 2 boxes. He wants an even number of muffins in all.', want: EVEN,
+    totalsQ({ id: 'o13', story: 'Max puts muffins in 2 boxes. He wants an even number of muffins in all.', want: EVEN,
       pairs: [[8, 6], [7, 9], [8, 9], [5, 10], [11, 13], [6, 7]] }),
-    threeQ({ id: 'o12', story: 'A quilt has 213 blue, 214 white and 215 red squares. Is the number of squares even or odd? How many squares?', nums: [213, 214, 215] }),
-    wrongTypeQ({ id: 'o13', who: 'Ben', a: 431, b: 246, c: 676, seed: 13 }),
-    // O14 and O15 give the test's "even or odd number" (T13) and "explain why" (T9) skills their own practice.
-    pickQ({ id: 'o14', want: EVEN, nums: [426, 731, 958, 213, 604, 875], seed: 14 }),
-    whyQ({ id: 'o15', skill: 'reason', prompt: 'Why do two odd numbers always add to an even number?',
+    threeQ({ id: 'o14', story: 'A quilt has 213 blue, 214 white and 215 red squares. Is the number of squares even or odd? How many squares?', nums: [213, 214, 215] }),
+    wrongTypeQ({ id: 'o15', who: 'Ben', a: 431, b: 246, c: 676, seed: 13 }),
+    // O16 and O17 give the test's "even or odd number" and "explain why" skills their own practice.
+    pickQ({ id: 'o16', want: EVEN, nums: [426, 731, 958, 213, 604, 875], seed: 14 }),
+    whyQ({ id: 'o17', skill: 'reason', prompt: 'Why do two odd numbers always add to an even number?',
       right: 'Each odd number has one left over, and the two leftovers make a pair.',
       wrong: ['Big odd numbers are always even.', 'Because 1 + 1 = 1.', 'Because the tens digits are even.'],
       hint: 'Draw two odd piles of dots. What happens to the leftovers?', explanation: 'Each odd number has one left over. Put the two leftovers together: they make a pair, so nothing is left over.', seed: 15 }),
-    // O16 and O17 practise the test's other two "check a sum" formats (T12 choose-all, T7 matching type; review L25-03).
-    cantQ({ id: 'o16', eqs: [[234, 152, 387], [127, 341, 468], [318, 205, 524], [452, 136, 598], [263, 114, 377]], seed: 16 }),
-    proveQ({ id: 'o17', who: 'Zoe', pronoun: 'She', a: 428, b: 153, c: 571, seed: 17 })
+    // O18 and O19 practise the test's other two "check a sum" formats (choose all that can't be right; a matching type; review L25-03).
+    cantQ({ id: 'o18', eqs: [[234, 152, 387], [127, 341, 468], [318, 205, 524], [452, 136, 598], [263, 114, 377]], seed: 16 }),
+    proveQ({ id: 'o19', who: 'Zoe', pronoun: 'She', a: 428, b: 153, c: 571, seed: 17 })
   ];
 
   const testItems = [
-    wordFillQ({ id: 't1', keys: ['S=o+o', 'e+B=o', 'o+e=S'] }),
-    equationQ({ id: 't2', key: 'e+B=o' }),
-    equationQ({ id: 't3', key: 'S=o+o' }),
-    sumQ({ id: 't4', a: 245, b: 526 }),
-    sumQ({ id: 't5', a: 418, b: 360 }),
-    wrongTypeQ({ id: 't6', who: 'Mia', a: 325, b: 142, c: 468 }),
-    proveQ({ id: 't7', who: 'Omar', pronoun: 'He', a: 236, b: 341, c: 567 }),
-    whyQ({ id: 't8', skill: 'ones', prompt: 'Why is a number ending in 1 plus a number ending in 8 always odd?',
+    ...pair(['t1', 't2'], 'e+B=o'),
+    ...pair(['t3', 't4'], 'S=o+o'),
+    sumQ({ id: 't5', a: 245, b: 526 }),
+    sumQ({ id: 't6', a: 418, b: 360 }),
+    wrongTypeQ({ id: 't7', who: 'Mia', a: 325, b: 142, c: 468 }),
+    proveQ({ id: 't8', who: 'Omar', pronoun: 'He', a: 236, b: 341, c: 567 }),
+    whyQ({ id: 't9', skill: 'ones', prompt: 'Why is a number ending in 1 plus a number ending in 8 always odd?',
       right: 'Because 1 + 8 = 9 in the ones place, and 9 is odd.', wrong: ['Because 8 is bigger than 1.', 'Because 1 is the smallest digit.', 'Because the hundreds are always odd.'],
       explanation: '1 + 8 = 9 in the ones place, and 9 is odd. Tens and hundreds are always even.' }),
-    whyQ({ id: 't9', skill: 'reason', prompt: 'Why is odd + odd always even?',
+    whyQ({ id: 't10', skill: 'reason', prompt: 'Why is odd + odd always even?',
       right: 'Each odd number has one left over. The two leftovers make a pair.',
       wrong: ['Odd numbers are even when they are big.', 'Because 1 + 1 = 1.', 'Because the hundreds digits are even.'],
       explanation: 'Each odd number has one left over. The two leftovers make a new pair, so nothing is left over.' }),
-    totalsQ({ id: 't10', story: 'Lin puts books on 2 shelves. She wants an odd number of books in all.', want: ODD,
+    totalsQ({ id: 't11', story: 'Lin puts books on 2 shelves. She wants an odd number of books in all.', want: ODD,
       pairs: [[14, 9], [12, 16], [7, 10], [15, 17], [20, 13], [11, 5]] }),
-    threeQ({ id: 't11', story: 'A garden has 331 tulips, 332 daisies and 334 roses. Is the number of flowers even or odd? How many flowers?', nums: [331, 332, 334] }),
-    cantQ({ id: 't12', eqs: [[216, 322, 539], [145, 233, 378], [260, 117, 376], [433, 124, 557], [304, 153, 457]] }),
-    pickQ({ id: 't13', want: ODD, nums: [507, 362, 189, 940, 773, 618] })
+    threeQ({ id: 't12', story: 'A garden has 331 tulips, 332 daisies and 334 roses. Is the number of flowers even or odd? How many flowers?', nums: [331, 332, 334] }),
+    cantQ({ id: 't13', eqs: [[216, 322, 539], [145, 233, 378], [260, 117, 376], [433, 124, 557], [304, 153, 457]] }),
+    pickQ({ id: 't14', want: ODD, nums: [507, 362, 189, 940, 773, 618] })
   ].map((q) => { const c = Object.assign({}, q); delete c.hint; delete c.parent; return c; });
 
-  /** The Addition Patterns Test: the same 13 items each time; choice order changes with each attempt. */
+  /** The Addition Patterns Test: the same 14 items each time; choice order changes with each attempt. */
   function patternsTest(seed) {
     const r = pv.rng(seed);
     return testItems.map((q) => (q.parts
@@ -518,7 +552,7 @@
         'Names even and odd numbers by the ones digit.',
         'Knows the three patterns (in either order).',
         'Explains with pairs and leftovers.',
-        'Writes a fitting 3-digit equation for a pattern sentence.',
+        'Finds the missing word, then writes a fitting 3-digit equation for the same pattern.',
         'Uses a pattern to reject a wrong sum, and still adds to confirm.',
         'Solves three-addend even/odd problems, and scores 90% or higher on the Addition Patterns Test.'
       ]
@@ -540,6 +574,7 @@
     skills: {
       parity: 'Even or odd number',
       rules: 'Even and odd sum patterns',
+      write: 'Write an equation that fits a pattern',
       sum: 'Predict and find a sum',
       ones: 'The ones digits decide',
       check: 'Check a sum with patterns',
@@ -550,9 +585,9 @@
     saveGuided: true,
     bank,
     skillPractice: true,
-    bankSets: [{ id: 's1', title: 'Addition Patterns Practice', blurb: 'All 17 practice questions: even and odd numbers and patterns, writing equations, checking sums, and real-world totals.', ids: bank.map((q) => q.id) }],
+    bankSets: [{ id: 's1', title: 'Addition Patterns Practice', blurb: 'All 19 practice questions: even and odd numbers and patterns, writing equations, checking sums, and real-world totals.', ids: bank.map((q) => q.id) }],
     tests: {
-      patterns: { id: 'patterns', title: 'Addition Patterns Test', questions: 13, blurb: 'Even and odd sums, why the patterns work, and checking sums.', generate: patternsTest }
+      patterns: { id: 'patterns', title: 'Addition Patterns Test', questions: 14, blurb: 'Even and odd sums, why the patterns work, and checking sums.', generate: patternsTest }
     },
     _leaks: leaks,
     _testItems: testItems,

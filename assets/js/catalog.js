@@ -13,7 +13,7 @@
     { id: '2-2', title: 'Round Multi-Digit Numbers', desc: 'Round to the nearest 10 and 100.', steps: 5, tests: [['rounding', 'Rounding Test']] },
     { id: '2-3', title: 'Estimate Sums and Differences', desc: 'Find about how many by rounding or using friendly numbers.', steps: 6, tests: [['estimate', 'Estimation Test']] },
     { id: '2-4', title: 'Use Addition Properties to Add', desc: 'Change the order or grouping to add more easily.', steps: 5, tests: [['properties', 'Addition Properties Test']] },
-    { id: '2-5', title: 'Addition Patterns', desc: 'Even and odd sums, and why they work.', steps: 5, tests: [['patterns', 'Addition Patterns Test']] }
+    { id: '2-5', title: 'Addition Patterns', desc: 'Even and odd sums, and why they work.', steps: 6, tests: [['patterns', 'Addition Patterns Test']] }
   ];
 
   const lessons = CHAPTER_2.map((l) => Object.assign({ chapter: 2, path: `curriculum/chapter-2/lesson-${l.id}/`, key: `mathbook:v2:lesson-${l.id}:` }, l));

@@ -55,7 +55,7 @@ try {
   const full0 = await js(`${H}
     for (let k = 0; k < 3; k++) { fill(one(), bq(curId()), true); document.querySelector('[data-q="next"]').click(); }
     return { count: count(), active: get('bank-sets').s1.active };`);
-  check('full set s1: 3 answered, now on Question 4 of 17', full0.count === 'Question 4 of 17' && Object.keys(full0.active.responses).length === 3, full0.count);
+  check('full set s1: 3 answered, now on Question 4 of 19', full0.count === 'Question 4 of 19' && Object.keys(full0.active.responses).length === 3, full0.count);
 
   // ----- Test, all wrong → every skill listed with its own "Practice this skill" button -----
   await b.load(URL + '#test'); await b.reload(); await wait(150);
@@ -71,7 +71,7 @@ try {
     return { hash: location.hash, testSkills, items, full: full && full.textContent, bankCounts: Object.fromEntries(testSkills.map((s) => [s, LL.bank.filter((q) => q.skill === s).length])) };`);
   check('results: one "Practice this skill" button for every missed skill', res.hash === '#results' && res.items.length === res.testSkills.length && res.items.every((x) => x.skill && res.testSkills.includes(x.skill)), res.items);
   check('results: each button names its question count (no "Set 1")', res.items.every((x) => x.label.startsWith(`Practice this skill (${res.bankCounts[x.skill]} question${res.bankCounts[x.skill] === 1 ? '' : 's'})`) && !/Set \d/.test(x.label)), res.items.map((x) => x.label));
-  check('results: the normal full set is still offered ("Practice all 17 questions")', /^Practice all 17 questions$/.test(res.full), res.full);
+  check('results: the normal full set is still offered ("Practice all 19 questions")', /^Practice all 19 questions$/.test(res.full), res.full);
   await noOverflow('results @1366');
 
   // ----- Every skill link: only that skill, the skill shown, grading, and completion -----
@@ -89,7 +89,7 @@ try {
       r.hash === `#practice/skill-${item.skill}` && r.h1 === item.name && r.banner.includes(item.name) && new RegExp(n === 1 ? 'Just 1 question on this skill' : n + ' questions on this skill').test(r.banner) && /Practicing one skill/i.test(r.banner) && r.c0 === `Question 1 of ${n}`, r);
     check(`skill ${item.skill}: only its ${n} question(s), each once`, r.ids.length === n && new Set(r.ids).size === n && r.skills.every((s) => s === item.skill), r.ids);
     check(`skill ${item.skill}: all right → ${n} of ${n} correct; titled with the skill; full set offered`,
-      new RegExp(`^${n} of ${n} correct`).test(r.score) && /^Skill practice — attempt 1/.test(r.title) && r.banner.includes(item.name) && r.again === 'Practice this skill again' && r.full === 'Practice all 17 questions', r);
+      new RegExp(`^${n} of ${n} correct`).test(r.score) && /^Skill practice — attempt 1/.test(r.title) && r.banner.includes(item.name) && r.again === 'Practice this skill again' && r.full === 'Practice all 19 questions', r);
   }
   const after = await js(`${H} return { sp: get('skill-practice'), s1: get('bank-sets').s1 };`);
   check('skill practice is saved apart: one record per skill, none in the full-set progress',
@@ -110,11 +110,11 @@ try {
     const rc = count(); const retryIds = []; retryIds.push(curId());
     await answerAll([]);
     return { t0, wrongId, score, title, wrongShown, pmText, rc, retryIds, rscore: document.querySelector('.set-score').innerText, st: get('skill-practice')['skill-rules'], s1: get('bank-sets').s1.attempts.length };`);
-  check('rules skill: a fresh attempt 2 starts after a checked one', /attempt 2/.test(miss.title) && miss.t0 === 'Question 1 of 6', { t0: miss.t0, title: miss.title });
-  check('rules skill: one wrong → 5 of 6 correct, the miss explained', /^5 of 6 correct/.test(miss.score) && miss.wrongShown === 1, miss.score);
+  check('rules skill: a fresh attempt 2 starts after a checked one', /attempt 2/.test(miss.title) && miss.t0 === 'Question 1 of 4', { t0: miss.t0, title: miss.title });
+  check('rules skill: one wrong → 3 of 4 correct, the miss explained', /^3 of 4 correct/.test(miss.score) && miss.wrongShown === 1, miss.score);
   check('rules skill: Practice My Misses (1) asks only the missed question', miss.pmText === 'Practice My Misses (1)' && miss.rc === 'Question 1 of 1' && miss.retryIds[0] === miss.wrongId, miss);
   check('rules skill: the retry is graded and recorded as misses fixed; the attempt score is kept',
-    /Practice My Misses: 1 of 1 now correct/.test(miss.rscore) && /stays 5\/6/.test(miss.rscore) && /Misses fixed so far: 1 of 1/.test(miss.rscore) && miss.st.attempts.length === 2 && miss.st.retries.length === 1 && miss.s1 === 0, miss.rscore);
+    /Practice My Misses: 1 of 1 now correct/.test(miss.rscore) && /stays 3\/4/.test(miss.rscore) && /Misses fixed so far: 1 of 1/.test(miss.rscore) && miss.st.attempts.length === 2 && miss.st.retries.length === 1 && miss.s1 === 0, miss.rscore);
 
   // ----- Refresh and resume in the middle of a skill -----
   await b.load(URL + '#results'); await b.reload(); await wait(200);
@@ -134,12 +134,12 @@ try {
   await b.load(URL + '#results'); await b.reload(); await wait(200);
   await js(`document.querySelector('[data-fullset]').click();`); await wait(250);
   const full = await js(`${H} return { hash: location.hash, c: count(), banner: !!document.querySelector('.skill-banner-tag'), h1: document.querySelector('h1').textContent, answered: Object.keys(get('bank-sets').s1.active.responses).length };`);
-  check('"Practice all 17 questions" continues the full set at Question 4 of 17 with its 3 answers', full.hash === '#practice/s1' && full.c === 'Question 4 of 17' && !full.banner && /Set 1: Addition Patterns Practice/.test(full.h1) && full.answered === 3, full);
+  check('"Practice all 19 questions" continues the full set at Question 4 of 19 with its 3 answers', full.hash === '#practice/s1' && full.c === 'Question 4 of 19' && !full.banner && /Set 1: Addition Patterns Practice/.test(full.h1) && full.answered === 3, full);
   const fullDone = await js(`${H} await answerAll([]); return document.querySelector('.set-score').innerText;`);
-  check('the full set grades all 17 on its own', /^17 of 17 correct/.test(fullDone), fullDone);
+  check('the full set grades all 19 on its own', /^19 of 19 correct/.test(fullDone), fullDone);
   await b.load(URL + '#practice/own'); await b.reload(); await wait(200);
   const own = await js(`return Array.from(document.querySelectorAll('.set-card')).map((c) => c.innerText.replace(/\\s+/g, ' '))`);
-  check('On My Own still shows one set of 17, Completed, Last 17/17 (skill practice not counted)', own.length === 1 && /Completed/.test(own[0]) && /Last score 17\/17/.test(own[0]) && /Best 17\/17/.test(own[0]), own);
+  check('On My Own still shows one set of 19, Completed, Last 19/19 (skill practice not counted)', own.length === 1 && /Completed/.test(own[0]) && /Last score 19\/19/.test(own[0]) && /Best 19\/19/.test(own[0]), own);
 
   // ----- A bad skill link falls back to the Practice choices -----
   await b.load(URL + '#practice/skill-nope'); await b.reload(); await wait(200);
@@ -151,7 +151,7 @@ try {
     await b.load(URL + '#practice/skill-check'); await b.reload(); await wait(250);
     await noOverflow(`skill practice question @${w}`);
     if (w === 390) await b.shot('tests/screenshots/2-5-skill-question-390.png');
-    await js(`${H} await answerAll(['o13']);`);
+    await js(`${H} await answerAll(['o15']);`);
     await noOverflow(`skill practice checked @${w}`);
     if (w === 390) await b.shot('tests/screenshots/2-5-skill-checked-390.png');
     await b.load(URL + '#results'); await b.reload(); await wait(250);
@@ -166,7 +166,7 @@ try {
   for (const [name, val] of Object.entries(bad)) {
     await b.load(server.origin + BASE); await js(`localStorage.setItem('${KEY}:skill-practice', ${JSON.stringify(val)});`); await b.reload(); await wait(150);
     await b.load(URL + '#practice/s1'); await b.reload(); await wait(200);
-    const fullOk = await js(`return /Set 1: Addition Patterns Practice/.test(document.querySelector('h1').textContent) && (/Question \d+ of 17/.test((document.querySelector('.q-count') || {}).textContent || '') || /of 17 correct/.test((document.querySelector('.set-score') || {}).textContent || ''))`);
+    const fullOk = await js(`return /Set 1: Addition Patterns Practice/.test(document.querySelector('h1').textContent) && (/Question \d+ of 19/.test((document.querySelector('.q-count') || {}).textContent || '') || /of 19 correct/.test((document.querySelector('.set-score') || {}).textContent || ''))`);
     await b.load(URL + '#practice/skill-sum'); await b.reload(); await wait(200);
     const r = await js(`${H} if (!one()) return { text: text().slice(0, 300), store: localStorage.getItem('${KEY}:skill-practice') }; const c0 = count(); fill(one(), bq(curId()), true); document.querySelector('[data-q="next"]').click(); return { c0, c1: count() };`);
     await b.reload(); await wait(200);
