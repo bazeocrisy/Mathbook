@@ -38,8 +38,9 @@ Progress is stored in the browser's `localStorage` only (`mathbook:v2:*` keys, o
 index.html                         Home page
 math/index.html                    Math Lessons (lesson list)
 assets/css/mathbook.css            Shared styles (galaxy theme, panels, place colors)
-assets/js/place-value.js           Math helpers, answer parsing, SVG base-ten blocks, ten-frames (no DOM)
-assets/js/questions.js             Question types: render, read, grade
+assets/js/place-value.js           Math helpers, answer parsing, SVG base-ten blocks, ten-frames, number lines (no DOM)
+assets/js/figures.js               Chapter 2 display figures (Mathbook.fig): arrows, grouping V, counters, tables, number lines, trees, stacks, bar diagrams, picture choices, compare charts
+assets/js/questions.js             Question types: render, read, grade (including chain and vcalc)
 assets/js/app-shell.js             Shared shell: header, stage router, guided runner, test runner, storage
 assets/js/lesson-app.js            Lesson engine: Lesson Menu, Learn, Practice, Take a Test, My Results, Parent Guide (reusable for every lesson)
 assets/js/number-words.js          Number Words logic: practice rounds, spelling tests, rotation (no DOM)
@@ -64,7 +65,48 @@ docs/audit/                        Baseline and post-implementation audits with 
 4. In `math/index.html`, add a `choice-card` link to `../curriculum/.../lesson-x-y/#menu`. The Lesson Menu, Learn wizard, Practice choices, tests, and results come from the shared engine; nothing about navigation is lesson-specific.
 5. On the home page, add the new lesson's storage keys to the Continue check if it should count as unfinished work.
 
-Question types available to any lesson: `mc`, `select`, `number`, `expanded`, `words`, `chart`, `build`, `spell`, `letter`, and `parts` (several small answers graded together: numbers, "any number that rounds to…", one choice, or select-all; optional blank number line) — see `assets/js/questions.js`.
+Lesson page template (script order): `place-value.js`, `figures.js`, `questions.js`, `app-shell.js`, the lesson's `lesson.js`, `lesson-app.js`. `figures.js` must come before `lesson.js` when Learn slides call `Mathbook.fig.html(...)`; pages without it still work (a `q.figure` is then simply not drawn). Node tests that load a lesson using figures should also `require('../assets/js/figures.js')`.
+
+### Question types
+
+Question types available to any lesson: `mc`, `select`, `number`, `expanded`, `words`, `chart`, `build`, `spell`, `letter`, `rline`, `parts` (several small answers graded together: numbers, "any number that rounds to…", one choice, or select-all; optional blank number line), `chain` and `vcalc` — see `assets/js/questions.js`. Every question is plain JSON (saved attempts re-render exactly). Chapter 2 additions follow [docs/chapter-2/DESIGN.md](docs/chapter-2/DESIGN.md) §3–§4:
+
+- **Any question** may carry `figure` (one figure spec or an array), drawn after `display`. `___` in `display` or `prompt` is drawn as an empty box (in `select` prompts it stays the drop-down). A `\n` in an `mc`/`choice` text is a line break.
+- **`parts`** keeps its behaviour and "Look again at: …" coaching, plus: `anyOrder: 'g'` on two or more `num` parts (graded as a set: the typed values must be the answers in any order); `compact: true` on `choice`/`multi` (chip grid); and `{ kind: 'symbol', left, right, choices: ['<', '>', '='] | ['=', '≠'], answer, label? }` (native radio buttons named "less than", …).
+- **`chain`**: rows of equation cells with `=` aligned. Presets:
+  - `{ preset: 'free', addends: [{ digits: 3, parity: 'even' }, { digits: 3, parity: 'odd' }], anyOrder?: true }`: a child-written `[ ] + [ ] = [ ]` (2-5). Parities are graded as a set unless `anyOrder: false`; the sum must be right (it may have 4 digits).
+  - `{ preset: 'rows', addends: [367, 145(, c)], given?: 'places' }`: partial sums in a row (2-6). One line per place (place values in any order, 300 not 3); each partial and the sum exact.
+  - `{ preset: 'steps', a: 362, b: 175, tree?: { start: 3, min: 2, max: 4, given?: [100, 70, 5] }, final?: { label } }`: a tree input for `b`, one subtraction row per part, each checked against the child's own previous result (decision 9), final `a − b` exact (2-7; decompose items in 2-10/2-11).
+  - `{ preset: 'trees', n: 175, count?: 2, tree?: {...} }`: break n apart in different ways. Each tree has 2–4 whole parts ≥ 1 adding to n, and the sets differ.
+  - `{ preset: 'adjust', a, b, op: '+' | '−', labels?: ['a becomes', 'b becomes', 'Sum'], tip? }`: adjust arrows (2-8; the 2-10 keep-the-sum and 2-11 keep-the-difference pair). Any pair of whole numbers ≥ 1 that keeps the sum or difference with both numbers changed (not the original pair or its swap) is right; the answer is exact. An adjustment with no number ending in 0 gets only the gentle `tip` (default "Tip: try to make a ten or a hundred."). `oneNumber: true` (with an optional `final`) is the "change one number, then fix the answer" form.
+  - No preset (frame): `rows: [{ cells: [Cell, '+', Cell, '=', Cell], true?, commute?, tag?, label? }]`, `final?: { label, answer }`. A cell is a number (printed), `'?'`, `{ in: 'id', answer?, digits?, parity?, label }` or `{ echo: 'id' }` (the child's entry of another box, shown read-only). `commute` grades the boxes before `=` as a set; `true` requires a true equation with the typed values.
+  - Response: `{ v: { id: '…' }, t: [[tree parts]] }`.
+- **`vcalc`**: `{ op: '+' | '−', top, bottom, third? (or rows: [..]), answer?, places?, carries?: true, input?: 'digits' | 'rows', notes?: 'input', blanks?: { top: ['T'], bottom: ['H'], result: ['Th'] } }`. `digits`: one box per column (+1 for addition); typing a digit moves left, Backspace on an empty box moves right; optional regroup boxes are saved but never graded; the answer row is read as a number. `rows`: partial sums and the sum in a stack, each exact; `notes: 'input'` asks for the place values too. `blanks`: missing digits, all-or-nothing. Response: `{ d: [..], c: [..], b: {..}, p: [..], s, n: [..] }`.
+- **Modes** (render option `mode`): `guided` (Learn Your Turn and Practice Together: helper lines such as "Your parts add to …" and live adjust tags; after Check Answer every box gets ✓, or only the wrong boxes get ✗, with one message naming the first problem), `test` (Take a Test, On My Own: only the child's entries, no helpers), and `review` (`review: true`: read-only with ✓/✗ per box).
+
+### Figures (`Mathbook.fig`)
+
+`Mathbook.fig.html(spec)` returns HTML for Learn slides; the same spec goes in a question's `figure`. Every figure is a `<figure role="img">` with a full-sentence `aria-label` (generated, or `label`), plus an optional `caption`.
+
+| `fig` | Spec |
+|---|---|
+| `arrows` | `{ a, b, op, to: [ra, rb], result?, tags?: ['−1', '+1'], reveal?: 'top' \| 'arrows' \| 'all', unknown?: true }` |
+| `groupV` | `{ addends: [a, b, c], pair: [i, j], pairSum?, total?, reveal?: 'top' \| 'v' \| 'all', look?: true }` |
+| `counters` | `{ groups: [{ n, kind: 'a' \| 'b', label }], pairs?: true, join?: true }` |
+| `table` | `{ title, head: [..], rows: [[..]], money?: true }` (a real table; more than 3 columns turns sideways on phones) |
+| `nline` | `pv.numberLineHTML` options, plus `points: [{ v, text }]`, `hops: [{ from, to, text? }]`, `open: true` with `marks: [..]`, `bands: [{ from, to, text }]`; or `{ lines: [cfg, cfg] }` stacked |
+| `tree` | `{ n, parts: [..], alt?: true, check?: false }` |
+| `stack` | `{ rows: [a, b], op, places?, partials?: true \| [{ v, note }], total?, result?: 'none' \| 'all' \| k, carries?: { T: 1 }, focus?: 'T', blanks?, misalign?: 'left', reveal?: k, hideResults? }` |
+| `bar` | `{ kind: 'ppw', parts, sizes, whole, bracket?: 'above' \| 'below', caption?, small? }` or `{ kind: 'cmp', long, short, gap, sizes: [long, short], order?: 'longTop' \| 'shortTop', caption? }`. Labels are numbers, `'?'`, `{ letter: 'a' }` or `{ slot: 'A' }` |
+| `pics` | `{ items: [{ label: 'A', fig: {...} }], noun?: 'Diagram' }` (follow it with a `compact` choice "A", "B", …) |
+| `cmp` | `{ a, b, focus?: 'Th' \| 'H' \| 'T' \| 'O' }` |
+
+### Small engine options (Chapter 2)
+
+- A `slides` Learn step without `check` has only the Example phase; its button reads **Next Step →** or **Finish →** and unlocks at the last part.
+- `skillLinks: { '2-7': '../lesson-2-7/#menu' }` on a lesson: My Results shows **Review this lesson (2-7)** for that skill (an empty link shows no button).
+- `guidedContext: { title, text, figure }` (or `guided.context`): a shared story box above every Practice Together question.
+- No timers anywhere.
 
 A lesson can also provide, as data instead of code:
 - Learn steps of `kind: 'slides'` (an array of HTML parts shown one at a time in the Example phase) with a `check(rng)` for Your Turn;

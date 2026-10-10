@@ -168,8 +168,19 @@
    * Items may include type 'explain' (parent listens; no typing).
    */
   function guidedRunner(box, cfg) {
-    box.innerHTML = `<p class="q-count" aria-live="polite"></p><div class="guided-card"></div>`;
+    box.innerHTML = `<div class="story-slot"></div><p class="q-count" aria-live="polite"></p><div class="guided-card"></div>`;
     const card = box.querySelector('.guided-card');
+    // Optional shared story (cfg.context: { title, text, figure }), drawn above every question. From the second
+    // question on it is a <details> (open by default) so a phone can fold it away. Answers never move above it.
+    function story() {
+      const c = cfg.context;
+      const slot = box.querySelector('.story-slot');
+      if (!c) { slot.innerHTML = ''; return; }
+      const inner = (c.text ? `<p>${esc(c.text)}</p>` : '') + (c.figure ? Q.figureHTML(c.figure) : '');
+      slot.innerHTML = cfg.pos.i === 0
+        ? `<div class="story"><p class="story-title">${esc(c.title || 'The story')}</p>${inner}</div>`
+        : `<details class="story" open><summary>${esc(c.summary || 'The story and table')}</summary>${inner}</details>`;
+    }
 
     // "Question X of Y" instead of a row of numbered circles.
     function dots() {
@@ -181,6 +192,7 @@
       const q = cfg.items[i];
       const st = cfg.states[q.id] || (cfg.states[q.id] = { response: undefined, result: null, hint: false, reveal: false });
       dots();
+      story();
       // Grown-up coaching stays available but folded away from the child's question.
       const help = q.parent || q.listenFor
         ? `<details class="parent-help"><summary>Parent Help</summary>${q.parent ? `<p>${esc(q.parent)}</p>` : ''}` +
@@ -194,7 +206,7 @@
           `<div class="actions"><button type="button" class="btn btn-primary" data-act="explained">They explained it</button>` +
           `<button type="button" class="btn btn-ghost" data-act="reveal">Show the explanation</button></div>`;
       } else {
-        inner = Q.render(q, cfg.keyPrefix + '-' + q.id, { response: st.response }) +
+        inner = Q.render(q, cfg.keyPrefix + '-' + q.id, { response: st.response, mode: 'guided' }) +
           `<div class="actions"><button type="button" class="btn btn-primary" data-act="check">Check answer</button>` +
           (q.hint ? `<button type="button" class="btn btn-ghost" data-act="hint">Show a hint</button>` : '') +
           `<button type="button" class="btn btn-ghost" data-act="reveal">Show answer and why</button></div>`;
@@ -212,9 +224,11 @@
           const ans = q.type === 'explain' ? '' : `<p><b>Answer:</b> ${esc(Q.correctText(q))}</p>`;
           resultBox.innerHTML = `<div class="feedback feedback-info">${ans}<p><b>Why:</b> ${esc(q.explanation)}</p></div>`;
         } else if (st.result === true) {
-          resultBox.innerHTML = `<div class="feedback feedback-ok"><p><b>✓ ${q.type === 'explain' ? 'Great explaining!' : 'Correct!'}</b> ${esc(q.explanation)}</p></div>`;
+          const note = q.type === 'explain' ? '' : Q.note(q, st.response);
+          resultBox.innerHTML = `<div class="feedback feedback-ok"><p><b>✓ ${q.type === 'explain' ? 'Great explaining!' : 'Correct!'}</b> ${esc(q.explanation)}</p>${note ? `<p class="q-note">${esc(note)}</p>` : ''}</div>`;
         } else if (st.result === false) {
-          const tip = q.type === 'expanded' ? Q.expandedTip(st.response, q.answer) + ' ' : q.type === 'parts' ? Q.partsTip(q, st.response) + ' ' : '';
+          const t = Q.tip(q, st.response);
+          const tip = t ? t + ' ' : '';
           // Don't repeat the hint when it is already showing.
           const hint = q.hint && !st.hint ? 'Hint: ' + esc(q.hint) + ' ' : '';
           resultBox.innerHTML = `<div class="feedback feedback-no"><p><b>Not yet.</b> ${esc(tip)}${hint}Fix it and check again.</p></div>`;
@@ -230,6 +244,8 @@
       if (qEl && q.type === 'rline') {
         Q.bind(qEl, q, (r) => { st.response = r; st.result = r.complete ? true : null; changed(); });
       } else if (qEl) Q.bind(qEl, q, (r) => { st.response = r; changed(); });
+      // Chapter 2 controls mark their boxes after a check (✓ all when right, ✗ on the wrong ones); typing clears them.
+      if (qEl && (st.result === true || st.result === false) && st.response !== undefined) Q.applyMarks(qEl, q, st.response);
       changed();
 
       card.querySelectorAll('[data-act]').forEach((b) => b.addEventListener('click', () => {
@@ -238,6 +254,7 @@
           st.response = Q.read(qEl, q);
           st.result = Q.isAnswered(q, st.response) ? Q.grade(q, st.response) : 'empty';
           st.reveal = false;
+          if (st.result === true || st.result === false) Q.applyMarks(qEl, q, st.response);
           showResult();
           dots();
         } else if (act === 'hint') {
@@ -269,7 +286,7 @@
     // A new question starts at the top of its content.
     function toTop() {
       box.scrollIntoView({ block: 'start' });
-      const c = card.querySelector('.q input, .q select, .q button');
+      const c = card.querySelector('.q input:not(.vc-carry), .q select, .q button');
       if (c) c.focus({ preventScroll: true });
     }
 

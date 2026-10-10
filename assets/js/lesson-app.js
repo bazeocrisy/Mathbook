@@ -352,6 +352,16 @@
               main.querySelector('#slide-prev').disabled = k === 0;
               main.querySelector('#slide-next').disabled = k === n - 1;
             }
+            // A step without a check is done once the child reaches its last part.
+            if (typeof step.check !== 'function' && k === n - 1 && !W.done[step.id]) {
+              W.done[step.id] = true;
+              const nx = main.querySelector('[data-wiz="next-nc"]');
+              if (nx) nx.disabled = false;
+              const fin = main.querySelector('a[data-wiz="finish"]');
+              if (fin) { fin.classList.remove('is-disabled'); fin.removeAttribute('aria-disabled'); fin.removeAttribute('tabindex'); }
+              const note = main.querySelector('#wiz-locked');
+              if (note) note.remove();
+            }
             save();
           };
           const overBox = main.querySelector('#slide-over');
@@ -449,10 +459,13 @@
         const c = checkState(step);
         const q = c.q;
         let msg = '';
-        if (c.solved) msg = `<div class="feedback feedback-ok"><p><b>✓ ${c.tries <= 1 ? 'Correct!' : 'You got it!'}</b> ${esc(q.explanation)}</p></div>`;
-        else if (c.revealed) msg = `<div class="feedback feedback-info"><p><b>The answer is ${esc(Q.correctText(q))}.</b> ${esc(q.explanation)}</p><p>Now try a new one like it.</p></div>`;
+        if (c.solved) {
+          const note = Q.note(q, c.response);
+          msg = `<div class="feedback feedback-ok"><p><b>✓ ${c.tries <= 1 ? 'Correct!' : 'You got it!'}</b> ${esc(q.explanation)}</p>${note ? `<p class="q-note">${esc(note)}</p>` : ''}</div>`;
+        } else if (c.revealed) msg = `<div class="feedback feedback-info"><p><b>The answer is ${esc(Q.correctText(q))}.</b> ${esc(q.explanation)}</p><p>Now try a new one like it.</p></div>`;
         else if (c.retry) {
-          const tip = q.type === 'expanded' ? Q.expandedTip(c.response, q.answer) + ' ' : q.type === 'parts' ? Q.partsTip(q, c.response) + ' ' : '';
+          const t = Q.tip(q, c.response);
+          const tip = t ? t + ' ' : '';
           msg = `<div class="feedback feedback-no"><p><b>Not quite.</b> ${esc(tip + (q.hint || 'See the example again if you need help.'))}</p></div>`;
         }
         let action;
@@ -461,7 +474,7 @@
         else if (c.retry) action = `<button type="button" class="btn btn-primary" data-wiz="again">Try Again</button>`;
         else action = `<button type="button" class="btn btn-primary" data-wiz="check">Check Answer</button>`;
         if (q.type === 'rline') return `<div class="wiz-check">${Q.render(q, 'wiz-' + step.id, { response: c.response, mode: 'guided' })}</div>`;
-        return `<div class="wiz-check">` + Q.render(q, 'wiz-' + step.id, { response: c.response }) +
+        return `<div class="wiz-check">` + Q.render(q, 'wiz-' + step.id, { response: c.response, mode: 'guided' }) +
           `<div class="actions wiz-check-actions">${action}</div>` +
           `<div aria-live="polite">${msg}<p class="feedback feedback-info" data-empty hidden>Type or choose an answer first.</p></div></div>`;
       }
@@ -474,17 +487,22 @@
       function draw() {
         const i = W.step;
         const step = steps[i];
-        const c = checkState(step);
-        const phase = phaseOf(step);
+        // A slides step without a check (Unit Review "Remind Me") has only the Example phase (DESIGN §4.4.1).
+        const noCheck = typeof step.check !== 'function';
+        const c = noCheck ? null : checkState(step);
+        const phase = noCheck ? 'example' : phaseOf(step);
         save(); // keep this step's check question the same across a refresh
         const done = !!W.done[step.id];
         const last = i === steps.length - 1;
         const head = `<h2 tabindex="-1" class="wiz-h"><span class="phase-tag phase-${phase}">${phase === 'try' ? 'Your Turn' : 'Example'}</span>` +
           `<span class="wiz-step-title">${esc(step.title)}</span></h2>`;
+        const goOn = !noCheck ? `<button type="button" class="btn btn-star btn-big" data-wiz="try">Now I'll Try →</button>`
+          : !last ? `<button type="button" class="btn btn-star btn-big" data-wiz="next-nc" ${done ? '' : 'disabled'}>Next Step →</button>`
+            : `<a class="btn btn-star btn-big${done ? '' : ' is-disabled'}" href="#see/done" ${done ? '' : 'aria-disabled="true" tabindex="-1"'} data-wiz="finish">Finish →</a>`;
         const body = phase === 'example'
           ? `<p class="wiz-explain">${esc(step.explain)}</p><div class="wiz-demo">${demoHTML(step)}</div>` +
             `<div class="wiz-actions">${i > 0 ? `<button type="button" class="btn btn-ghost" data-wiz="prev-step">← Previous Step</button>` : '<span></span>'}` +
-            `<button type="button" class="btn btn-star btn-big" data-wiz="try">Now I'll Try →</button></div>`
+            `${goOn}</div>` + (noCheck && !done ? `<p class="wiz-locked-note" id="wiz-locked">Go through every part to unlock ${last ? 'Finish' : 'the next step'}.</p>` : '')
           : checkHTML(step) +
             `<div class="wiz-actions"><button type="button" class="btn btn-ghost" data-wiz="example">← See the Example Again</button>` +
             (!last
@@ -509,8 +527,11 @@
             }
             save();
           });
-        } else if (c.solved || c.revealed || c.retry) qEl.querySelectorAll('input, select, button').forEach((x) => { x.disabled = true; });
-        else Q.bind(qEl, c.q, (r) => { c.response = r; save(); });
+        } else if (c.solved || c.revealed || c.retry) {
+          qEl.querySelectorAll('input, select, button').forEach((x) => { x.disabled = true; });
+          // Chapter 2 controls: ✓ on every box when right, ✗ on the wrong boxes after a miss (Try Again clears them).
+          if (c.response !== undefined) Q.applyMarks(qEl, c.q, c.response);
+        } else Q.bind(qEl, c.q, (r) => { c.response = r; save(); });
         main.querySelectorAll('[data-wiz]').forEach((b) => b.addEventListener('click', (e) => {
           const act = b.dataset.wiz;
           if (act === 'finish') { if (!W.done[step.id]) e.preventDefault(); return; }
@@ -528,11 +549,11 @@
           if (act === 'try') setPhase(step, 'try');
           if (act === 'example') setPhase(step, 'example');
           if (act === 'prev-step') { W.step = Math.max(0, i - 1); setPhase(steps[W.step], 'example'); }
-          if (act === 'next' && W.done[step.id]) { W.step = i + 1; setPhase(steps[W.step], 'example'); }
+          if ((act === 'next' || act === 'next-nc') && W.done[step.id]) { W.step = i + 1; setPhase(steps[W.step], 'example'); }
           save();
           draw();
           // A new phase or step: start at the top with focus on its heading.
-          if (['try', 'example', 'prev-step', 'next'].includes(act)) { root.scrollTo(0, 0); main.querySelector('.wiz-h').focus({ preventScroll: true }); return; }
+          if (['try', 'example', 'prev-step', 'next', 'next-nc'].includes(act)) { root.scrollTo(0, 0); main.querySelector('.wiz-h').focus({ preventScroll: true }); return; }
           const focusTarget = main.querySelector('[data-wiz="next"]:not([disabled]), a[data-wiz="finish"]:not(.is-disabled), [data-wiz="again"], [data-wiz="new"], .wiz-check input:not([disabled]), .wiz-check button:not([disabled])');
           if (focusTarget) focusTarget.focus();
         }));
@@ -597,6 +618,7 @@
         `<section class="card activity-card"><div id="guided-runner"></div></section>` + menuNav('#practice', 'Practice choices');
       shell.guidedRunner(main.querySelector('#guided-runner'), {
         items: L.guided, states: S.guidedStates, pos: S.guidedPos, keyPrefix: 'g', lastLabel: 'Finish', onChange: saveGuided,
+        context: L.guidedContext || (L.guided && L.guided.context) || null,
         onLast: () => doneCard('You finished Practice Together!', `<button type="button" class="btn btn-primary" id="together-again">Practice together again</button><a class="btn btn-ghost" href="#practice/own">Go to On My Own</a>`, () => {
           main.querySelector('#together-again').addEventListener('click', () => { S.guidedStates = {}; S.guidedPos.i = 0; saveGuided(); togetherView(); });
         })
@@ -917,6 +939,12 @@
       const bankSkills = new Set(L.bank.map((q) => q.skill));
       const skillHTML = skills.length
         ? `<ul class="skill-list">` + skills.map((s) => {
+          // Results by lesson (DESIGN §4.4.2): a linked skill opens that lesson's menu; a skill whose lesson
+          // is not built yet (link left empty) shows no button.
+          if (L.skillLinks && Object.prototype.hasOwnProperty.call(L.skillLinks, s)) {
+            const href = L.skillLinks[s];
+            return `<li><span>${esc(L.skills[s] || s)}</span>${href ? `<a class="btn btn-small" href="${esc(href)}">Review this lesson (${esc(s)})</a>` : ''}</li>`;
+          }
           const action = bankSkills.has(s)
             ? `<button type="button" class="btn btn-small" data-practice="${s}">Practice this skill (Set ${L.bankSets.indexOf(setOf(bestSetFor(s))) + 1})</button>`
             : `<button type="button" class="btn btn-small" data-vocab="1">Math Words practice</button>`;
@@ -929,7 +957,7 @@
         const r = selected.responses[q.id];
         return `<li class="rq ${ok ? 'rq-ok' : 'rq-no'}"><p class="rq-prompt"><span class="rq-mark" aria-hidden="true">${ok ? '✓' : '✗'}</span>` +
           `<span><span class="sr-only">${ok ? 'Correct' : 'Incorrect'}. </span>Question ${x.i + 1}. ${esc(q.prompt.replace('___', '_____'))}</span></p>` +
-          (ok ? '' : Q.visuals(q)) +
+          (ok ? '' : Q.visuals(q) + Q.reviewHTML(q, r, `rv-${selected.id}-${q.id}`)) +
           (q.display && ok ? `<p class="rq-display">${esc(q.display)}</p>` : '') +
           `<p><b>Your answer:</b> ${esc(Q.describe(q, r))}</p>` +
           (ok ? '' : `<p><b>Correct answer:</b> ${esc(Q.correctText(q))}</p><p><b>Why:</b> ${esc(q.explanation)}</p>`) + `</li>`;
