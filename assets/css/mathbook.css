@@ -727,3 +727,7 @@ a.btn.is-disabled { background: #eceef5; color: #545a75; pointer-events: none; }
   .rl-label { font-size: 1.05rem; }
   .rl-choice { flex: 1 1 0; }
 }
+/* Home on phones: the heading keeps the wide column; the planet sits beside it in the narrow one. */
+@media (max-width: 700px) {
+  .home-hero-small .hero-art { order: 2; max-width: 110px; }
+}

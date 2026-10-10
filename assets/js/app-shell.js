@@ -207,6 +207,7 @@
 
       const resultBox = card.querySelector('.result-box');
       const showResult = () => {
+        if (q.type === 'rline') { resultBox.innerHTML = ''; return; }
         if (st.reveal) {
           const ans = q.type === 'explain' ? '' : `<p><b>Answer:</b> ${esc(Q.correctText(q))}</p>`;
           resultBox.innerHTML = `<div class="feedback feedback-info">${ans}<p><b>Why:</b> ${esc(q.explanation)}</p></div>`;
@@ -365,13 +366,13 @@
   }
 
   /** Clear-progress control with an in-page confirmation (no browser dialogs). */
-  function bindClear(main, store, what, onCleared, onCancel) {
+  function bindClear(main, store, what, onCleared, onCancel, yesLabel) {
     const btn = main.querySelector('#clear');
     if (!btn) return;
     btn.addEventListener('click', () => {
       const area = main.querySelector('#clear-area');
       area.innerHTML = `<div class="confirm" role="alert"><p><b>Delete all saved ${esc(what)} on this device?</b> This cannot be undone. Other lessons and programs are not affected.</p>` +
-        `<button type="button" class="btn btn-danger" id="clear-yes">Yes, delete</button> <button type="button" class="btn btn-ghost" id="clear-no">Cancel</button></div>`;
+        `<button type="button" class="btn btn-danger" id="clear-yes">${esc(yesLabel || 'Yes, delete')}</button> <button type="button" class="btn btn-ghost" id="clear-no">Cancel</button></div>`;
       area.querySelector('#clear-yes').focus();
       area.querySelector('#clear-yes').addEventListener('click', () => { store.clearAll(); onCleared(); });
       area.querySelector('#clear-no').addEventListener('click', () => (onCancel || onCleared)());

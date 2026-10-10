@@ -120,19 +120,17 @@
     if (st === 'why') return !R.why;
     return false;
   }
-  /** One specific hint per miss; a second miss on the same part gives the answer for that part. */
+  /** One specific hint about the current part after a miss (it never gives the answer). */
   function rlHint(q, R, st) {
-    const I = rlInfo(q), n = pv.fmt(q.n), lo = pv.fmt(I.lo), hi = pv.fmt(I.hi), mid = pv.fmt(I.mid);
-    const again = (R.tries[st] || 0) >= 2;
+    const I = rlInfo(q), n = pv.fmt(q.n), lo = pv.fmt(I.lo), mid = pv.fmt(I.mid);
     if (st === 'ends') {
-      if (again) return `The ${I.w}s around ${n} are ${lo} and ${hi}.`;
       if (num(R.lo) !== I.lo) return q.place === 10 ? `Which ten is just below ${n}? Change the ones digit to 0.` : `Which hundred is just below ${n}? Change the tens and ones digits to 0.`;
       return `Count up one ${I.w} from ${lo}.`;
     }
-    if (st === 'mid') return again ? `Halfway between ${lo} and ${hi} is ${mid}.` : `Halfway is ${q.place === 10 ? '5' : '50'} more than ${lo}.`;
+    if (st === 'mid') return `Halfway is ${q.place === 10 ? '5' : '50'} more than ${lo}.`;
     if (st === 'pick') {
       if (I.half) return `${n} is exactly halfway. When a number is exactly halfway, we round up to the higher ${I.w}.`;
-      return again ? `${n} is ${q.n < I.mid ? 'before' : 'after'} halfway, so it is closer to ${pv.fmt(I.r)}.` : `Look at the dot. Is ${n} before or after halfway (${mid})?`;
+      return `Look at the dot. Is ${n} before or after halfway (${mid})?`;
     }
     if (st === 'why') return `Is ${n} before or after the halfway mark?`;
     return '';
@@ -385,7 +383,8 @@
     const key = el.dataset.qkey;
     let R = rlNorm(JSON.parse(box.dataset.rl));
     const stages = rlStages(q);
-    const sync = () => { box.dataset.rl = JSON.stringify(R); };
+    // needWhy lets pages without the question (the home page) count this answer exactly as the test does.
+    const sync = () => { R.needWhy = !!q.why; box.dataset.rl = JSON.stringify(R); };
     const draw = (focus) => {
       sync();
       box.innerHTML = rlBody(q, R, mode, key);
@@ -396,7 +395,19 @@
     el.mbSetResponse = (r) => { R = rlNorm(JSON.parse(JSON.stringify(r))); draw(); fire(); };
     box.addEventListener('input', (e) => {
       const f = e.target.dataset && e.target.dataset.f;
-      if (f) { R[f] = e.target.value; sync(); fire(); }
+      if (!f) return;
+      R[f] = e.target.value;
+      const st = stages[Math.min(R.stage, stages.length - 1)];
+      if (mode === 'guided' && R.ok[st]) {
+        // A part already marked right was changed: it must be checked again, so its "Yes!" no longer applies.
+        // (A wrong-answer hint stays on screen while the child fixes the answer.)
+        R.ok[st] = false; R.fb = null;
+        sync(); fire();
+        const old = box.querySelector('.rl-feedback .feedback:not([data-rl-empty])'); if (old) old.remove();
+        box.querySelector('.rl-actions').innerHTML = '<button type="button" class="btn btn-primary" data-rl-act="check">Check Answer</button>';
+        return;
+      }
+      sync(); fire();
     });
     box.addEventListener('change', (e) => {
       if (e.target.name === key + '-why') { R.why = e.target.value; sync(); fire(); }
@@ -407,7 +418,7 @@
       const act = b.dataset.rlAct;
       const st = stages[Math.min(R.stage, stages.length - 1)];
       let focus = null;
-      if (act === 'pick') { R.pick = b.dataset.side; draw(); fire(); box.querySelector(`[data-side="${R.pick}"]`).focus(); return; }
+      if (act === 'pick') { if (mode === 'guided' && R.pick !== b.dataset.side) { R.ok.pick = false; R.fb = null; } R.pick = b.dataset.side; draw(); fire(); box.querySelector(`[data-side="${R.pick}"]`).focus(); return; }
       if (act === 'check') {
         if (rlStageBlank(R, st)) { box.querySelector('[data-rl-empty]').hidden = false; return; }
         if (rlStageOK(q, R, st)) { R.ok[st] = true; R.fb = { stage: st, kind: 'ok', text: rlPraise(q, st) }; focus = '[data-rl-act="next"]'; }

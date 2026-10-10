@@ -219,7 +219,8 @@
         menuNav();
       const bindReset = () => shell.bindClear(main, store, `answers, Learn completion, and scores for Section ${L.number}`,
         () => { forgetProgress(); ctx.go('menu'); },
-        () => { main.querySelector('#clear-area').innerHTML = '<button type="button" class="btn btn-ghost" id="clear">Reset Lesson Progress…</button>'; bindReset(); main.querySelector('#clear').focus(); });
+        () => { main.querySelector('#clear-area').innerHTML = '<button type="button" class="btn btn-ghost" id="clear">Reset Lesson Progress…</button>'; bindReset(); main.querySelector('#clear').focus(); },
+        'Reset');
       bindReset();
     }
 

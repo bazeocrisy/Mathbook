@@ -203,6 +203,22 @@ try {
     g.count === 'Question 1 of 12' && g.part === 'Part 1 of 3' && g.task === 'What two tens is 364 between?' && g.extra === 0 && /Not quite\. Which ten is just below 364/.test(g.wrong) && /^Yes! 364 is between 360 and 370/.test(g.right) && g.part2 === 'Part 2 of 3' && g.help && g.over, g);
   await b.reload(); await wait(250);
   check('Practice Together keeps the question, the part, and the answers after a refresh', await js(`${RL} return document.querySelector('.q-count').textContent === 'Question 1 of 12' && part() === 'Part 2 of 3' && labels().join() === '360,370'`));
+  // Reviewer findings (regressions): an edited right answer must be checked again; misses never give the answer;
+  // a finished problem shows one explanation after a refresh.
+  const rev = await js(`${RL}
+    const o = {};
+    type('mid', '364'); act('check').click(); o.miss1 = rfb(); act('check').click(); o.miss2 = rfb();
+    type('mid', '36'); o.hintWhileFixing = rfb();
+    type('mid', '365'); act('check').click(); o.ok = rfb(); o.cont = !!act('next');
+    type('mid', '366'); o.afterEdit = { fb: rfb(), check: !!act('check'), cont: !!act('next') };
+    type('mid', '365'); act('check').click(); act('next').click();
+    rl().querySelector('[data-side="lo"]').click(); act('check').click(); act('next').click(); o.done = task();
+    return o;`);
+  check('Editing a part already marked right clears "Yes!" and needs Check Answer again (no unchecked Continue)', /^Yes!/.test(rev.ok) && rev.cont && rev.afterEdit.fb === '' && rev.afterEdit.check && !rev.afterEdit.cont, rev);
+  check('A second miss repeats the specific hint and never gives the answer; the hint stays while the child fixes the box', /Halfway is 5 more than 360/.test(rev.miss1) && rev.miss2 === rev.miss1 && !/365/.test(rev.miss2) && rev.hintWhileFixing === rev.miss1, rev);
+  await b.reload(); await wait(250);
+  const once = await js(`return { explanations: document.querySelectorAll('#guided-runner .rl-task.is-done').length, extra: document.querySelectorAll('#guided-runner .result-box .feedback').length }`);
+  check('A finished Practice Together problem shows its explanation once after a refresh', rev.done.startsWith('364 is closer to 360') && once.explanations === 1 && once.extra === 0, { rev: rev.done, once });
   await b.load(O + LESSON + '#practice/own'); await wait(200);
   await b.navigate(`document.querySelector('[data-open-set="s1"]').click();`);
   const own = await js(`${FILL_HELPERS}
@@ -260,7 +276,12 @@ try {
   const after21 = await js(`return Object.keys(localStorage).filter((k) => k.startsWith('mathbook:v2:lesson-2-1')).sort().map((k) => k + '=' + localStorage.getItem(k)).join('|')`);
   check('2-2 progress and results are stored only under its own key; 2-1 data is untouched', keys.filter((k) => !k.startsWith('mathbook:v2:lesson-2-1')).every((k) => k.startsWith(KEY + ':')) && keys.some((k) => k === KEY + ':attempts') && after21 === before21, { keys });
   await hash('#test'); await js(`document.querySelector('[data-start="rounding"]').click();`); await wait(200);
-  await js(`${PAGED} const qs = JSON.parse(localStorage.getItem(L.storageKey + ':draft-rounding')).questions; fill(testQ(), qs[0], true); document.querySelector('[data-nav="next"]').click();`);
+  // A skipped (blank) number-line question is not progress.
+  await js(`document.querySelector('[data-nav="next"]').click();`);
+  await b.load(O + BASE);
+  check('Home: skipping a blank number-line test question does not count as progress', await js(`return document.getElementById('continue').hidden || !/lesson-2-2/.test(document.querySelector('#continue-link').getAttribute('href'))`));
+  await b.load(O + LESSON + '#test/rounding'); await b.reload(); await wait(250);
+  await js(`${PAGED} if (!testQ() || qIndex() !== 0) document.querySelector('[data-nav="prev"]').click(); const qs = JSON.parse(localStorage.getItem(L.storageKey + ':draft-rounding')).questions; fill(testQ(), qs[0], true); document.querySelector('[data-nav="next"]').click();`);
   await b.load(O + BASE);
   const cont = await js(`return { href: document.querySelector('#continue-link').getAttribute('href'), what: document.querySelector('#continue-what').textContent, shown: !document.getElementById('continue').hidden }`);
   check('Home: Continue points to the unfinished 2-2 test', cont.shown && /lesson-2-2\/#test\/rounding$/.test(cont.href) && /Lesson 2-2 · Rounding Test: 1 of 12 answered/.test(cont.what), cont);

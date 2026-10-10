@@ -76,10 +76,11 @@ test('Learn: five steps, Example slides and a Your Turn check that never reuses 
   assert.deepEqual(steps.map((s) => s.id), ['tens-line', 'hundreds-line', 'place-value', 'reasoning', 'real-life']);
   assert.ok(steps.every((s) => s.kind === 'slides' && s.slides.length >= 2));
   const html = steps.map((s) => s.slides.join(' ')).join(' ');
+  const text = html.replace(/<[^>]+>/g, '');
   for (const must of ['127 is closer to 130, so it rounds to 130', '127 is closer to 100, so it rounds to 100', 'What two tens is 127 between? <b>120</b> and <b>130</b>',
     'What number is halfway? <b>125</b>', 'What number is halfway? <b>150</b>', 'Which ten is closer? <b>130</b>',
     '896 rounds to 900', '<b>995</b> rounds to <b>1,000</b>', '<b>950</b> rounds to <b>1,000</b>', '235 through 244', '315 rounds to <b>320</b>', '$15 + $22 + $12 = <b>$49</b>', '<b>$1</b> left']) {
-    assert.ok(html.includes(must), 'Learn shows: ' + must);
+    assert.ok(html.includes(must) || text.includes(must), 'Learn shows: ' + must);
   }
   for (let seed = 1; seed <= 400; seed++) {
     const r = pv.rng(seed);

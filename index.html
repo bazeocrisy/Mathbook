@@ -63,8 +63,15 @@
     // Just opening a page, or a test with nothing answered yet, does not count.
     (function () {
       function get(key) { try { return JSON.parse(localStorage.getItem(key) || 'null'); } catch (e) { return null; } }
-      function answered(r) { return r !== undefined && r !== '' && r !== null && !(Array.isArray(r) && r.every(function (v) { return v === '' || v === 0 || v === null; })); }
-      function count(responses) { return Object.keys(responses || {}).filter(function (k) { return answered(responses[k]); }).length; }
+      // A staged number-line answer is an object: "started" once any box is filled, "answered" when all are.
+      var LINE_PARTS = ['lo', 'hi', 'mid', 'pick'];
+      function filled(r, k) { return r[k] !== undefined && r[k] !== null && String(r[k]).trim() !== ''; }
+      function answered(r, started) {
+        if (r && typeof r === 'object' && !Array.isArray(r)) return started ? LINE_PARTS.concat('why').some(function (k) { return filled(r, k); }) : LINE_PARTS.concat(r.needWhy ? ['why'] : []).every(function (k) { return filled(r, k); });
+        return r !== undefined && r !== '' && r !== null && !(Array.isArray(r) && r.every(function (v) { return v === '' || v === 0 || v === null; }));
+      }
+      // Continue appears once anything has been typed; the label counts fully answered questions (as the test does).
+      function count(responses, started) { return Object.keys(responses || {}).filter(function (k) { return answered(responses[k], started); }).length; }
       var found = [];
       // Each lesson keeps its own progress (its own storage prefix).
       var LESSONS = [
@@ -77,13 +84,13 @@
         lesson.tests.forEach(function (t) {
           var d = get(key + 'draft-' + t[0]);
           var n = d && d.questions ? count(d.responses) : 0;
-          if (n) found.push({ href: page + '#test/' + t[0], what: 'Lesson ' + lesson.id + ' · ' + t[1] + ': ' + n + ' of ' + d.questions.length + ' answered' });
+          if (d && d.questions && count(d.responses, true)) found.push({ href: page + '#test/' + t[0], what: 'Lesson ' + lesson.id + ' · ' + t[1] + ': ' + n + ' of ' + d.questions.length + ' answered' });
         });
         var bank = get(key + 'bank-sets') || {};
         Object.keys(bank).forEach(function (id) {
           var a = bank[id] && bank[id].active;
           var n = a && !a.checked ? count(a.responses) : 0;
-          if (n) found.push({ href: page + '#practice/' + id, what: 'Lesson ' + lesson.id + ' · Practice on my own: ' + n + ' of ' + a.order.length + ' answered' });
+          if (a && !a.checked && count(a.responses, true)) found.push({ href: page + '#practice/' + id, what: 'Lesson ' + lesson.id + ' · Practice on my own: ' + n + ' of ' + a.order.length + ' answered' });
         });
         var w = get(key + 'see-wizard');
         var done = w && w.done ? Object.keys(w.done).length : 0;
@@ -91,7 +98,7 @@
       });
       var nw = get('mathbook:v2:number-words:phase-1:draft');
       var nwn = nw && nw.questions ? count(nw.responses) : 0;
-      if (nwn) found.push({ href: 'number-words/phase-1/#test', what: 'Number Words · Spelling test: ' + nwn + ' of ' + nw.questions.length + ' answered' });
+      if (nw && nw.questions && count(nw.responses, true)) found.push({ href: 'number-words/phase-1/#test', what: 'Number Words · Spelling test: ' + nwn + ' of ' + nw.questions.length + ' answered' });
       if (!found.length) return;
       // Prefer the screen that was open most recently, if it is one of these.
       var act = get('mathbook:v2:activity');

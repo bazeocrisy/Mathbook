@@ -92,7 +92,7 @@
         say('What two tens is 127 between? <b>120</b> and <b>130</b>.') + roundLineHTML(127, 10, 'ends'),
         say('What number is halfway? <b>125</b>.') + roundLineHTML(127, 10, 'mid'),
         say('Put 127 on the line. Which ten is closer? <b>130</b>.') + roundLineHTML(127, 10, 'point'),
-        say('<b>127 is closer to 130, so it rounds to 130.</b>') + roundLineHTML(127, 10, 'all')
+        say('Which way does it round?') + roundLineHTML(127, 10, 'all')
       ],
       check(r) { return lineQ(randomNot(r, 101, 989, (n) => n % 10 !== 0), 10, 'learn-1'); },
       staged: true
@@ -104,7 +104,7 @@
         say('What two hundreds is 127 between? <b>100</b> and <b>200</b>.') + roundLineHTML(127, 100, 'ends'),
         say('What number is halfway? <b>150</b>.') + roundLineHTML(127, 100, 'mid'),
         say('Put 127 on the line. Which hundred is closer? <b>100</b>.') + roundLineHTML(127, 100, 'point'),
-        say('<b>127 is closer to 100, so it rounds to 100.</b>') + roundLineHTML(127, 100, 'all')
+        say('Which way does it round?') + roundLineHTML(127, 100, 'all')
       ],
       // Your Turn: a number past the halfway point (it rounds up).
       check(r) { return lineQ(randomNot(r, 151, 999, (n) => n % 100 > 50), 100, 'learn-2'); },
