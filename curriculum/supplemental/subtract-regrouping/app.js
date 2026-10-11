@@ -12,7 +12,7 @@
   const M = SK.math;
   const C = MB.subtractRegrouping;
   const shell = MB.shell;
-  const head = shell.sectionHead;
+  const head = (...args) => shell.sectionHead(...args); // looked up when used, so the sanitizers load without the shell (Node tests)
   const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   const fmt = M.fmt;
   const V = 1;
@@ -77,6 +77,77 @@
   }
   const problemText = (item) => `${fmt(item.top)} − ${fmt(item.bottom)}`;
 
+  // ---------- Sanitizers for saved records (no storage access; exported for tests) ----------
+  const SEED = (x) => isInt(x, 0, 4294967295);
+  const STEP_IDS = C.learn.map((st) => st.id);
+  /** The entries of o that pass ok(key, value); a bad entry is left out, never the whole object. */
+  function pickKeys(o, ok) {
+    const out = {};
+    if (isObj(o)) Object.keys(o).forEach((k) => { try { if (ok(k, o[k])) out[k] = o[k]; } catch (e) { /* drop this entry */ } });
+    return out;
+  }
+  const validSetup = (x) => isObj(x) && [2, 3, 4, 'mixed'].includes(x.size) && ['easy', 'medium', 'hard', 'mixed'].includes(x.difficulty) && C.SETUP.lengths.includes(x.length) && !M.unavailableReason(x.size, x.difficulty);
+  const cleanResults = (r) => pickKeys(r, (k, v) => /^q\d+$/.test(k) && isObj(v) && typeof v.correct === 'boolean' && isInt(v.tries, 0, 9999) && isInt(v.hints, 0, 9999) && (v.firstTry === undefined || typeof v.firstTry === 'boolean'));
+  const validPracticeAttempt = (x) => isObj(x) && typeof x.at === 'string' && isInt(x.total, 1, 50) && isInt(x.correct, 0, 50) && isInt(x.firstTry, 0, 50) && isInt(x.hints, 0, 99999);
+  /** The items of a run (rebuilt from its seed): a setup session or one skill. */
+  function runItemsFor(kind, a) {
+    if (kind === 'setup') return M.generateSession(Object.assign({ seed: a.seed }, a.setup)).items.map((q, k) => ({ kind: 'sub', top: q.top, bottom: q.bottom, id: 'q' + (k + 1) }));
+    return C.skillSession(kind, a.seed);
+  }
+  /** An active run, or null if it can't be used. Responses and results are cleaned one by one. */
+  function cleanRun(a, kind) {
+    if (!isObj(a) || a.v !== V || !SEED(a.seed) || typeof a.checked !== 'boolean') return null;
+    if (kind === 'setup' && !validSetup(a.setup)) return null;
+    const items = runItemsFor(kind, a);
+    if (!items.length) return null;
+    const byId = Object.fromEntries(items.map((q) => [q.id, q]));
+    const responses = pickKeys(a.responses, (k, v) => byId[k] && validResponse(byId[k], v));
+    return Object.assign({}, a, { pos: isInt(a.pos, 0, items.length) ? a.pos : 0, order: items.map((q) => q.id), responses, results: cleanResults(a.results),
+      answered: items.filter((q) => answered(q, responses[q.id])).map((q) => q.id), recorded: a.recorded === true });
+  }
+  const PART_KEYS = ['final', 'steps', 'decide', 'mistake'];
+  function cleanAttempt(x) {
+    if (!isObj(x) || x.v !== V || x.testId !== 'test' || !isInt(x.score, 0, 15) || x.total !== 15 || !isInt(x.pct, 0, 100) || typeof x.at !== 'string') return null;
+    const parts = pickKeys(x.parts, (k, v) => PART_KEYS.includes(k) && Array.isArray(v) && v.length === 2 && isInt(v[0], 0, 15) && isInt(v[1], 0, 15) && v[0] <= v[1]);
+    const items = (Array.isArray(x.items) ? x.items : []).filter((it) => isObj(it) && /^t\d+$/.test(it.id) && SKILL[it.skill] && CAT_LABEL[it.cat] && ITEM_KINDS.includes(it.kind) &&
+      isInt(it.top, 0, 9999) && isInt(it.bottom, 0, 9999) && typeof it.correct === 'boolean' && typeof it.response === 'string');
+    return Object.assign({}, x, { parts, items });
+  }
+  const SAN = {
+    STEP_IDS,
+    wizard: (w) => isObj(w) ? { v: V, step: isInt(w.step, 0, STEP_IDS.length - 1) ? w.step : 0,
+      done: pickKeys(w.done, (k, v) => STEP_IDS.includes(k) && v === true),
+      phase: pickKeys(w.phase, (k, v) => STEP_IDS.includes(k) && ['example', 'try'].includes(v)),
+      ex: pickKeys(w.ex, (k, v) => STEP_IDS.includes(k) && isInt(v, 0, 9)),
+      checks: pickKeys(w.checks, (k, v) => STEP_IDS.includes(k) && isObj(v) && SEED(v.seed)) } : null,
+    together: (t) => isObj(t) ? { v: V, pos: isInt(t.pos, 0, C.together.length - 1) ? t.pos : 0, seed: SEED(t.seed) ? t.seed : 0,
+      states: pickKeys(t.states, (k, v) => isInt(Number(k), 0, C.together.length - 1) && isObj(v)),
+      done: pickKeys(t.done, (k, v) => isInt(Number(k), 0, C.together.length - 1) && v === true) } : null,
+    sessions: (b) => {
+      if (!isObj(b)) return null;
+      const st = isObj(b.setup) ? b.setup : {};
+      return { v: V, setup: { active: cleanRun(st.active, 'setup'), attempts: (Array.isArray(st.attempts) ? st.attempts : []).filter(validPracticeAttempt) } };
+    },
+    skills: (x) => {
+      if (!isObj(x)) return null;
+      const out = { v: V };
+      Object.keys(x).forEach((k) => {
+        if (!/^skill-/.test(k) || !SKILL[k.slice(6)] || !isObj(x[k])) return; // only this entry is dropped
+        out[k] = { active: cleanRun(x[k].active, k.slice(6)), attempts: (Array.isArray(x[k].attempts) ? x[k].attempts : []).filter(validPracticeAttempt) };
+      });
+      return out;
+    },
+    draft: (d) => {
+      if (!isObj(d) || d.v !== V || !SEED(d.seed)) return null;
+      const items = C.testItems(d.seed), byId = Object.fromEntries(items.map((q) => [q.id, q]));
+      const responses = pickKeys(d.responses, (k, v) => byId[k] && validResponse(byId[k], v));
+      return { v: V, seed: d.seed, pos: isInt(d.pos, 0, items.length) ? d.pos : 0, questions: items.map((q) => q.id), responses,
+        answered: items.filter((q) => answered(q, responses[q.id])).map((q) => q.id) };
+    },
+    attempts: (x) => Array.isArray(x) ? x.map((a) => { try { return cleanAttempt(a); } catch (e) { return null; } }).filter(Boolean) : null,
+    setup: (x) => isObj(x) && x.v === V && validSetup(x) ? x : null
+  };
+
   function start(opts) {
     opts = opts || {};
     const store = shell.makeStore(C.storagePrefix);
@@ -84,37 +155,22 @@
     const keep = (inst) => { live.push(inst); return inst; };
     const cleanup = () => { live.forEach((i) => i.destroy()); live = []; };
 
-    // ---------- Validated records ----------
-    function read(key, valid, fallback) {
+    // ---------- Saved records: each is cleaned entry by entry (SR-M01/M02); a bad entry is dropped, the rest kept ----------
+    function read(key, clean, fallback) {
       const raw = store.get(key, null);
       if (raw === null) return fallback();
-      try { if (valid(raw)) return raw; } catch (e) { /* treated as malformed */ }
-      return fallback(); // malformed: ignored here, replaced on the next save; nothing else is touched
+      try { const c = clean(raw); if (c) return c; } catch (e) { /* treated as malformed */ }
+      return fallback(); // unusable as a whole: ignored here and replaced on the next save; other keys untouched
     }
     const save = (key, val) => store.set(key, val);
-
-    const STEP_IDS = C.learn.map((s) => s.id);
-    const validWizard = (w) => isObj(w) && w.v === V && isInt(w.step, 0, STEP_IDS.length - 1) && isObj(w.done) && Object.keys(w.done).every((k) => STEP_IDS.includes(k) && w.done[k] === true) &&
-      isObj(w.phase) && Object.keys(w.phase).every((k) => STEP_IDS.includes(k) && ['example', 'try'].includes(w.phase[k])) &&
-      isObj(w.ex) && Object.keys(w.ex).every((k) => STEP_IDS.includes(k) && isInt(w.ex[k], 0, 9)) &&
-      isObj(w.checks) && Object.keys(w.checks).every((k) => STEP_IDS.includes(k) && isObj(w.checks[k]) && isInt(w.checks[k].seed, 0, 4294967295));
-    const wizard = () => read('see-wizard', validWizard, () => ({ v: V, step: 0, done: {}, phase: {}, ex: {}, checks: {} }));
-
-    const validTogether = (t) => isObj(t) && t.v === V && isInt(t.pos, 0, C.together.length - 1) && isInt(t.seed, 0, 4294967295) && isObj(t.states) && isObj(t.done) &&
-      Object.keys(t.done).every((k) => isInt(Number(k), 0, C.together.length - 1) && t.done[k] === true);
-    const together = () => read('guided', validTogether, () => ({ v: V, pos: 0, seed: 0, states: {}, done: {} }));
-
-    const validSetup = (s) => isObj(s) && [2, 3, 4, 'mixed'].includes(s.size) && ['easy', 'medium', 'hard', 'mixed'].includes(s.difficulty) && C.SETUP.lengths.includes(s.length) && !M.unavailableReason(s.size, s.difficulty);
-    const validRun = (a, n) => isObj(a) && a.v === V && isInt(a.seed, 0, 4294967295) && isInt(a.pos, 0, n) && isObj(a.responses) && isObj(a.results) && typeof a.checked === 'boolean' && Array.isArray(a.order);
-    const validSessions = (b) => isObj(b) && b.v === V && (b.setup === undefined || (isObj(b.setup) && (b.setup.active === null || (validRun(b.setup.active, 50) && validSetup(b.setup.active.setup))) && Array.isArray(b.setup.attempts)));
-    const sessions = () => read('bank-sets', validSessions, () => ({ v: V, setup: { active: null, attempts: [] } }));
-    const validSkills = (s) => isObj(s) && s.v === V && Object.keys(s).filter((k) => k !== 'v').every((k) => /^skill-/.test(k) && SKILL[k.slice(6)] && isObj(s[k]) && (s[k].active === null || validRun(s[k].active, C.SKILL_LENGTH)) && Array.isArray(s[k].attempts));
-    const skillStore = () => read('skill-practice', validSkills, () => ({ v: V }));
-    const validDraft = (d) => isObj(d) && d.v === V && isInt(d.seed, 0, 4294967295) && isInt(d.pos, 0, 15) && isObj(d.responses) && Array.isArray(d.questions) && d.questions.length === 15;
-    const draft = () => read('draft-test', validDraft, () => null);
-    const validAttempt = (a) => isObj(a) && a.v === V && a.testId === 'test' && isInt(a.score, 0, 15) && a.total === 15 && isInt(a.pct, 0, 100) && isObj(a.parts) && Array.isArray(a.items) && typeof a.at === 'string';
-    const attempts = () => read('attempts', (x) => Array.isArray(x) && x.every(validAttempt), () => []);
-    const lastSetup = () => read('setup', (s) => isObj(s) && s.v === V && validSetup(s), () => Object.assign({ v: V }, C.SETUP.defaults));
+    const STEP_IDS = SAN.STEP_IDS;
+    const wizard = () => read('see-wizard', SAN.wizard, () => ({ v: V, step: 0, done: {}, phase: {}, ex: {}, checks: {} }));
+    const together = () => read('guided', SAN.together, () => ({ v: V, pos: 0, seed: 0, states: {}, done: {} }));
+    const sessions = () => read('bank-sets', SAN.sessions, () => ({ v: V, setup: { active: null, attempts: [] } }));
+    const skillStore = () => read('skill-practice', SAN.skills, () => ({ v: V }));
+    const draft = () => read('draft-test', SAN.draft, () => null);
+    const attempts = () => read('attempts', SAN.attempts, () => []);
+    const lastSetup = () => read('setup', SAN.setup, () => Object.assign({ v: V }, C.SETUP.defaults));
 
     // ---------- Shell ----------
     const ctx = shell.startShell({
@@ -406,7 +462,7 @@
       const doneN = Object.keys(T.done).length;
       main.innerHTML = `<section class="hero act-hero"><p class="eyebrow">${eyebrow('Practice Together')}</p><div class="act-title"><h1 tabindex="-1">Practice Together</h1><p class="wiz-count">Problem ${i + 1} of ${set.length}</p></div></section>` +
         `<section class="card"><p class="q-prompt">${esc(problemText(q))}: decide each step.${T.done[i] ? ' <span class="badge-done">✓ Done</span>' : ''}</p><div class="sr-ws" id="sr-tg"></div>` +
-        `<details class="parent-help"><summary>Parent Help</summary><p>${esc(C.togetherTips[i % C.togetherTips.length])}</p></details>` +
+        `<details class="parent-help"><summary>Parent Help</summary><p>${esc(T.seed ? C.tipFor(q.top, q.bottom) : C.togetherTips[i % C.togetherTips.length])}</p></details>` +
         `<div class="stage-nav"><button type="button" class="btn btn-ghost" data-t="prev"${i === 0 ? ' disabled' : ''}>← Previous</button><span class="muted">${doneN} of ${set.length} done</span>` +
         `<button type="button" class="btn btn-primary" data-t="next"${i === set.length - 1 ? ' disabled' : ''}>Next problem →</button></div>` +
         `<p><button type="button" class="btn btn-ghost btn-small" data-t="new">New problems</button></p></section>` + menuNav('#practice', 'Practice choices');
@@ -512,7 +568,7 @@
         menuNav(spec.kind === 'setup' ? '#practice/setup' : '#practice/skills', spec.kind === 'setup' ? 'Practice setup' : 'Skills');
       const box = main.querySelector('#sr-q');
       const resp = validResponse(item, run.responses[item.id]) ? run.responses[item.id] : {};
-      const record = (r) => { run.responses[item.id] = r; save(G.key, G.all); };
+      const record = (r) => { run.responses[item.id] = r; run.answered = items.filter((q) => answered(q, run.responses[q.id])).map((q) => q.id); save(G.key, G.all); };
       const result = (ok) => {
         const rr = run.results[item.id] = run.results[item.id] || { correct: false, tries: 0, hints: 0 };
         rr.tries += 1; if (ok && !rr.correct) { rr.correct = true; rr.firstTry = rr.tries === 1; }
@@ -580,7 +636,7 @@
         location.hash = '#test/run';
       });
     }
-    const answeredById = (D, id) => { const it = C.testItems(D.seed).find((q) => q.id === id); return it ? answered(it, D.responses[id]) : false; };
+    const answeredById = (D, id) => D.answered.includes(id); // the draft is already cleaned (responses validated)
     function runTest(D, review) {
       activity(true);
       const items = C.testItems(D.seed);
@@ -602,7 +658,7 @@
       const resp = validResponse(item, D.responses[item.id]) ? D.responses[item.id] : {};
       const box = main.querySelector('#sr-tq');
       if (item.kind === 'sub') box.insertAdjacentHTML('beforebegin', `<p class="q-prompt">Subtract.</p>`);
-      formItem(box, item, resp, { mode: 'test', onChange: (r) => { D.responses[item.id] = r; save('draft-test', D); } });
+      formItem(box, item, resp, { mode: 'test', onChange: (r) => { D.responses[item.id] = r; D.answered = items.filter((q) => answered(q, D.responses[q.id])).map((q) => q.id); save('draft-test', D); } });
       main.querySelectorAll('[data-nav]').forEach((b) => b.addEventListener('click', () => {
         D.pos = b.dataset.nav === 'prev' ? Math.max(0, i - 1) : i + 1;
         save('draft-test', D); cleanup(); runTest(D); focusH('h1');
@@ -667,4 +723,5 @@
   MB.subtractRegrouping._grade = grade;
   MB.subtractRegrouping._answered = answered;
   MB.subtractRegrouping._validResponse = validResponse;
+  MB.subtractRegrouping._sanitize = SAN;
 })(window);

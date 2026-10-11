@@ -199,7 +199,7 @@
       }
       if (!size) { const ok = sizesFor(diff).filter((s) => s !== 4 || r() < 0.34); size = ok.length ? ok[int(r, 0, ok.length - 1)] : 4; }
       const spec = { size, difficulty: diff, avoid };
-      if (diff === 'none' && r() < 0.25) spec.equal = true;
+      if (diff === 'none' && (i === 5 || r() < 0.25)) spec.equal = true; // the first no-regrouping slot is always equal numbers (answer 0)
       if (diff === 'hard' && size === 4) spec.chain = i % 2 ? 2 : 1;
       const q = generateOne(r, spec) || generateOne(r, { size, difficulty: diff, avoid });
       if (q) items.push(q);
@@ -281,6 +281,7 @@
       return { status: 'valid', standard };
     }
     const up = cur.map((v, i) => v - orig[i]);
+    if (!up.some((d) => d < 0)) { const r = up.findIndex((d) => d === 10); if (r >= 0) return { status: 'invalid', issue: 'no-reduce', place: r }; }
     // Exchanged through zeros, but a zero kept its 10: places that were 0 now show 10.
     const tens = up.map((d, i) => (orig[i] === 0 && cur[i] === 10 ? i : -1)).filter((i) => i >= 0);
     if (tens.length && up.some((d) => d === -1)) return { status: 'invalid', issue: 'zero-ten', place: tens[0] };
@@ -336,7 +337,7 @@
       const shift = size - lengthOf(bottom);
       if (shift < 1) return null;
       const wrong = top - bottom * 10 ** shift;
-      if (wrong < 0) return null;
+      if (wrong < 0 || wrong === top - bottom) return null;
       return { answer: wrong, ann: {}, d: digitsOf(wrong, size).map(String), misaligned: shift };
     }
     let a = orig.slice();

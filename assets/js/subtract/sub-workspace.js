@@ -43,6 +43,7 @@
     digitSwap: (i, t, b, now) => `You can't turn it around to ${b} − ${t}. After the exchange the ${P[i].name} has ${now}: use ${now} − ${b}.`,
     digitWrong: (i, t, b) => `Look again: ${t} − ${b}.`,
     digitEmpty: 'Write one digit in the answer box, then check.',
+    noneLeft: (k) => `No ${P[k].name} are left, so the answer starts in the ${P[k - 1].name}.`,
     guidedDone: (top, bottom, ans) => `You did it! ${M.fmt(top)} − ${M.fmt(bottom)} = ${M.fmt(ans)}.`,
     correct: (top, bottom, ans) => `Correct! ${M.fmt(top)} − ${M.fmt(bottom)} = ${M.fmt(ans)}.`,
     correctMarksOff: 'Your answer is right. One regroup mark does not keep the value the same; look at your marks again.',
@@ -109,6 +110,7 @@
     if (!Array.isArray(s.log) || s.log.length > 200) return false;
     if (!Number.isInteger(s.hint) || s.hint < 0 || s.hint > 5) return false;
     if (!Number.isInteger(s.demo) || s.demo < 0 || s.demo > 60) return false;
+    if (s.hintCol !== undefined && s.hintCol !== null && !(Number.isInteger(s.hintCol) && s.hintCol >= 0 && s.hintCol < n)) return false;
     if (s.guided !== null && (typeof s.guided !== 'object' || !Number.isInteger(s.guided.col) || s.guided.col < 0 || s.guided.col > n ||
       !['needs', 'supplier', 'exchange', 'digit', 'done'].includes(s.guided.stage) || !Number.isInteger(s.guided.ex) || s.guided.ex < 0 || s.guided.ex > 4)) return false;
     return true;
@@ -280,7 +282,7 @@
       }
       if (mode === 'guided') {
         const g = S.guided;
-        if (g.stage === 'done') return `<p class="sk-note sk-ok-note"><span aria-hidden="true">✓ </span>${esc(T.guidedDone(top, bottom, top - bottom))}</p>`;
+        if (g.stage === 'done') return `<div class="sk-fb" role="status">${feedbackHTML}</div><p class="sk-note sk-ok-note"><span aria-hidden="true">✓ </span>${esc(T.guidedDone(top, bottom, top - bottom))}</p>`;
         const col = plan.columns[g.col], i = g.col, t = col.before[i], b = col.bottomDigit;
         let q = '', ctl = '';
         if (g.stage === 'needs') {
@@ -305,7 +307,7 @@
       if (mode === 'independent' && (allowHints || allowCheck)) {
         let hintsH = '';
         if (S.hint > 0) {
-          const H = M.hints(top, bottom, { d: S.d }).levels;
+          const H = M.hints(top, bottom, { d: S.d }).levels; // the first unfinished column (the hinted one)
           const shown = Math.min(S.hint, 4);
           const older = [];
           for (let k = 1; k < shown; k++) older.push(`<li><b>${esc(T.hintLabel(k))}:</b> ${esc(H[k - 1])}</li>`);
@@ -318,12 +320,13 @@
       return '';
     }
 
+    const hintColMoved = () => S.hintCol !== undefined && S.hintCol !== M.hints(top, bottom, { d: S.d }).place;
     function toolbarHTML() {
       if (mode === 'demo' || mode === 'view' || mode === 'guided') return '';
       const undo = `<button type="button" class="sk-btn sk-btn-ghost" data-act="undo"${S.log.length ? '' : ' disabled'}>${esc(T.undo)}</button>`;
       const clear = `<button type="button" class="sk-btn sk-btn-ghost" data-act="clear"${Object.keys(S.ann).length ? '' : ' disabled'}>${esc(T.clear)}</button>`;
       let right = '';
-      if (allowHints) right += S.hint < 4 ? `<button type="button" class="sk-btn sk-btn-ghost" data-act="hint">💡 ${esc(T.hintButton(S.hint))}</button>`
+      if (allowHints) right += (S.hint < 4 || (S.hint === 4 && hintColMoved())) ? `<button type="button" class="sk-btn sk-btn-ghost" data-act="hint">💡 ${esc(T.hintButton(S.hint))}</button>`
         : allowSolution && S.hint === 4 ? `<button type="button" class="sk-btn sk-btn-outline" data-act="solution">${esc(T.showSolution)}</button>` : '';
       if (allowCheck) right += `<button type="button" class="sk-btn sk-btn-primary" data-act="check">${esc(T.check)}</button>`;
       return `<div class="sk-toolbar"><div class="sk-tl">${undo}${clear}</div>${right ? `<div class="sk-tr">${right}</div>` : ''}</div>`;
@@ -426,7 +429,8 @@
     }
 
     // ----- Guided decisions -----
-    function guidedFeedback(ok, msg) { feedbackHTML = `<p class="${ok ? 'sk-ok-note' : 'sk-no-note'}"><span aria-hidden="true">${ok ? '✓ ' : '✗ '}</span>${esc(msg)}</p>`; }
+    /** ok: ✓ · false: ✗ (a real mistake) · 'valid': ↺ (mathematically fine, but use the standard step). */
+    function guidedFeedback(ok, msg) { const cls = ok === 'valid' ? 'sk-info-note' : ok ? 'sk-ok-note' : 'sk-no-note'; feedbackHTML = `<p class="${cls}"><span aria-hidden="true">${ok === 'valid' ? '↺ ' : ok ? '✓ ' : '✗ '}</span>${esc(msg)}</p>`; }
     function guidedNext(stage, extra) {
       Object.assign(S.guided, { stage }, extra || {});
       render(null);
@@ -439,6 +443,8 @@
       }
       change();
     }
+    /** From place k up, nothing is left to write (top amount 0, no bottom digit): the answer starts lower. */
+    const leadingOnly = (k) => plan.columns.slice(k).every((c) => c.topNow === 0 && c.place >= blen);
     const feedbackText = () => { const d = document.createElement('div'); d.innerHTML = feedbackHTML; return d.textContent; };
     function guidedAct(act, v) {
       const g = S.guided, col = plan.columns[g.col], i = g.col, t = col.before[i], b = col.bottomDigit;
@@ -449,7 +455,7 @@
           emit('step', { kind: 'needs', column: i, correct: true });
           return guidedNext(yes ? 'supplier' : 'digit');
         }
-        guidedFeedback(false, yes ? T.needsAltYes(i, t, b) : T.needsWrongNo(i, t, b));
+        guidedFeedback(yes ? 'valid' : false, yes ? T.needsAltYes(i, t, b) : T.needsWrongNo(i, t, b));
         emit('step', { kind: 'needs', column: i, correct: false, valid: yes });
       } else if (act === 'supplier') {
         const k = Number(v), cur = col.before;
@@ -459,7 +465,7 @@
           return guidedNext('exchange', { ex: 0 });
         }
         if (cur[k] === 0) guidedFeedback(false, T.supplierZero(k));
-        else guidedFeedback(false, T.supplierFar(k, col.supplier));
+        else guidedFeedback('valid', T.supplierFar(k, col.supplier));
         emit('step', { kind: 'supplier', column: i, correct: false, valid: cur[k] > 0 });
       } else if (act === 'check-ex') {
         const e = col.exchanges[g.ex];
@@ -491,7 +497,9 @@
           guidedFeedback(true, `${cap(P[i].name)}: ${col.topNow} − ${b} = ${d}.`);
           emit('step', { kind: 'digit', column: i, correct: true });
           emit('answer', { status: i === n - 1 ? 'correct' : 'partial', column: i });
-          return g.col + 1 < n ? guidedNext('needs', { col: g.col + 1, ex: 0 }) : guidedNext('done');
+          if (g.col + 1 < n && !leadingOnly(g.col + 1)) return guidedNext('needs', { col: g.col + 1, ex: 0 });
+          if (g.col + 1 < n) guidedFeedback(true, `${cap(P[i].name)}: ${col.topNow} − ${b} = ${d}. ${T.noneLeft(g.col + 1)}`);
+          return guidedNext('done');
         }
         const lent = col.topNow !== orig[i] && !col.needs;
         guidedFeedback(false, lent && d === orig[i] - b ? T.digitOriginal(i, orig[i], col.topNow) : (d === b - t && t < b) ? T.digitSwap(i, t, b, col.topNow) : T.digitWrong(i, col.topNow, b));
@@ -550,9 +558,11 @@
 
     function showHint(solution) {
       if (!allowHints) return;
+      const h = M.hints(top, bottom, { d: S.d });
+      if (!solution && S.hint < 5 && S.hintCol !== undefined && S.hintCol !== h.place) S.hint = 0; // a new column: start again at hint 1
       if (solution) { if (!allowSolution || S.hint < 4) return; S.hint = 5; }
       else if (S.hint < 4) S.hint += 1; else return;
-      const h = M.hints(top, bottom, { d: S.d });
+      S.hintCol = h.place;
       marks.hintCol = h.place;
       const col = h.place !== null ? plan.columns[h.place] : null;
       marks.hintSupplier = col && col.needs ? col.supplier : null;

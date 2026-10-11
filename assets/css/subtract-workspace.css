@@ -100,6 +100,7 @@ input.sk-cur:placeholder-shown { border-style: dashed; }
 .sk-fb:empty { display: none; }
 .sk-ok-note { color: var(--sk-ok); font-weight: 700; }
 .sk-no-note { color: var(--sk-no); font-weight: 700; }
+.sk-info-note { color: var(--sk-ink); font-weight: 700; border-left: 4px solid var(--sk-active-line); padding-left: 0.5rem; }
 .sk-note { font-weight: 600; }
 .sk-topnow-h { font-weight: 800; margin-bottom: 0.25rem; }
 .sk-topnow { margin: 0 0 0.75rem; padding-left: 1.4rem; }

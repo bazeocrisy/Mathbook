@@ -46,7 +46,7 @@
   /** Someone's work with this mistake (tries several problems). */
   function mistakeFor(r, bug, size, avoid) {
     for (let k = 0; k < 400; k++) {
-      const spec = bug === 'zero-ten' ? { size, difficulty: 'hard' } : bug === 'misaligned' ? { size, difficulty: 'none' } : { size, difficulty: k % 2 ? 'medium' : 'easy' };
+      const spec = bug === 'zero-ten' ? { size, difficulty: 'hard' } : bug === 'misaligned' ? { size, difficulty: 'none' } : { size, difficulty: (k < 200 ? r() < 0.5 : k % 2) ? 'medium' : 'easy' };
       const q = M.generateOne(r, Object.assign({ avoid }, spec));
       if (!q) continue;
       if (bug === 'misaligned' && M.lengthOf(q.bottom) === size) continue;
@@ -141,6 +141,21 @@
     'Ask: how many exchanges does it take to get from the hundreds to the ones?'
   ];
 
+  /** A Parent Help prompt built from the problem's own method (for "New problems"). */
+  function tipFor(top, bottom) {
+    const p = M.plan(top, bottom), need = p.columns.filter((c) => c.needs);
+    if (!need.length) return 'Ask: does any column need an exchange? Check each one from the ones.';
+    const z = need.find((x) => x.chain > 0); // a zero chain is the prompt that matters most
+    const c = z || need[0], place = P[c.place].name;
+    if (c.chain > 0) {
+      const zeros = [];
+      for (let k = c.place + 1; k < c.supplier; k++) zeros.push(P[k].name);
+      return `Ask: the ${zeros.join(' and ')} ${zeros.length > 1 ? 'have' : 'has'} 0. Which place can give, and what happens to each zero?`;
+    }
+    if (need.length > 1) return `Ask: after the exchange in the ${place}, how many ${P[c.place + 1].name} are left? Which other columns need an exchange?`;
+    return `Ask: is the top digit in the ${place} enough to take away the bottom digit? Which place can give?`;
+  }
+
   // ---------- Targeted skills ----------
   const skills = [
     { id: 'one', title: 'One exchange', desc: 'Problems that need exactly one exchange.', make: (r, avoid, k) => sub(gen(r, { size: k % 2 ? 4 : 3, difficulty: 'easy' }, avoid)) },
@@ -233,7 +248,7 @@
 
   MB.subtractRegrouping = {
     id: 'sr', title: 'Subtract with Regrouping', storagePrefix: 'mathbook:v2:subtract-regrouping',
-    learn, together, togetherTips, skills, skillSession, SKILL_LENGTH, BLUEPRINT, testItems, SETUP, parent, BUG_TEXT, CHECK_CHOICES,
+    learn, together, togetherTips, tipFor, skills, skillSession, SKILL_LENGTH, BLUEPRINT, testItems, SETUP, parent, BUG_TEXT, CHECK_CHOICES,
     decideItem, mistakeItem, checkItem
   };
 })(typeof window !== 'undefined' ? window : globalThis);

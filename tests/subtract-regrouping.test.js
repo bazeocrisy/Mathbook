@@ -124,3 +124,36 @@ test('setup choices and unavailable combinations', () => {
   assert.deepEqual(C.SETUP.lengths, [10, 25, 50]);
   assert.ok(M.unavailableReason(2, 'hard') && M.unavailableReason(2, 'medium'));
 });
+
+test('saved records are cleaned entry by entry: good entries survive, bad ones are dropped (SR-M01/M02)', () => {
+  require('../assets/js/subtract/sub-workspace.js'); // validState (no DOM needed to load)
+  require('../curriculum/supplemental/subtract-regrouping/app.js');
+  const S = C._sanitize;
+  const good = { v: 1, id: 1, testId: 'test', at: '2026-10-11T10:00:00Z', score: 12, total: 15, pct: 80, parts: { final: [9, 10] }, items: [{ id: 't1', cat: 'final', skill: 'one', kind: 'sub', top: 83, bottom: 47, correct: true, response: '36' }] };
+  const att = S.attempts([good, Object.assign({}, good, { pct: 'eighty' }), Object.assign({}, good, { id: 2, items: [null, { id: 'x', skill: 'nope' }, good.items[0]] }), 5]);
+  assert.equal(att.length, 2, 'two good attempts kept, two bad dropped');
+  assert.equal(att[1].items.length, 1, 'bad items inside an attempt are dropped, the good one kept');
+  const w = S.wizard({ v: 1, step: 4, done: { value: true, one: true, multi: true, four: true, zero1: true, bogus: true }, phase: { value: 'try', one: 'oops' }, ex: { four: 1 }, checks: { one: { seed: 7 }, multi: { seed: 'x' } } });
+  assert.equal(Object.keys(w.done).length, 5); assert.deepEqual(w.phase, { value: 'try' }); assert.deepEqual(Object.keys(w.checks), ['one']); assert.equal(w.step, 4);
+  const sk = S.skills({ v: 1, 'skill-one': { active: null, attempts: [{ at: 'x', total: 6, correct: 5, firstTry: 4, hints: 1 }] }, 'skill-zero1': { active: 'broken', attempts: [] }, 'skill-nope': {}, 'skill-multi': 7 });
+  assert.equal(sk['skill-one'].attempts.length, 1, 'skill-one history kept'); assert.equal(sk['skill-zero1'].active, null, 'a broken run becomes null, its history kept');
+  assert.ok(!('skill-nope' in sk) && !('skill-multi' in sk));
+  const ses = S.sessions({ v: 1, setup: { active: { v: 1, seed: 3, pos: 'x', checked: 'no' }, attempts: [{ at: 'x', total: 10, correct: 9, firstTry: 8, hints: 0 }, 'bad'] } });
+  assert.equal(ses.setup.active, null); assert.equal(ses.setup.attempts.length, 1, 'finished sessions kept when only the active run is bad');
+  const items = C.testItems(11);
+  const d = S.draft({ v: 1, seed: 11, pos: 3, questions: [], responses: { t1: { ws: { d: '12' } }, t12: { c1: 'Maybe' }, t2: { ws: { v: 1, top: items[1].top, bottom: items[1].bottom, mode: 'test', ann: {}, log: [], d: M.digitsOf(items[1].top - items[1].bottom).map(String), hint: 0, demo: 0, guided: null, result: null, done: false } } } });
+  assert.deepEqual(Object.keys(d.responses), ['t2'], 'only the valid response is kept'); assert.deepEqual(d.answered, ['t2']); assert.equal(d.questions.length, 15);
+  const run = S.sessions({ v: 1, setup: { active: { v: 1, seed: 5, setup: { size: 4, difficulty: 'easy', length: 10 }, pos: 2, order: [], responses: { q1: 'x' }, results: { q1: 4, q2: { correct: true, tries: 1, hints: 0, firstTry: true } }, checked: false }, attempts: [] } });
+  assert.deepEqual(Object.keys(run.setup.active.results), ['q2']); assert.deepEqual(run.setup.active.responses, {}); assert.equal(run.setup.active.order.length, 10);
+  assert.equal(S.wizard('x'), null); assert.equal(S.draft({ v: 1, seed: 'x' }), null);
+});
+
+test('review fixes SR-M05, M07 support, M09, M10 and a zero answer in every Mixed session', () => {
+  assert.equal(M.evaluateWork(3002, 1578, { 0: [12] }).issue, 'no-reduce', 'added 10 with nothing reduced, even with a 0 on the left');
+  assert.equal(M.buggyWork(3726, 0, 'misaligned'), null);
+  let medium = 0;
+  for (let s = 1; s <= 200; s++) { const it = C.testItems(s)[12]; if (M.classify(it.top, it.bottom).exchanges >= 2) medium++; }
+  assert.ok(medium > 40, `error-analysis items include problems with 2+ exchanges (${medium} of 200)`);
+  for (let seed = 1; seed <= 40; seed++) assert.ok(M.generateSession({ size: 'mixed', difficulty: 'mixed', length: 10, seed }).items.some((q) => q.top === q.bottom), 'a zero answer in every Mixed session');
+  assert.match(C.tipFor(7020, 4781), /hundreds has 0/); assert.match(C.tipFor(515, 174), /tens/);
+});
