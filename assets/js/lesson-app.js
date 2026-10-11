@@ -574,6 +574,9 @@
             // On a short screen (e.g. 200% zoom) bring the card itself to the top so the question is in view (review L210-03).
             const card = main.querySelector('.wiz-card');
             if (card && root.innerHeight < 560) card.scrollIntoView({ block: 'start' }); else root.scrollTo(0, 0);
+            // A tall Your Turn (e.g. 2-14 partial sums): if Check Answer would start below the fold, bring the card up too.
+            const chk = main.querySelector('[data-wiz="check"]');
+            if (card && chk && root.innerHeight >= 560 && root.innerWidth >= 768 && chk.getBoundingClientRect().bottom > root.innerHeight) card.scrollIntoView({ block: 'start' });
             main.querySelector('.wiz-h').focus({ preventScroll: true }); return;
           }
           const focusTarget = main.querySelector('[data-wiz="next"]:not([disabled]), a[data-wiz="finish"]:not(.is-disabled), [data-wiz="again"], [data-wiz="new"], .wiz-check input:not([disabled]), .wiz-check button:not([disabled])');
