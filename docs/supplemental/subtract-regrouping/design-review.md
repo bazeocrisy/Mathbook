@@ -738,3 +738,29 @@ Design agent's notes. Section 1 is written before the build; later sections revi
 ### Status
 
 The Show me revision meets the owner's requirements: exchanges before answers, the model stays on screen, Continue unlocks with "Completed with help", it works for four-digit problems across zeros, everything is vertical, and the test has no help. SR-D29 and SR-D30 are minor polish and don't block release.
+
+### SR-D29/D30 re-check at 361e6db: pass
+
+**Method:** checked at HEAD 0ace440, which contains 361e6db. One headless Chrome, closed afterwards. Script: `scenes-d2930.mjs`.
+- For SR-D29, Next was pressed with a real mouse event at the button's on-screen position. The page was scrolled only to bring Next into view, never to reveal the sentence.
+- For SR-D30, I reloaded after 1–3 parts.
+
+**SR-D29: pass.**
+- **Phones:** in both the independent coach player (`skill-zeros2`) and the Learn form player (Learn 8), the order is grid → sentence → Back / Next. After each of 4 Next presses the sentence is fully in view at 320, 360 and 390. Examples:
+  - 320, coach player: grid 110–325, sentence 339–521, Next 590–640;
+  - 390, form player: grid 250–529, sentence 543–699, Next 768–818.
+- **1366 and 768:** the two-pane players put the sentence beside the grid, level with its top, and it stays in view.
+- **One edge case at 768:** after one long sentence (4 lines) in the Learn form, the end of the sentence sat 44 px below the fold. Its first lines stayed visible, and one small scroll shows the rest. Not a finding.
+- No sideways scroll and no JS errors at any size.
+
+**SR-D30: pass.** A reload mid-play resumes the same part with nothing filled in and focus left on the page heading (it isn't moved):
+
+| Where | Part before and after reload | After reload |
+|---|---|---|
+| Step 1 Your Turn | Part 2 of 4 | Same sentence; no answers; Next Step disabled. Playing on to Part 4 completes "with help" and enables Next Step. |
+| Learn 7 (decide) | Part 4 of 9 | No radios or answers filled; Next Step disabled |
+| Learn 8 (mistake) | Part 4 of 13 | No radios or answers filled; Next Step disabled |
+| Learn 9 (check) | Part 4 of 12 | No radios or answers filled; Finish disabled |
+| Independent practice (`skill-zeros2`) | Part 4 of 13 | The child's answer boxes stay empty |
+
+**Status:** SR-D29 and SR-D30 are closed. All design findings SR-D01 to SR-D30 are closed.
