@@ -106,3 +106,20 @@ My scripts are listed above. No JavaScript errors or missing files. No `mathbook
 - Headless Chrome via `tests/lib/harness.mjs`. Viewports were simulated; 200% zoom was simulated as 683×384. No physical device.
 - Windows 11, 2026-10-11.
 - Only this report file was added and committed.
+
+## Re-check at 9ef1253
+
+I re-checked commit `9ef1253` with these runs, one at a time:
+- `r215/sample.cjs` (output `sample2.out`);
+- `r215/learn320.mjs`, which opens every Learn Example and Your Turn of **2-3, 2-5, 2-6, 2-9, 2-10, 2-12, 2-13, 2-14 and 2-15** at 320×568 and 360×640: 200 screens.
+
+I edited no app, lesson, engine or test file.
+
+| Finding | Status | Evidence |
+|---|---|---|
+| L215-01 | fixed | P6's hint is now "Taking away 0 leaves the top digit." It gives no answer digit. |
+| L215-02 | fixed | On P11, an empty box now says "Write the missing tens digit of the top number."; a filled wrong box still says "Look again at the tens." with ✗ only on that box. The change is inside the `blanks` branch of `vcCheck`, so other vcalc modes are unchanged. Every authored item still grades correct (BAD 0). |
+| L215-03 | fixed | The answer blank now moves: P11 thousands, O11 **ones** (6,947 − 3,512: top H 9; bottom Th 3, T 1; answer O 5), T11 **tens** (5,786 − 3,452: top Th 5; bottom H 4, O 2; answer T 3). I recomputed both. Each column still has exactly one unknown, so each answer is unique, and the numbers are unchanged. Learn 4 is still even (answer blank O/T/H/Th about 25% each). |
+| L215-04 | fixed | The new `≤ 360 px` Learn padding gives the 5-digit Learn 2 answer row full-size boxes. **Other lessons:** across the 200 Learn screens of 9 lessons at 320 and 360 px, there is no sideways scroll, nothing past the edge and no target under 48 px tall or 44 px wide. Bar diagrams, number lines, stacks and the 2-6 row control all still fit (`r215/shots/l320-2-6-try2.png`, `-2-13-try2.png`, `-2-15-try2.png`). |
+
+**No regression:** the keys, the regroup-free check (0 regroupings over every item and 20,000 seeds per Learn step), D-11 and answer positions are unchanged. There were no JavaScript errors.
