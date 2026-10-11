@@ -157,7 +157,8 @@
       let bottom;
       if (spec.equal) bottom = top;
       else {
-        const lens = size === 4 ? [4, 4, 4, 3, 3, 2] : size === 3 ? [3, 3, 2] : [2, 2, 1];
+        // Mostly the same length as the top, sometimes one shorter, rarely two shorter (so the higher columns get used).
+        const lens = size === 4 ? [4, 4, 4, 4, 4, 3, 3, 3, 2] : size === 3 ? [3, 3, 3, 3, 2, 2] : [2, 2, 2, 2, 1];
         const L = lens[int(r, 0, lens.length - 1)];
         const bd = [int(r, 1, 9)];
         for (let i = 1; i < L; i++) bd.push(int(r, 0, 9));

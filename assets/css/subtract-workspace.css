@@ -33,6 +33,7 @@
 }
 .sk-grid:not(.has-chips) { grid-template-rows: 20px 0 20px 44px 44px 44px 3px 52px; }
 .sk-grid:not(.has-chips) .sk-chipcell { display: none; }
+.sk-grid.no-answer { grid-template-rows: 20px 0 20px 44px 44px 44px 3px; }
 .sk-cell { position: relative; z-index: 1; display: flex; align-items: center; justify-content: center; min-width: 0; }
 .sk-band { z-index: 0; border-radius: 10px; border: 3px solid transparent; margin: -2px -1px; }
 .sk-band.is-active { background: var(--sk-active-bg); border-color: var(--sk-active-line); }
@@ -116,8 +117,10 @@ input.sk-cur:placeholder-shown { border-style: dashed; }
 
 @media (max-height: 600px) {
   .sk { --sk-digit: 1.3rem; }
-  .sk-grid { grid-template-rows: 16px 16px 16px 38px 38px 38px 3px 44px; }
-  .sk-grid:not(.has-chips) { grid-template-rows: 16px 0 16px 38px 38px 38px 3px 44px; }
-  .sk-cur { height: 38px; } .sk-ans { height: 44px; }
+  /* Short screens (200% zoom): shrink the label rows and digit rows, never the boxes a child taps (≥ 44 px). */
+  .sk-grid { grid-template-rows: 16px 16px 16px 44px 36px 36px 3px 44px; }
+  .sk-grid:not(.has-chips) { grid-template-rows: 16px 0 16px 44px 36px 36px 3px 44px; }
+  .sk-grid.no-answer { grid-template-rows: 16px 0 16px 44px 36px 36px 3px; }
+  .sk-ans { height: 44px; }
 }
 @media (forced-colors: active) { .sk-x::after { display: none; } .sk-x { text-decoration: line-through 3px; } .sk-band.is-active { border-color: Highlight; } }

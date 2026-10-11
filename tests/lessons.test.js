@@ -16,7 +16,8 @@ const { pv, Q } = MB;
 const ROOT = path.join(__dirname, '..');
 
 // 2-1 and 2-2 have their own suites (math.test.js, rounding.test.js).
-const LESSONS = MB.catalog.lessons.filter((l) => !['2-1', '2-2'].includes(l.id));
+// Supplemental sections (Subtract with Regrouping) have their own page and suites (tests/subtract-*.js).
+const LESSONS = MB.catalog.lessons.filter((l) => !['2-1', '2-2'].includes(l.id) && !l.supplemental);
 for (const entry of LESSONS) {
   const file = path.join(ROOT, entry.path, 'lesson.js');
   if (fs.existsSync(file)) require(file);

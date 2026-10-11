@@ -241,9 +241,9 @@
         const bi = i - shift;
         const bd = bi >= 0 && bi < blen ? String(bottom)[blen - 1 - bi] : '';
         h += cell(6, c, bd ? `<span class="sk-d">${bd}</span>` : '', 'sk-botcell' + (shift ? ' is-shifted' : ''), bd ? ` aria-label="${P[i].name} ${bd}"` : '');
-        // Answer row.
+        // Answer row (hidden with answer: false, e.g. 'write the regrouped top number' or 'does it need regrouping?').
         const dv = S.d[i] || '';
-        if (mode === 'demo') {
+        if (o.answer === false) { /* no answer row */ } else if (mode === 'demo') {
           const shown = demoStep && i < demoStep.digits ? String(plan.columns[i].digit) : '';
           h += cell(8, c, `<span class="sk-ans sk-ans-read">${shown}</span>`, 'sk-anscell', shown ? ` aria-label="Answer ${P[i].name} digit ${shown}"` : '');
         } else if (mode === 'view' || !editable('answer', i)) {
@@ -263,7 +263,7 @@
         if (blen === 4 && !(mode === 'view' && o.work && o.work.misaligned)) h += cell(6, commaCol, '<span class="sk-comma" aria-hidden="true">,</span>', 'sk-commacell');
       }
       h += `<div class="sk-rule" style="grid-row:7;grid-column:1 / -1" aria-hidden="true"></div>`;
-      return `<div class="sk-grid${showChips ? ' has-chips' : ''}" style="grid-template-columns:${tracks}" role="group" aria-label="${esc(`${M.fmt(top)} minus ${M.fmt(bottom)}, written in columns`)}">${h}</div>`;
+      return `<div class="sk-grid${showChips ? ' has-chips' : ''}${o.answer === false ? ' no-answer' : ''}" style="grid-template-columns:${tracks}" role="group" aria-label="${esc(`${M.fmt(top)} minus ${M.fmt(bottom)}, written in columns`)}">${h}</div>`;
     }
 
     function coachHTML() {
