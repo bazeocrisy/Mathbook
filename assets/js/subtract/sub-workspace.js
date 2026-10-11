@@ -61,7 +61,7 @@
       digit: (i, t, b, d) => `${cap(P[i].name)}: ${t} − ${b} = ${d}.`
     },
     noneLeft: (k) => `No ${P[k].name} are left, so the answer starts in the ${P[k - 1].name}.`,
-    guidedDone: (top, bottom, ans, helped) => helped ? `Finished with help: ${M.fmt(top)} − ${M.fmt(bottom)} = ${M.fmt(ans)}. Try a similar problem on your own when you are ready.` : `You did it! ${M.fmt(top)} − ${M.fmt(bottom)} = ${M.fmt(ans)}.`,
+    guidedDone: (top, bottom, ans, helped) => helped ? `Completed with help: ${M.fmt(top)} − ${M.fmt(bottom)} = ${M.fmt(ans)}. Try a similar problem on your own when you are ready.` : `You did it! ${M.fmt(top)} − ${M.fmt(bottom)} = ${M.fmt(ans)}.`,
     correct: (top, bottom, ans) => `Correct! ${M.fmt(top)} − ${M.fmt(bottom)} = ${M.fmt(ans)}.`,
     correctMarksOff: 'Your answer is right. One regroup mark does not keep the value the same; look at your marks again.',
     altValid: 'Your regroup marks are a different valid way: the value stays the same.',
@@ -81,7 +81,8 @@
       'wrong-digit': (i, t, b) => (t < b ? `In the ${P[i].name}, ${t} is less than ${b}: exchange first, then subtract.` : `Look again at the ${P[i].name}: ${t} − ${b}.`)
     },
     hintButton: (n) => (n === 0 ? 'Hint' : `Next hint (${n + 1} of 4)`),
-    shownSolution: 'Here is how to solve it. Read each step, then try writing the answer yourself.',
+    shownSolution: 'Watch each step. Press Next to see each exchange; your answer is filled in at the end.',
+    shownDone: (top, bottom, ans) => `Completed with help: ${M.fmt(top)} − ${M.fmt(bottom)} = ${M.fmt(ans)}. Your answer boxes are filled in. Go on, or try a similar problem on your own.`,
     hintLabel: (n) => `Hint ${n} of 4`,
     showSolution: 'Show the full solution',
     solutionTitle: 'Full solution',
@@ -135,6 +136,8 @@
     if (!Number.isInteger(s.hint) || s.hint < 0 || s.hint > 5) return false;
     if (!Number.isInteger(s.demo) || s.demo < 0 || s.demo > 60) return false;
     if (s.helped !== undefined && typeof s.helped !== 'boolean') return false;
+    if (s.show !== undefined && !(Number.isInteger(s.show) && s.show >= 0 && s.show <= 60)) return false;
+    if (s.shownDone !== undefined && typeof s.shownDone !== 'boolean') return false;
     if (s.hintCol !== undefined && s.hintCol !== null && !(Number.isInteger(s.hintCol) && s.hintCol >= 0 && s.hintCol < n)) return false;
     if (s.guided !== null && (typeof s.guided !== 'object' || !Number.isInteger(s.guided.col) || s.guided.col < 0 || s.guided.col > n ||
       !['needs', 'supplier', 'exchange', 'digit', 'done'].includes(s.guided.stage) || !Number.isInteger(s.guided.ex) || s.guided.ex < 0 || s.guided.ex > 4)) return false;
@@ -167,6 +170,7 @@
     let S = freshState(top, bottom, mode);
     if (o.state && validState(o.state, top, bottom)) S = Object.assign(clone(o.state), { mode });
     if (mode === 'view') { S.ann = clone((o.work && o.work.ann) || {}); S.d = ((o.work && o.work.d) || []).map(String); }
+    if (mode === 'demo' && Number.isInteger(o.demoStep) && o.demoStep >= 0) S.demo = o.demoStep;
     let gHintText = '', retryRow = false;
     let destroyed = false, feedbackHTML = '', prevNote = '', marks = {}, solutionInst = null, sayTimer = null;
 
@@ -416,7 +420,7 @@
           const H = M.hints(top, bottom, { d: S.d }).levels;
           if (S.hint >= 5) {
             hintsH = `<div class="sk-solution"><p class="sk-solution-h" tabindex="-1">${esc(T.solutionTitle)}</p><p class="sk-sub">${esc(T.shownSolution)}</p><div class="sk-mini" data-sk-mini></div>` +
-              `<ol class="sk-steps">${M.solutionLines(top, bottom).map((l) => `<li>${esc(l)}</li>`).join('')}</ol></div>`;
+              `<div class="sk-solution-end">${S.shownDone ? shownEndHTML() : ''}</div></div>`;
           } else {
             const shown = S.hint, older = [];
             for (let k = 1; k < shown; k++) older.push(`<li><b>${esc(T.hintLabel(k))}:</b> ${esc(H[k - 1])}</li>`);
@@ -434,7 +438,33 @@
       el.querySelector('.sk-wrap').classList.toggle('has-coach', !!h);
       if (solutionInst) { solutionInst.destroy(); solutionInst = null; }
       const mini = coachEl.querySelector('[data-sk-mini]');
-      if (mini) solutionInst = mount(mini, { top, bottom, mode: 'view', work: { ann: solutionAnn(), d: plan.columns.map((c) => String(c.digit)) } });
+      if (mini) {
+        // Show me plays the worked answer one step at a time (each exchange visible) in the same vertical model.
+        solutionInst = mount(mini, { top, bottom, mode: 'demo', demoStep: S.show || 0, text: o.text });
+        solutionInst.on('step', (d) => { S.show = d.index; change(); });
+        solutionInst.on('complete', () => finishShown());
+      }
+    }
+    const shownEndHTML = () => `<p class="sk-ok-note sk-shown-done" tabindex="-1"><span aria-hidden="true">✓ </span>${esc(T.shownDone(top, bottom, top - bottom))}</p>` +
+      `<ol class="sk-steps">${M.solutionLines(top, bottom).map((l) => `<li>${esc(l)}</li>`).join('')}</ol>`;
+    /** The Show me player reached its last step: only now is the answer filled in; the problem is completed WITH help. */
+    function finishShown() {
+      if (S.shownDone || destroyed) return;
+      S.shownDone = true; S.helped = true; S.done = true;
+      S.ann = solutionAnn();
+      S.d = plan.columns.map((c) => String(c.digit));
+      while (S.d.length > 1 && S.d[S.d.length - 1] === '0' && S.d.length > M.lengthOf(top - bottom)) S.d.pop();
+      S.result = { status: 'correct', correct: true };
+      marks = {}; for (let i = 0; i < S.d.length; i++) marks[i] = 'ok';
+      feedbackHTML = ''; retryRow = false;
+      renderGrid(); updateTools();
+      const end = coachEl.querySelector('.sk-solution-end');
+      if (end) end.innerHTML = shownEndHTML();
+      focusOn('.sk-shown-done');
+      say(T.shownDone(top, bottom, top - bottom));
+      emit('answer', { status: 'correct', correct: true, value: top - bottom, helped: true, shown: true });
+      emit('complete', { correct: true, hintsUsed: S.hint, helped: true, shown: true });
+      change();
     }
     function renderAll() { renderGrid(); renderTools(); renderCoach(); }
     function solutionAnn() {
@@ -650,7 +680,7 @@
       if (!allowHints) return;
       const h = M.hints(top, bottom, { d: S.d });
       if (!solution && S.hint < 5 && S.hintCol !== null && S.hintCol !== undefined && S.hintCol !== h.place) S.hint = 0; // a new column starts again at hint 1
-      if (solution) { if (!allowSolution) return; S.hint = 5; S.helped = true; }
+      if (solution) { if (!allowSolution) return; S.hint = 5; S.helped = true; S.show = 0; }
       else if (S.hint < 4) S.hint += 1; else return;
       S.hintCol = h.place;
       if (!solution) retryRow = false;
@@ -658,7 +688,7 @@
       // Bring just the worked answer's heading into view (a small scroll on phones), so the child sees it opened while their own answer row stays on screen (SR-D28).
       if (S.hint >= 5) { retryRow = false; updateTools(); focusOn('.sk-solution-h'); const hh = coachEl.querySelector('.sk-solution-h'); if (hh && hh.scrollIntoView) hh.scrollIntoView({ block: 'nearest' }); }
       else if (!focusOn('[data-act="hint"]') && !focusOn('[data-act="solution"]')) focusOn('.sk-hint');
-      say(S.hint >= 5 ? `${T.solutionTitle}. ${M.solutionLines(top, bottom).join(' ')}` : `${T.hintLabel(S.hint)}: ${h.levels[S.hint - 1]}`);
+      say(S.hint >= 5 ? `${T.solutionTitle}. ${T.shownSolution}` : `${T.hintLabel(S.hint)}: ${h.levels[S.hint - 1]}`);
       emit('hint', { level: S.hint, place: h.place, solution: S.hint >= 5, shown: S.hint >= 5 });
       change();
     }
