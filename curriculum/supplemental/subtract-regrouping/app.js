@@ -246,6 +246,8 @@
         main.querySelector('.sr-example').innerHTML = exampleHTML(ex);
         bindParts();
         const nb = main.querySelector(`[data-part="${b.dataset.part}"]:not([disabled])`) || main.querySelector('[data-part]:not([disabled])'); if (nb) nb.focus({ preventScroll: true });
+        const live = main.querySelector('#sr-part-live'), sayEl = main.querySelector('.sr-say');
+        if (live && sayEl) { live.textContent = ''; setTimeout(() => { live.textContent = sayEl.textContent; }, 50); }
       }));
     }
     function drawStep(W) {
@@ -257,7 +259,7 @@
       let body = '';
       if (phase === 'example') {
         const ei = Math.min(W.ex[step.id] || 0, step.examples.length - 1), ex = step.examples[ei];
-        body = `<p class="wiz-explain">${esc(step.explain)}</p><div class="sr-example">${exampleHTML(ex)}</div>` +
+        body = `<p class="wiz-explain">${esc(step.explain)}</p><div class="sr-example">${exampleHTML(ex)}</div><p class="sk-sr" aria-live="polite" id="sr-part-live"></p>` +
           (step.examples.length > 1 ? `<div class="demo-controls sr-exnav"><button type="button" class="btn btn-ghost" data-w="prev-ex"${ei === 0 ? ' disabled' : ''}>◀ Previous example</button><span class="demo-count">Example ${ei + 1} of ${step.examples.length}</span><button type="button" class="btn btn-ghost" data-w="next-ex"${ei === step.examples.length - 1 ? ' disabled' : ''}>Next example ▶</button></div>` : '') +
           `<div class="wiz-actions">${k > 0 ? '<button type="button" class="btn btn-ghost" data-w="prev-step">← Previous Step</button>' : '<span></span>'}<button type="button" class="btn btn-star btn-big" data-w="try">Now I'll Try →</button></div>`;
       } else {
@@ -272,14 +274,7 @@
         `<div class="wiz-menu"><a class="btn btn-ghost" href="#menu">Section Menu</a></div>`;
       if (phase === 'example') {
         mountExample(step.examples[Math.min(W.ex[step.id] || 0, step.examples.length - 1)]);
-        main.querySelectorAll('[data-part]').forEach((b) => b.addEventListener('click', () => {
-          exPart = Math.max(0, exPart + (b.dataset.part === 'next' ? 1 : -1));
-          const ex = step.examples[Math.min(W.ex[step.id] || 0, step.examples.length - 1)];
-          main.querySelector('.sr-example').innerHTML = exampleHTML(ex);
-          bindParts();
-          const nb = main.querySelector(`[data-part="${b.dataset.part}"]:not([disabled])`) || main.querySelector('[data-part]:not([disabled])'); if (nb) nb.focus({ preventScroll: true });
-          const sayEl = main.querySelector('.sr-say'); if (sayEl) { sayEl.setAttribute('aria-live', 'polite'); }
-        }));
+        bindParts();
       }
       else mountTry(W, step);
       main.querySelectorAll('[data-w]').forEach((b) => b.addEventListener('click', (e) => {
@@ -310,12 +305,13 @@
       return `<figure class="blocks sr-blocks2" aria-label="${tens} tens and ${ones} ones">${col(2, tens, o.hiT, o.chipT)}${col(3, ones, o.hiO, o.chipO)}</figure>`;
     }
     /** Step 1's example, one action at a time: 49 → exchange 1 ten for 10 ones → 3 tens and 19 ones → 30 + 19 = 49. */
+    const tens = (k) => `${k} ${k === 1 ? 'ten' : 'tens'}`, ones = (k) => `${k} ${k === 1 ? 'one' : 'ones'}`;
     function blockParts(n) {
       const t = Math.floor(n / 10), o = n % 10;
       return [
-        { html: blocks2(t, o), say: `${n} has ${t} tens and ${o} ones.` },
+        { html: blocks2(t, o), say: `${n} has ${tens(t)} and ${ones(o)}.` },
         { html: blocks2(t, o, { hiT: true, chipT: '−1' }) + `<p class="sr-swap"><span>1 ten</span> <span aria-hidden="true">➜</span> <span>10 ones</span></p>`, say: 'Exchange 1 ten for 10 ones. Take 1 ten from the tens.' },
-        { html: blocks2(t - 1, o + 10, { hiT: true, chipT: '−1', hiO: true, chipO: '+10' }), say: `The tens go from ${t} to ${t - 1}. The ones go from ${o} to ${o + 10}. Now there are ${t - 1} tens and ${o + 10} ones.` },
+        { html: blocks2(t - 1, o + 10, { hiT: true, chipT: '−1', hiO: true, chipO: '+10' }), say: `The tens go from ${t} to ${t - 1}. The ones go from ${o} to ${o + 10}. Now there are ${tens(t - 1)} and ${ones(o + 10)}.` },
         { html: blocks2(t - 1, o + 10), say: `${(t - 1) * 10} + ${o + 10} = ${n}. The value is the same: we only changed how it is shown.` }
       ];
     }
@@ -394,8 +390,8 @@
       const QS = [
         { key: 't', label: 'How many tens are left?', want: t - 1,
           hint: `Start with the ${t} tens. 1 ten is exchanged, so take 1 away from the tens.`,
-          wrong: (v) => `${n} has ${t} tens. When 1 ten is exchanged for 10 ones, there is 1 fewer ten${v === t + 1 ? ', not 1 more' : ''}.`,
-          show: `${n} has ${t} tens. Exchange 1 ten for 10 ones: ${t} − 1 = ${t - 1} tens are left.` },
+          wrong: (v) => `${n} has ${tens(t)}. When 1 ten is exchanged for 10 ones, there is 1 fewer ten${v === t + 1 ? ', not 1 more' : ''}.`,
+          show: `${n} has ${tens(t)}. Exchange 1 ten for 10 ones: ${t} − 1 = ${t - 1} ${t - 1 === 1 ? 'ten is' : 'tens are'} left.` },
         { key: 'o', label: 'How many ones are there now?', want: on + 10,
           hint: `There were ${on} ones. The ten you exchanged becomes 10 ones. Add them.`,
           wrong: (v) => `There were ${on} ones, and the exchanged ten becomes 10 ones${v === on + 1 ? ' (10 ones, not 1)' : ''}.`,
@@ -403,7 +399,7 @@
       ];
       const draw = (focusSel) => {
         const q = R0.q;
-        let h = `<p class="q-prompt">Exchange 1 ten for 10 ones in <b>${n}</b>.</p>${blocks2(t, on)}`;
+        let h = `<p class="q-prompt">Exchange 1 ten for 10 ones in ${n}.</p>${blocks2(t, on)}`;
         QS.forEach((Q, k) => { if (k < q) h += `<p class="sr-done-line"><span aria-hidden="true">✓ </span>${esc(Q.label)} <b>${R0[Q.key]}</b>${R0['h' + k] ? ' <span class="sr-helped-tag">(shown)</span>' : ''}</p>${R0['h' + k] ? `<p class="sr-shown">${esc(Q.show)}</p>` : ''}`; });
         if (q < 2) {
           const Q = QS[q];
@@ -412,7 +408,7 @@
             `<div class="feedback-area" aria-live="polite"></div>`;
         } else {
           h += `<p class="sr-after-h">After the exchange:</p>${blocks2(t - 1, on + 10, { hiT: true, chipT: '−1', hiO: true, chipO: '+10' })}` +
-            `<div class="feedback feedback-ok"><p><span aria-hidden="true">✓ </span>Now there are ${t - 1} tens and ${on + 10} ones. ${(t - 1) * 10} + ${on + 10} = ${n}. The value is the same.</p></div>`;
+            `<div class="feedback feedback-ok sr-complete" tabindex="-1"><p><span aria-hidden="true">✓ </span>Now there are ${tens(t - 1)} and ${ones(on + 10)}. ${(t - 1) * 10} + ${on + 10} = ${n}. The value is the same.</p></div>`;
         }
         box.innerHTML = h;
         const inp = box.querySelector('#sr-q1in');
@@ -421,15 +417,17 @@
         if (focusSel) { const f = box.querySelector(focusSel); if (f) f.focus({ preventScroll: true }); }
       };
       const fbArea = () => box.querySelector('.feedback-area');
-      const retryRow = '<div class="check-row sr-helprow"><button type="button" class="btn btn-ghost" data-x="retry">Try again</button><button type="button" class="btn btn-ghost" data-x="hint">Get a hint</button><button type="button" class="btn btn-ghost" data-x="show">Show me how</button></div>';
+      const retryRow = '<div class="check-row sr-helprow sr-retry"><button type="button" class="btn btn-ghost" data-x="retry">Try again</button><button type="button" class="btn btn-ghost" data-x="hint">Get a hint</button><button type="button" class="btn btn-ghost" data-x="show">Show me how</button></div>';
       const next = (helpedNow) => {
         if (helpedNow) { R0['h' + R0.q] = true; R0.helped = true; }
         R0.q += 1; o.onChange(Object.assign({}, R0));
-        draw(R0.q < 2 ? '#sr-q1in' : '.feedback-ok');
+        draw(R0.q < 2 ? '#sr-q1in' : '.sr-complete');
         if (R0.q === 2) o.onDone(!!R0.helped);
       };
       function act(x) {
         const Q = QS[R0.q], area = fbArea();
+        const mainHelp = box.querySelectorAll('.sr-helprow:not(.sr-retry) [data-x="hint"], .sr-helprow:not(.sr-retry) [data-x="show"]');
+        mainHelp.forEach((b) => { b.hidden = false; });
         if (x === 'retry') { area.innerHTML = ''; const i = box.querySelector('#sr-q1in'); if (i) { i.focus(); i.select(); } return; }
         if (x === 'hint') { area.innerHTML = `<div class="feedback feedback-info"><p><span aria-hidden="true">💡 </span>${esc(Q.hint)}</p></div>`; return; }
         if (x === 'show') { R0[Q.key] = String(Q.want); next(true); return; } // the worked line is drawn under its question (see draw)
@@ -437,6 +435,7 @@
         if (!/^\d+$/.test(v)) { area.innerHTML = '<div class="feedback"><p>Type a number, then check.</p></div>'; return; }
         if (Number(v) === Q.want) { next(false); return; }
         area.innerHTML = `<div class="feedback feedback-no"><p><span aria-hidden="true">✗ </span>${esc(Q.wrong(Number(v)))}</p></div>` + retryRow;
+        mainHelp.forEach((b) => { b.hidden = true; });
         area.querySelectorAll('[data-x]').forEach((b) => b.addEventListener('click', () => act(b.dataset.x)));
       }
       draw(null);
@@ -492,8 +491,10 @@
         let misses = 0, helped = !!R.helped;
         const area = () => box.querySelector('.feedback-area');
         const bindRow = () => area().querySelectorAll('[data-help]').forEach((b) => b.addEventListener('click', () => help(b.dataset.help)));
-        const retryRow = '<div class="check-row sr-helprow"><button type="button" class="btn btn-ghost" data-help="retry">Try again</button><button type="button" class="btn btn-ghost" data-help="hint">Get a hint</button><button type="button" class="btn btn-ghost" data-help="show">Show me how</button></div>';
+        const mainHelp = () => box.querySelectorAll('.sr-helprow:not(.sr-retry) [data-help]');
+        const retryRow = '<div class="check-row sr-helprow sr-retry"><button type="button" class="btn btn-ghost" data-help="retry">Try again</button><button type="button" class="btn btn-ghost" data-help="hint">Get a hint</button><button type="button" class="btn btn-ghost" data-help="show">Show me how</button></div>';
         function help(kind) {
+          mainHelp().forEach((b) => { b.hidden = false; });
           if (kind === 'retry') { area().innerHTML = ''; const f = box.querySelector('input:not([disabled])'); if (f) f.focus(); return; }
           if (kind === 'hint') { area().innerHTML = `<div class="feedback feedback-info"><p><span aria-hidden="true">💡 </span>${esc(hintText(item, R))}</p></div>`; if (o.onHint) o.onHint(); return; }
           // Show me: the right answer, worked in the same vertical model, then the child may go on (recorded as help).
@@ -523,6 +524,7 @@
           } else {
             misses += 1;
             area().innerHTML = `<div class="feedback feedback-no"><p><span aria-hidden="true">✗ </span>${esc(wrongText(item, R, g, misses))}</p></div>` + retryRow;
+            mainHelp().forEach((b) => { b.hidden = true; });
             bindRow();
             if (o.onWrong) o.onWrong();
           }
@@ -551,8 +553,11 @@
     function showText(item) {
       const p = M.plan(item.top, item.bottom);
       if (item.kind === 'decide') {
-        const lines = p.columns.map((c) => `${M.PLACES[c.place].name}: ${c.before[c.place]} ${c.needs ? 'is less than' : 'is enough for'} ${c.bottomDigit}${c.needs ? ' → exchange' : ''}.`);
-        return `${item.needs === 'Yes' ? `Yes. The ${item.first.toLowerCase()} column needs an exchange first.` : 'No regrouping is needed.'} ${lines.join(' ')}`;
+        const o = M.digitsOf(item.top, M.lengthOf(item.top)), b = M.digitsOf(item.bottom, M.lengthOf(item.top));
+        const c = p.columns.find((x) => x.needs);
+        if (!c) return `No regrouping is needed: in every column the top digit is at least the digit under it (ones ${o[0]} and ${b[0]}, tens ${o[1]} and ${b[1]}${o.length > 2 ? `, hundreds ${o[2]} and ${b[2]}` : ''}${o.length > 3 ? `, thousands ${o[3]} and ${b[3]}` : ''}).`;
+        const before = []; for (let k = 0; k < c.place; k++) before.push(`${M.PLACES[k].name}: ${o[k]} is enough for ${b[k]}`);
+        return `${before.length ? before.join('. ') + '. ' : ''}${item.first}: ${o[c.place]} is less than ${b[c.place]}, so yes, the ${item.first.toLowerCase()} column needs an exchange first.`;
       }
       if (item.kind === 'mistake') return `${item.who}'s mistake: ${item.answer} The right answer is ${fmt(item.top - item.bottom)}, worked below.`;
       if (item.kind === 'check') return `${problemText(item)} = ${fmt(item.top - item.bottom)}. Check: ${fmt(item.top - item.bottom)} + ${fmt(item.bottom)} = ${fmt(item.top)}, the top number.`;

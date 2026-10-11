@@ -22,6 +22,8 @@
 .sr-helped { color: #4f5a7a; font-weight: 600; margin: 0.5rem 0 0.25rem; }
 .sr-after-h { font-weight: 800; margin: 0.75rem 0 0; }
 .sr-worked:empty { display: none; }
+.sr-review summary { min-height: 44px; display: flex; align-items: center; cursor: pointer; font-weight: 700; }
+.sr-complete:focus { outline: 3px solid #5236c9; outline-offset: 2px; }
 .sr-short { display: none; text-decoration: none; }
 .sr-chart { border-collapse: collapse; margin: 0.5rem 0; font-size: 1.1rem; }
 .sr-chart th, .sr-chart td { border: 2px solid #cfd5ee; padding: 0.4rem 0.7rem; text-align: center; min-width: 3.2rem; }

@@ -67,18 +67,20 @@ try {
     const q = () => (box.querySelector('.sr-q1-label') || {}).textContent; const inp = () => box.querySelector('#sr-q1in'); const click = (x) => box.querySelector('[data-x="' + x + '"]').click();
     const out = { q0: q(), blocksKept: box.querySelectorAll('.sr-blocks2').length, numericOnly: box.querySelectorAll('input[type=radio]').length === 0 };
     inp().value = String(it.tens); fire(inp(), 'input'); click('check'); await sleep(30);
-    out.wrong = fb(box); out.retryRow = Array.from(box.querySelectorAll('.feedback-area [data-x]')).map((x) => x.textContent).join('|');
+    out.mainHidden = Array.from(box.querySelectorAll('.sr-helprow:not(.sr-retry) [data-x]')).filter((x) => x.dataset.x !== 'check').every((x) => x.hidden); out.wrong = fb(box); out.retryRow = Array.from(box.querySelectorAll('.feedback-area [data-x]')).map((x) => x.textContent).join('|');
     click('hint'); await sleep(20); out.hint = fb(box); out.keptValue = inp().value;
     inp().value = String(it.tens - 1); fire(inp(), 'input'); click('check'); await sleep(30);
     out.q1 = q(); out.firstKept = (box.querySelector('.sr-done-line') || {}).textContent;
     click('show'); await sleep(40);
-    out.shown = (box.querySelector('.sr-shown') || {}).textContent; out.done = (box.querySelector('.feedback-ok') || {}).textContent;
+    out.shown = (box.querySelector('.sr-shown') || {}).textContent; out.focusDone = document.activeElement.classList.contains('sr-complete'); out.done = (box.querySelector('.feedback-ok') || {}).textContent;
     out.next = !document.querySelector('[data-w="next"]').disabled; out.helped = get('see-wizard').helped; out.n = it.n; out.t = it.tens; out.o = it.ones;
     return out;`);
   check('Learn 1 Your Turn asks one thing at a time ("How many tens are left?"), numbers only, starting blocks kept on screen', yt1.q0 === 'How many tens are left?' && yt1.numericOnly && yt1.blocksKept >= 1, yt1);
+  check('A wrong answer swaps Hint/Show me for one row: Try again · Get a hint · Show me how (never both rows)', yt1.mainHidden, yt1);
   check('A wrong answer gets concrete feedback naming the amounts, plus Try again · Get a hint · Show me how', new RegExp(yt1.n + ' has ' + yt1.t + ' tens').test(yt1.wrong) && yt1.retryRow === 'Try again|Get a hint|Show me how', yt1);
   check('Get a hint gives a next step without the answer; the typed entry is kept', /Start with the/.test(yt1.hint) && !new RegExp('\\b' + (yt1.t - 1) + ' tens are left').test(yt1.hint) && yt1.keptValue === String(yt1.t), yt1);
   check('Right answer → the next single question ("How many ones are there now?"), the first answer kept', yt1.q1 === 'How many ones are there now?' && new RegExp(String(yt1.t - 1)).test(yt1.firstKept), yt1);
+  check('Finishing step 1 moves focus to the completion message (not the page)', yt1.focusDone, yt1);
   check('Show me explains with the amounts, finishes the step, unlocks Next, and records it as done WITH help', /\+ 10 =/.test(yt1.shown) && /The value is the same/.test(yt1.done) && yt1.next && yt1.helped && yt1.helped.value === true, yt1);
   await b.reload(); await wait(250);
   const kept = await js(`return { phase: document.querySelector('.phase-tag').textContent, next: !document.querySelector('[data-w="next"]').disabled }`);
@@ -150,6 +152,8 @@ try {
   await js(`document.querySelector('input[name=sz][value="4"]').click(); for (let i = 0; i < 3; i++) document.querySelector('[data-s="next"]').click();`); await wait(150);
   check('Step 4: Start shows 4-digit · Easy · 10 questions', await js(`return /4-digit · Easy · 10 questions/.test(document.querySelector('.sr-setup').innerText)`));
   await js(`document.querySelector('[data-s="start"]').click()`); await wait(400);
+  // Pin the session to seed 1 (first problem 7,289 − 6,417) so the scripted "smaller-from-larger" answer really is wrong.
+  await js(`${H} const B = get('bank-sets'); B.setup.active.seed = 1; localStorage.setItem('${KEY}:bank-sets', JSON.stringify(B));`); await b.reload(); await wait(350);
   const run = await js(`${H} const s = get('bank-sets').setup.active; const items = M.generateSession(Object.assign({ seed: s.seed }, s.setup)).items;
     return { hash: location.hash, count: document.querySelector('.q-count').textContent, n: items.length, four: items.every((q) => String(q.top).length === 4), easy: items.every((q) => M.classify(q.top, q.bottom).difficulty === 'easy'), first: items[0] };`);
   check('Practice on My Own starts: 10 four-digit Easy questions, one at a time', run.hash === '#practice/run' && run.count === 'Question 1 of 10' && run.n === 10 && run.four && run.easy, run);

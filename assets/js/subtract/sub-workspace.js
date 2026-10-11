@@ -28,7 +28,7 @@
     needsQ: (i) => `Does the ${P[i].name} column need regrouping?`,
     needsYes: (t, b) => `Yes. ${t} is less than ${b}, so you can't take ${b} away yet.`,
     needsNo: (t, b) => `No. ${t} is enough to take away ${b}.`,
-    needsWrongNo: (i, t, b) => `Look again: the ${P[i].name} has ${t} and you need to take away ${b}. ${t} is less than ${b}, so you need an exchange first.`,
+    needsWrongNo: (i, t, b) => `Look again at the ${P[i].name}: the top has ${t} and you need to take away ${b}.`,
     needsAltYes: (i, t, b) => `You could exchange, and the value would stay the same, but you don't need to: ${t} is enough to take away ${b}. Choose No.`,
     supplierQ: 'Which place can give?',
     supplierZero: (k) => `The ${P[k].name} place has 0, so it has nothing to give. Look further left.`,
@@ -61,7 +61,7 @@
       digit: (i, t, b, d) => `${cap(P[i].name)}: ${t} − ${b} = ${d}.`
     },
     noneLeft: (k) => `No ${P[k].name} are left, so the answer starts in the ${P[k - 1].name}.`,
-    guidedDone: (top, bottom, ans) => `You did it! ${M.fmt(top)} − ${M.fmt(bottom)} = ${M.fmt(ans)}.`,
+    guidedDone: (top, bottom, ans, helped) => helped ? `Finished with help: ${M.fmt(top)} − ${M.fmt(bottom)} = ${M.fmt(ans)}. Try a similar problem on your own when you are ready.` : `You did it! ${M.fmt(top)} − ${M.fmt(bottom)} = ${M.fmt(ans)}.`,
     correct: (top, bottom, ans) => `Correct! ${M.fmt(top)} − ${M.fmt(bottom)} = ${M.fmt(ans)}.`,
     correctMarksOff: 'Your answer is right. One regroup mark does not keep the value the same; look at your marks again.',
     altValid: 'Your regroup marks are a different valid way: the value stays the same.',
@@ -357,6 +357,7 @@
       const u = toolHost.querySelector('[data-act="undo"]'), c = toolHost.querySelector('[data-act="clear"]');
       if (u) u.disabled = !S.log.length;
       if (c) c.disabled = !Object.keys(S.ann).length;
+      toolHost.querySelectorAll('[data-act="hint"], [data-act="solution"]').forEach((b) => { b.hidden = retryRow; });
     }
 
     // ----- Coach panel -----
@@ -382,7 +383,7 @@
       if (mode === 'guided') {
         const g = S.guided;
         const prev = prevNote ? `<p class="sk-prev"><span aria-hidden="true">✓ </span>${esc(prevNote)}</p>` : '';
-        if (g.stage === 'done') return `${prev}<p class="sk-note sk-ok-note sk-done" tabindex="-1"><span aria-hidden="true">✓ </span>${esc(T.guidedDone(top, bottom, top - bottom))}</p>`;
+        if (g.stage === 'done') return `${prev}<p class="sk-note sk-ok-note sk-done" tabindex="-1"><span aria-hidden="true">✓ </span>${esc(T.guidedDone(top, bottom, top - bottom, !!S.helped))}</p>`;
         const col = plan.columns[g.col], i = g.col, b = col.bottomDigit;
         let q = '', ctl = '';
         if (g.stage === 'needs') {
@@ -517,7 +518,7 @@
       feedbackHTML = `<p class="${g.correct ? 'sk-ok-note' : 'sk-no-note'}"><span aria-hidden="true">${g.correct ? '✓ ' : g.status === 'wrong' ? '✗ ' : ''}</span>${msgs.map(esc).join(' ')}</p>`;
       S.result = { status: g.status, correct: g.correct };
       if (g.correct) S.done = true;
-      renderGrid(); renderCoach();
+      renderGrid(); renderCoach(); updateTools();
       focusOn('[data-act="check"]');
       say(msgs.join(' '));
       emit('answer', { status: g.status, correct: g.correct, value: g.value, marks: ev.status, issues: result.issues, helped: !!S.helped });
@@ -535,7 +536,7 @@
       Object.assign(S.guided, { stage }, extra || {});
       renderGrid(); renderCoach();
       const g = S.guided;
-      if (g.stage === 'done') { focusOn('.sk-done'); say(`${prevNote} ${T.guidedDone(top, bottom, top - bottom)}`); emit('complete', { correct: true, helped: !!S.helped }); }
+      if (g.stage === 'done') { focusOn('.sk-done'); say(`${prevNote} ${T.guidedDone(top, bottom, top - bottom, !!S.helped)}`); emit('complete', { correct: true, helped: !!S.helped }); }
       else {
         focusOn(g.stage === 'exchange' ? '[data-k^="r"]' : g.stage === 'digit' ? `[data-k="a${g.col}"]` : '.sk-choices .sk-btn');
         const q = coachEl.querySelector('.sk-q');
@@ -650,8 +651,9 @@
       if (solution) { if (!allowSolution) return; S.hint = 5; S.helped = true; }
       else if (S.hint < 4) S.hint += 1; else return;
       S.hintCol = h.place;
-      renderGrid(); renderTools(); renderCoach();
-      if (S.hint >= 5) { focusOn('.sk-solution-h'); const box = coachEl.querySelector('.sk-solution'); if (box && box.scrollIntoView) box.scrollIntoView({ block: 'nearest' }); }
+      if (!solution) retryRow = false;
+      renderGrid(); renderTools(); renderCoach(); updateTools();
+      if (S.hint >= 5) { retryRow = false; updateTools(); focusOn('.sk-solution-h'); }
       else if (!focusOn('[data-act="hint"]') && !focusOn('[data-act="solution"]')) focusOn('.sk-hint');
       say(S.hint >= 5 ? `${T.solutionTitle}. ${M.solutionLines(top, bottom).join(' ')}` : `${T.hintLabel(S.hint)}: ${h.levels[S.hint - 1]}`);
       emit('hint', { level: S.hint, place: h.place, solution: S.hint >= 5, shown: S.hint >= 5 });
@@ -686,7 +688,7 @@
       if (act === 'solution') return showHint(true);
       if (act === 'next' || act === 'back' || act === 'restart') return demoMove(act);
       if (mode === 'guided' && /^g-/.test(act)) return guidedHelpAct(act);
-      if (act === 'i-retry') { feedbackHTML = ''; retryRow = false; renderCoach(); if (!focusOn('.sk-ans.is-no')) focusOn('[data-k^="a"]'); return; }
+      if (act === 'i-retry') { feedbackHTML = ''; retryRow = false; renderCoach(); updateTools(); const wrong = gridHost.querySelectorAll('.sk-ans.is-no'); if (wrong.length) wrong[wrong.length - 1].focus({ preventScroll: true }); else focusOn('[data-k^="a"]'); return; }
       if (mode === 'guided') return guidedAct(act, b.dataset.v);
     }, sig);
     el.addEventListener('change', (e) => {
