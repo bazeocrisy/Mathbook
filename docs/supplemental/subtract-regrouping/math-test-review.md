@@ -766,3 +766,15 @@ The new rule uses the child's amount whenever the marks are `valid` and `cur[i] 
   - test isolation and worked answers after submission;
   - SR-M12…M16 fixed (M13 for the reported case).
 - **New, all minor:** SR-M17 (Try again focus), SR-M18 (help counts not tied to done, damaged data only) and SR-M19 (an edge case left by the SR-M13 fix).
+
+### Phase B re-check (1ba6606)
+
+I re-ran the three evidence scenarios in one foreground browser, with real CDP clicks and typing, and closed it afterwards. 5 of 5 checks passed, with no page errors.
+
+| ID | Result | Evidence |
+|---|---|---|
+| SR-M17 | **Pass** | Learn decide: right "Yes", wrong column → Try again focuses the chosen wrong column radio; wrong "No" with the right column → focuses "No". Learn check item: wrong tens digit → focuses `a1`, and the fix is accepted. Practice Together 7,405 − 3,168: wrong getter → focuses `r1`; wrong giver → focuses `r2`. |
+| SR-M18 | **Pass** | With the same forged data as before, My Results shows "Learn: 2 of 9 steps done (1 with help)." and "Practice Together: 1 of 8 problems done." Help on items that are not done is no longer counted. |
+| SR-M19 | **Pass** | 3,002 − 1,578 with the marks stopped at hundreds 10, and 5 written in the hundreds → "Look again at the hundreds: 9 − 5", not "10 − 5". The SR-M13 case (3,076 − 2,141) still says "thousands: 2 − 2". |
+
+All findings SR-M01 … SR-M19 are now closed.
