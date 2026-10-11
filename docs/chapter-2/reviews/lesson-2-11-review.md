@@ -111,3 +111,20 @@ No JavaScript errors or missing files. No `mathbook-chrome` processes are left; 
 - Headless Chrome via `tests/lib/harness.mjs`. Viewports were simulated; 200% zoom was simulated as 683×384. No physical device.
 - Windows 11, 2026-10-11.
 - The working tree has only this report as a new file. Nothing was committed.
+
+### Re-verification at 5c990c3
+
+I re-checked commit `5c990c3` with light runs only, one at a time in the foreground:
+- a Node check over every lesson in this worktree;
+- `r211/rv.mjs` (output `r211/rv.out`) in headless Chrome, with screenshots `r211/shots/rv-*.png`.
+
+I edited no app, lesson, engine or test file.
+
+| Finding | Status | Evidence |
+|---|---|---|
+| L211-01 | verified | The test now shuffles every choice part except the fixed Yes/No pair. Over 200 generated attempts, T10's key "98" is in positions 1/2/3 63/78/59 times (before: first in 200 of 200). T3, T8 and T12 are also spread (about 63–71 each). T11's Yes/No stays fixed, as intended. In the app the three T10 choices also come in different orders across attempts. |
+| L211-02 | verified | The T12 choices are now alike: "No. You can also adjust both numbers or count up." (49 characters) / "Yes. Decomposing is the only way to subtract." (45) / "No. You can add the two numbers instead." (40). No equation is shown in the key. New O16 "Is counting up the only way to find 534 − 218?" (key "No. You can also decompose 218 or adjust both numbers.", difference 316 ✓, key in the 2nd of 3 places) practises the format. On My Own shows "Question … of 16". |
+| L211-03 | verified | Learn step 5 now labels its answers "(1) Miles farther:", "(2) Points left:", "(2) More than 100 left?", matching the numbered prompt. Checked at 1366×768 and 320×640 with no sideways scroll (`rv-learn5-1366.png`, `rv-learn5-320.png`). Check Answer at 1366×768 is still 10 px below the fold (bottom 778 of 768), which I judged acceptable. |
+| L211-04 | verified | P4 with a wrong choice now says "Look again at: Which addition equation is related to 731 − 256 = ?." (the "?" is kept; the closing period after it reads slightly oddly but is harmless). **Other lessons are unchanged.** I compared the old and new strip on 28,112 part labels: every authored and test item of every lesson in this worktree (2-3…2-11), plus 300 Learn seeds per step. Only 300 labels change, all of them 2-11's "Which addition equation is related to … = ?" labels. No 2-5, 2-9 (e.g. P1 "Which addition equation can she use?", O2) or 2-10 label changes, so their messages still drop a closing ":", "?" or "." as before. |
+
+No JavaScript errors and no new findings. No `mathbook-chrome` processes are left; I left other projects' headless Chrome alone.
