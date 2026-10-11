@@ -33,13 +33,16 @@ test('Tips spell the word correctly wherever they spell it out letter by letter'
   });
 });
 
-test('Phases 2–4 are outlines only (no playable content)', () => {
-  NW.program.phases.filter((p) => p.id !== '1').forEach((p) => {
+test('Phases 2–3 are outlines only (no playable content); Phase 4 is ready with its own storage', () => {
+  NW.program.phases.filter((p) => p.id === '2' || p.id === '3').forEach((p) => {
     assert.equal(p.status, 'planned');
     assert.equal(p.storageKey, undefined);
     assert.equal(p.href, undefined);
     assert.ok(p.focus.length > 0);
   });
+  const p4 = NW.program.phases.find((p) => p.id === '4');
+  assert.equal(p4.status, 'ready'); assert.equal(p4.href, 'phase-4/'); assert.equal(p4.storageKey, 'mathbook:v2:number-words:phase-4');
+  assert.notEqual(p4.storageKey, P1.storageKey);
   const p2 = NW.program.phases.find((p) => p.id === '2');
   p2.words.forEach((w, i) => assert.equal(w, pv.numberToWords(11 + i)));
   const p3 = NW.program.phases.find((p) => p.id === '3');

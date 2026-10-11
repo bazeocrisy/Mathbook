@@ -102,29 +102,30 @@
       function nAnswered(x) { return Array.isArray(x.answered) ? x.answered.length : count(x.responses); }
       var found = [];
       // Each lesson keeps its own progress (its own storage prefix). The list of lessons lives in assets/js/catalog.js.
-      Mathbook.catalog.lessons.forEach(function (lesson) {
+      Mathbook.catalog.lessons.concat(Mathbook.catalog.activities || []).forEach(function (lesson) {
+        var name = lesson.label || ('Lesson ' + lesson.id);
         var key = lesson.key;
         var page = lesson.path;
         lesson.tests.forEach(function (t) {
           var d = get(key + 'draft-' + t[0]);
           var n = d && d.questions ? nAnswered(d) : 0;
-          if (d && d.questions && count(d.responses, true)) found.push({ href: page + '#test/' + t[0], what: 'Lesson ' + lesson.id + ' · ' + t[1] + ': ' + n + ' of ' + d.questions.length + ' answered' });
+          if (d && d.questions && count(d.responses, true)) found.push({ href: page + '#test/' + t[0], what: name + ' · ' + t[1] + ': ' + n + ' of ' + d.questions.length + ' answered' });
         });
         var bank = get(key + 'bank-sets') || {};
         Object.keys(bank).forEach(function (id) {
           var a = bank[id] && bank[id].active;
           var n = a && !a.checked ? nAnswered(a) : 0;
-          if (a && !a.checked && count(a.responses, true)) found.push({ href: page + '#practice/' + id, what: 'Lesson ' + lesson.id + ' · Practice on my own: ' + n + ' of ' + a.order.length + ' answered' });
+          if (a && !a.checked && count(a.responses, true)) found.push({ href: page + '#practice/' + id, what: name + ' · Practice on my own: ' + n + ' of ' + a.order.length + ' answered' });
         });
         var skills = get(key + 'skill-practice') || {};
         Object.keys(skills).forEach(function (id) {
           var a = skills[id] && skills[id].active;
           var n = a && !a.checked ? nAnswered(a) : 0;
-          if (a && !a.checked && count(a.responses, true)) found.push({ href: page + '#practice/' + id, what: 'Lesson ' + lesson.id + ' · Practice one skill: ' + n + ' of ' + a.order.length + ' answered' });
+          if (a && !a.checked && count(a.responses, true)) found.push({ href: page + '#practice/' + id, what: name + ' · Practice one skill: ' + n + ' of ' + a.order.length + ' answered' });
         });
         var w = get(key + 'see-wizard');
         var done = w && w.done ? Object.keys(w.done).length : 0;
-        if (w && (done || w.step) && done < lesson.steps) found.push({ href: page + '#see', what: 'Lesson ' + lesson.id + ' · Learn: step ' + ((w.step || 0) + 1) + ' of ' + lesson.steps });
+        if (w && (done || w.step) && done < lesson.steps) found.push({ href: page + '#see', what: name + ' · Learn: step ' + ((w.step || 0) + 1) + ' of ' + lesson.steps });
       });
       var nw = get('mathbook:v2:number-words:phase-1:draft');
       var nwn = nw && nw.questions ? count(nw.responses) : 0;

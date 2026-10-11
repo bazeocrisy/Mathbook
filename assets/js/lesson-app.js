@@ -121,20 +121,27 @@
       const act = shell.readActivity && shell.readActivity();
       if (act && act.path && opts.path && act.path.indexOf(opts.path) === 0) { try { root.localStorage.removeItem('mathbook:v2:activity'); } catch (e) { /* ignore */ } }
     }
-    const lessonEyebrow = () => `Lesson ${esc(L.number)} · ${esc(L.title)}`;
+    // Optional branding for activities that reuse the lesson engine (Number Words Phase 4): `brand: { noun, pill, crumbs, menu, thing, resetNote }`.
+    // Lessons have no `brand` and keep every default below.
+    const B = L.brand || {};
+    const NAME = `${B.noun || 'Lesson'} ${L.number}`;
+    const MENU = B.menu || 'Lesson Menu';
+    const RESET = B.noun ? 'Reset Progress' : 'Reset Lesson Progress';
+    const THING = B.thing || 'lesson';
+    const lessonEyebrow = () => `${esc(NAME)} · ${esc(L.title)}`;
     const eyebrow = lessonEyebrow;
 
-    document.title = `Lesson ${L.number}: ${L.title} · Mathbook`;
+    document.title = `${NAME}: ${L.title} · Mathbook`;
     const ctx = shell.startShell({
       mount: opts.mount,
       homeHref: opts.homeHref || './',
       path: opts.path || '',
-      crumbs: `Grade 3 · Chapter ${L.chapter}: ${L.chapterTitle}`,
-      pill: `Lesson ${L.number}`,
+      crumbs: B.crumbs || `Grade 3 · Chapter ${L.chapter}: ${L.chapterTitle}`,
+      pill: B.pill || NAME,
       stages: STAGES,
       stagebar: false,
-      menuLink: { href: '#menu', label: 'Lesson Menu' },
-      activityTitle: `Lesson ${L.number}: ${L.title}`,
+      menuLink: { href: '#menu', label: MENU },
+      activityTitle: `${NAME}: ${L.title}`,
       // Leaving a running test (any way at all) closes it; its draft stays saved. Every screen starts as a menu-width page.
       beforeRender() { S.activeTest = null; activity(false); },
       views: { menu: menuView, teach: teachView, see: seeView, practice: practiceView, test: testView, results: resultsView }
@@ -152,7 +159,7 @@
     /** Bottom navigation for an activity: an optional way back, plus the Lesson Menu. */
     function menuNav(backHref, backLabel) {
       return `<div class="stage-nav">${backHref ? `<a class="btn btn-ghost" href="${backHref}">← ${esc(backLabel)}</a>` : '<span></span>'}` +
-        `<a class="btn btn-ghost" href="#menu">Lesson Menu</a></div>`;
+        `<a class="btn btn-ghost" href="#menu">${esc(MENU)}</a></div>`;
     }
 
     // ===== Lesson menu =====
@@ -160,14 +167,14 @@
       const W = store.get('see-wizard', null);
       const firstVisit = !W || !Object.keys(W.done || {}).length;
       main.innerHTML =
-        `<section class="hero menu-hero"><p class="eyebrow">Lesson ${esc(L.number)}</p><h1 tabindex="-1">${esc(L.title)}</h1>` +
+        `<section class="hero menu-hero"><p class="eyebrow">${esc(NAME)}</p><h1 tabindex="-1">${esc(L.title)}</h1>` +
         `<p class="lead">What would you like to do?</p></section>` +
-        `<nav class="choice-grid" aria-label="Lesson choices">` +
+        `<nav class="choice-grid" aria-label="${esc(THING.charAt(0).toUpperCase() + THING.slice(1))} choices">` +
         choiceCard('#see', 'Learn', 'See an example and try it.', '💡', firstVisit ? 'is-recommended' : '', firstVisit ? '<span class="choice-tag">Start here</span>' : '') +
         choiceCard('#practice', 'Practice', 'Work on one problem at a time.', '✏️') +
         choiceCard('#test', 'Take a Test', 'Show what you know.', '✓') +
         choiceCard('#results', 'My Results', 'See how you did.', '★') +
-        `</nav><p class="parent-link"><a href="#teach">Parent Guide</a> <span class="muted">· how to teach this lesson</span></p>`;
+        `</nav><p class="parent-link"><a href="#teach">Parent Guide</a> <span class="muted">· how to teach this ${esc(THING)}</span></p>`;
     }
 
     // ===== Parent Guide (was Teach It) =====
@@ -189,7 +196,7 @@
         `</dl></li>`).join('');
 
       main.innerHTML =
-        ctx.hero(eyebrow('teach'), 'Parent Guide', 'How to teach this lesson: ' + esc(L.subtitle), [
+        ctx.hero(eyebrow('teach'), 'Parent Guide', `How to teach this ${esc(THING)}: ` + esc(L.subtitle), [
           { id: 'brief', label: 'A · Mission brief' }, { id: 'vocabulary', label: 'B · Vocabulary' },
           { id: 'parent-guide', label: 'C · Parent guide' }, { id: 'script', label: 'D · Teaching script' }]) +
         `<section class="card" id="brief">${head('A', 'Mission brief', 'student')}` +
@@ -230,13 +237,13 @@
         `<section class="card card-parent" id="check">${head('D', 'Questions, mistakes, and checklist', 'parent')}` +
         `<h3>Ask</h3>${list(p.ask)}<div class="callout callout-warn"><h3>Watch for these mistakes</h3>${list(L.mistakes)}</div>` +
         `<h3>Checklist: the Learn steps</h3><ol class="checks">${p.checklist.map((x) => `<li>${esc(x)}</li>`).join('')}</ol></section>` +
-        `<section class="card card-parent" id="reset">${head('', 'Reset Lesson Progress', 'parent')}` +
-        `<p>Erase Section ${esc(L.number)}'s saved answers, Learn completion, and test scores on this device. Other lessons and Number Words are not changed.</p>` +
-        `<div id="clear-area"><button type="button" class="btn btn-ghost" id="clear">Reset Lesson Progress…</button></div></section>` +
+        `<section class="card card-parent" id="reset">${head('', RESET, 'parent')}` +
+        `<p>Erase ${esc(B.noun ? NAME : 'Section ' + L.number)}'s saved answers, Learn completion, and test scores on this device. ${esc(B.resetNote || 'Other lessons and Number Words are not changed.')}</p>` +
+        `<div id="clear-area"><button type="button" class="btn btn-ghost" id="clear">${esc(RESET)}…</button></div></section>` +
         menuNav();
-      const bindReset = () => shell.bindClear(main, store, `answers, Learn completion, and scores for Section ${L.number}`,
+      const bindReset = () => shell.bindClear(main, store, `answers, Learn completion, and scores for ${B.noun ? NAME : 'Section ' + L.number}`,
         () => { forgetProgress(); ctx.go('menu'); },
-        () => { main.querySelector('#clear-area').innerHTML = '<button type="button" class="btn btn-ghost" id="clear">Reset Lesson Progress…</button>'; bindReset(); main.querySelector('#clear').focus(); },
+        () => { main.querySelector('#clear-area').innerHTML = `<button type="button" class="btn btn-ghost" id="clear">${esc(RESET)}…</button>`; bindReset(); main.querySelector('#clear').focus(); },
         'Reset');
       bindReset();
     }
@@ -530,7 +537,7 @@
           `<section class="hero act-hero"><p class="eyebrow">${lessonEyebrow()}</p>` +
           `<div class="act-title"><h1 tabindex="-1">Learn</h1><p class="wiz-count">Step ${i + 1} of ${steps.length}</p></div></section>` +
           `<section class="card wiz-card" data-phase="${phase}">${head}${body}</section>` +
-          `<div class="wiz-menu"><a class="btn btn-ghost" href="#menu">Lesson Menu</a></div>`;
+          `<div class="wiz-menu"><a class="btn btn-ghost" href="#menu">${esc(MENU)}</a></div>`;
         const qEl = main.querySelector('.wiz-check .q[data-qkey]');
         if (phase === 'example') bindDemo(step);
         else if (c.q.type === 'rline') {
@@ -592,7 +599,7 @@
           (L.seeIt.reflection ? `<div class="reflect"><p class="reflect-title">Think and talk</p><p>${esc(L.seeIt.reflection.prompt)}</p>` +
             (L.seeIt.reflection.idea ? `<details class="parent-help"><summary>Parent Help</summary><p>${esc(L.seeIt.reflection.idea)}</p></details>` : '') + `</div>` : '') +
           `<div class="actions"><a class="btn btn-primary btn-big" href="#practice">Start Practice</a>` +
-          `<a class="btn btn-ghost btn-big" href="#menu">Lesson Menu</a>` +
+          `<a class="btn btn-ghost btn-big" href="#menu">${esc(MENU)}</a>` +
           `<button type="button" class="btn btn-ghost" id="learn-again">Go through Learn again</button></div></section>`;
         main.querySelector('#learn-again').addEventListener('click', () => { W.step = 0; save(); ctx.go('see'); });
         return;
@@ -686,7 +693,7 @@
     /** End-of-activity card: a short message, the activity's own action, and the Lesson Menu. */
     function doneCard(message, actions, bind) {
       main.innerHTML = ctx.hero(lessonEyebrow(), message, '') +
-        `<section class="card done-card"><p class="done-title">${esc(message)}</p><div class="actions">${actions}<a class="btn btn-ghost" href="#menu">Lesson Menu</a></div></section>`;
+        `<section class="card done-card"><p class="done-title">${esc(message)}</p><div class="actions">${actions}<a class="btn btn-ghost" href="#menu">${esc(MENU)}</a></div></section>`;
       if (bind) bind();
       root.scrollTo(0, 0);
       main.querySelector('h1').focus({ preventScroll: true });
@@ -819,7 +826,7 @@
         (missesLeft ? `<button type="button" class="btn btn-primary" id="practice-misses">Practice My Misses (${missesLeft})</button>` : '') +
         `<button type="button" class="btn ${missesLeft ? 'btn-ghost' : 'btn-primary'}" id="set-again">Practice this ${set.skillOnly ? 'skill' : 'set'} again</button>` +
         `<button type="button" class="btn btn-ghost" id="choose-set">${set.skillOnly ? fullSetLabel() : 'Choose another set'}</button>` +
-        `<a class="btn btn-ghost" href="#menu">Lesson Menu</a></div>`;
+        `<a class="btn btn-ghost" href="#menu">${esc(MENU)}</a></div>`;
       box.querySelectorAll('.q[data-qkey] input, .q[data-qkey] select, .q[data-qkey] button').forEach((c) => { c.disabled = true; });
       box.querySelector('#practice-misses') && box.querySelector('#practice-misses').addEventListener('click', () => { startMisses(set.id); restart(); });
       box.querySelector('#set-again').addEventListener('click', () => { startSet(set.id); restart(); });
@@ -972,12 +979,12 @@
       const notice = `<details class="parent-help" id="privacy"><summary>Parent Help: saved progress</summary>` +
         `<p>Results are saved only in this browser on this device. They do <b>not</b> sync to other devices or browsers, and clearing browser data erases them. Mathbook does not ask for names or send results anywhere.</p>` +
         (store.works() ? '' : `<p class="warn-text">This browser is not allowing saved data right now (for example, a private window). Results will disappear when the page closes.</p>`) +
-        (attempts.length ? `<div id="clear-area"><button type="button" class="btn btn-ghost" id="clear">Clear saved progress for this lesson…</button></div>` : '') + `</details>`;
+        (attempts.length ? `<div id="clear-area"><button type="button" class="btn btn-ghost" id="clear">Clear saved progress for this ${esc(THING)}…</button></div>` : '') + `</details>`;
 
       if (!attempts.length) {
         main.innerHTML = top + `<section class="card done-card"><p class="done-title">You haven't taken a test yet.</p>` +
-          `<div class="actions"><a class="btn btn-primary btn-big" href="#test">Take a Test</a><a class="btn btn-ghost btn-big" href="#menu">Lesson Menu</a></div></section>` + notice;
-        shell.bindClear(main, store, 'results, practice, and unfinished tests for this lesson', cleared);
+          `<div class="actions"><a class="btn btn-primary btn-big" href="#test">Take a Test</a><a class="btn btn-ghost btn-big" href="#menu">${esc(MENU)}</a></div></section>` + notice;
+        shell.bindClear(main, store, `results, practice, and unfinished tests for this ${THING}`, cleared);
         return;
       }
 
@@ -1065,7 +1072,7 @@
         S.pendingStart = b.dataset.retake;
         ctx.go('test');
       }));
-      shell.bindClear(main, store, 'results, practice, and unfinished tests for this lesson', cleared);
+      shell.bindClear(main, store, `results, practice, and unfinished tests for this ${THING}`, cleared);
     }
 
     /** The set with the most practice questions for a skill (for "Practice this skill" on Results). */

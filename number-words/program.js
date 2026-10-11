@@ -1,7 +1,8 @@
 /*
  * Number Words — Read It, Say It, Spell It, Write It.
  * Curriculum data only. The reusable phase engine is assets/js/number-words-app.js.
- * Phase 1 is complete. Phases 2–4 are an outline only (no lessons, exercises, or tests yet).
+ * Phase 1 (spelling 0–10) and Phase 4 (numbers 100–9,999 in words and words to numbers) are ready. Phases 2–3 are an
+ * outline only. Phase 4 runs on the lesson engine; its content is number-words/phase-4/lesson.js.
  * Spelling follows American English and matches Lesson 2-1's word form (Mathbook.pv.numberToWords).
  */
 (function (root) {
@@ -57,7 +58,9 @@
         ]
       },
       {
-        id: '4', title: 'Hundreds and thousands', status: 'planned',
+        id: '4', title: 'Hundreds and thousands', status: 'ready', href: 'phase-4/', range: '100–9,999',
+        storageKey: 'mathbook:v2:number-words:phase-4',
+        blurb: 'Learn with examples, practice, and a 12-question test: numbers to words and words to numbers, with zeros.',
         examples: [135, 2137, 5072],
         focus: [
           'Say and write the hundreds, then the tens and ones: one hundred thirty-five.',
