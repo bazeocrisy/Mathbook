@@ -98,3 +98,10 @@ test('Learn generators follow the spec and never print an answer', () => {
     assert.ok(s6.parts[1].answer <= 999, 'step 6 (C-6)');
   }
 });
+
+test('review fixes L212-01…03', () => {
+  const pics = L.guided.concat(L.bank, L._testItems).filter((q) => q.figure && q.figure.fig === 'pics').map((q) => q.parts[0].answer);
+  assert.deepEqual(pics, ['A', 'C', 'B', 'A', 'C', 'A'], 'authored right pictures vary and include A');
+  for (let seed = 1; seed <= 300; seed++) assert.ok(!/bakery/i.test(L.seeIt.steps[4].check(pv.rng(seed)).prompt), 'no bakery (C-15)');
+  for (const q of L.guided.concat(L.bank, L._testItems)) for (const p of q.parts || []) assert.ok(!/\$$/.test(p.label), q.id + ': label does not end in $');
+});

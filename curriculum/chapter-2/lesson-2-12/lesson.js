@@ -73,7 +73,8 @@
       eq = `${fmt(n)} + a = ${fmt(W)}`; letter = 'a';
       figs = [ppw([n, 'a'], [n, v], W, { small: true }), ppw([n, W], [n, W], 'a', { small: true }), cmp('a', n, W, [W, n], { small: true })];
     }
-    const idx = order(o, [0, 1, 2]);
+    let idx = order(o, [0, 1, 2]);
+    if (o.at !== undefined) { idx = idx.filter((k) => k !== 0); idx.splice(o.at, 0, 0); } // review L212-01
     const right = 'ABC'[idx.indexOf(0)];
     return {
       id: o.id, type: 'parts', skill: o.skill || 'diagram', prompt: `Which bar diagram shows ${eq}? Then find ${letter}.`,
@@ -103,7 +104,7 @@
     const left = o.M - o.c1 - o.c2;
     return {
       id: o.id, type: 'parts', skill: o.skill || 'twostep', prompt: o.story,
-      parts: [{ kind: 'num', label: 'Money left: $', answer: left }],
+      parts: [{ kind: 'num', label: 'Money left ($):', answer: left }],
       hint: o.hint || 'Subtract both costs.',
       explanation: `${minus(o.M, o.c1)} = ${fmt(o.M - o.c1)}, then ${minus(o.M - o.c1, o.c2)} = ${fmt(left)}. Or add the costs first: ${plus(o.c1, o.c2)} = ${fmt(o.c1 + o.c2)}, ${minus(o.M, o.c1 + o.c2)} = ${fmt(left)}. Both orders work.`
     };
@@ -232,7 +233,7 @@
       }
       const m = pv.randInt(r, 150, 350), s = pv.randInt(r, 300, 600), l = pv.randInt(r, 20, 90);
       if (s + l > 999 || s + l - m < 50 || !ok(m, s, l, s + l - m)) continue;
-      return backwardQ({ id: 'learn-5', m, s, l, label: 'Afternoon:', story: `A bakery makes ${fmt(m)} rolls in the morning and more in the afternoon. It sells ${fmt(s)} rolls and has ${fmt(l)} left. How many rolls were made in the afternoon?` });
+      return backwardQ({ id: 'learn-5', m, s, l, label: 'Afternoon:', story: `A lemonade stand makes ${fmt(m)} cups in the morning and more in the afternoon. It sells ${fmt(s)} cups and has ${fmt(l)} left. How many cups were made in the afternoon?` });
     }
   }
   const SHOPS = [['A shop', 'hats'], ['A stand', 'apples'], ['A store', 'books'], ['A cafe', 'muffins']];
@@ -315,11 +316,11 @@
   const guided = [
     ppwEqQ({ id: 'p1', p: 320, q: 455, below: true, seed: 1, hint: 'Parts make the whole.' }),
     cmpEqQ({ id: 'p2', W: 742, P: 518, seed: 2, hint: 'The dashed piece is missing.' }),
-    diagramForQ({ id: 'p3', W: 702, n: 348, kind: 'sub', seed: 3, hint: 'Which number is the whole?' }),
-    diagramForQ({ id: 'p4', W: 650, n: 200, kind: 'add', seed: 4, hint: '650 is the whole.' }),
+    diagramForQ({ id: 'p3', W: 702, n: 348, kind: 'sub', seed: 3, at: 0, hint: 'Which number is the whole?' }),
+    diagramForQ({ id: 'p4', W: 650, n: 200, kind: 'add', seed: 4, at: 2, hint: '650 is the whole.' }),
     addThenQ({ id: 'p5', x: 276, y: 418, T: 350, more: false, la: 'a = cans collected:', lb: 'b = cans left:', hint: 'First find all the cans.',
       story: 'Scouts collect 276 cans one week and 418 the next. They give 350 cans to a shelter. How many are left?' }),
-    addThenQ({ id: 'p6', x: 248, y: 135, T: 500, more: true, la: 'a = money he has now: $', lb: 'b = money he still needs: $', hint: 'What does he have now?',
+    addThenQ({ id: 'p6', x: 248, y: 135, T: 500, more: true, la: 'a = money he has now ($):', lb: 'b = money he still needs ($):', hint: 'What does he have now?',
       story: 'Owen has saved $248. He earns $135 more. A bike costs $500. How much more does he need?' }),
     spendQ({ id: 'p7', M: 215, c1: 148, c2: 19, story: 'Kara has $215. She buys a scooter for $148 and a bell for $19. How much is left?' }),
     moreQ({ id: 'p8', x: 238, d: 157, n2: 'Ben', story: 'Ali has 238 shells. Ben has 157 more than Ali. How many shells together?' }),
@@ -340,8 +341,8 @@
   const bank = [
     ppwEqQ({ id: 'o1', p: 280, q: 435, seed: 21 }),
     cmpEqQ({ id: 'o2', W: 836, P: 609, seed: 22 }),
-    diagramForQ({ id: 'o3', W: 803, n: 456, kind: 'sub', seed: 23 }),
-    diagramForQ({ id: 'o4', W: 820, n: 300, kind: 'add', seed: 24 }),
+    diagramForQ({ id: 'o3', W: 803, n: 456, kind: 'sub', seed: 23, at: 1 }),
+    diagramForQ({ id: 'o4', W: 820, n: 300, kind: 'add', seed: 24, at: 0 }),
     addThenQ({ id: 'o5', x: 326, y: 488, T: 439, more: false, la: 'a = miles biked in all:', lb: 'b = miles Leo biked:',
       story: 'Two friends biked 326 miles in spring and 488 in fall. Maya biked 439 of the miles. Leo biked the rest. How many did Leo bike?' }),
     spendQ({ id: 'o6', M: 164, c1: 118, c2: 27, story: 'Tom has $164. He buys a game for $118 and batteries for $27. How much is left?' }),
@@ -356,8 +357,8 @@
   const testItems = [
     ppwEqQ({ id: 't1', p: 345, q: 290 }),
     cmpEqQ({ id: 't2', W: 914, P: 658 }),
-    diagramForQ({ id: 't3', W: 640, n: 275, kind: 'sub', seed: 43 }),
-    diagramForQ({ id: 't4', W: 900, n: 150, kind: 'add', seed: 44 }),
+    diagramForQ({ id: 't3', W: 640, n: 275, kind: 'sub', seed: 43, at: 2 }),
+    diagramForQ({ id: 't4', W: 900, n: 150, kind: 'add', seed: 44, at: 0 }),
     addThenQ({ id: 't5', x: 318, y: 157, T: 600, more: true, la: 'a = shells she has now:', lb: 'b = shells she still needs:',
       story: 'Jada collects 318 shells, then 157 more. She wants 600 shells for a craft. How many more does she need?' }),
     boxesQ({ id: 't6', n: 7, s1: 2, s2: 3, label: 'Cups left:', story: 'A shop has 7 boxes of 100 cups. It sells 2 boxes Saturday and 3 Sunday. How many cups are left?' }),
