@@ -499,3 +499,14 @@ Phase 2 (browser checks: persistence, reset, two instances, restore, destroy, te
 - All ten Phase 1 findings are fixed and pass, in Node and in the browser.
 - Persistence, malformed saves, reset scope, Home Continue, test integrity and portability all behave as the spec requires.
 - One new minor finding (SR-M11), which affects only host code that keeps using a destroyed instance.
+
+### SR-M11 re-check (a27f1fa): **Pass**
+
+I tested an instance in each mode (independent, guided, test, demo, view) on `dev/subtract-demo/`. After `destroy()`, I called every public method:
+
+- `check()` and `result()` return null.
+- `setState(validState)` returns false.
+- `hint()`, `showSolution()`, `reset()`, `undo()`, `clearWork()` and `focus()` return undefined.
+- `getState()` still returns the state object, and a second `destroy()` is fine.
+
+Nothing threw. A MutationObserver on the host element recorded 0 DOM changes, the host markup and classes stayed empty, no events were fired, and there were no page errors.
