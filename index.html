@@ -74,7 +74,20 @@
           // A written equation (chain): its boxes, plus any tree parts.
           var boxes = Object.keys(r.v).map(function (k) { return r.v[k]; });
           (r.t || []).forEach(function (t) { boxes = boxes.concat(t || []); });
+          // Partial sums in a row (keys p<place>_<addend>, s<place>, S): every box must be there, not only the typed ones.
+          var pk = Object.keys(r.v).map(function (k) { return /^p(\d)_(\d)$/.exec(k); }).filter(Boolean);
+          if (!started && pk.length) {
+            var pls = 1 + Math.max.apply(null, pk.map(function (m) { return +m[1]; })), ads = 1 + Math.max.apply(null, pk.map(function (m) { return +m[2]; }));
+            if (Object.keys(r.v).filter(function (k) { return !blank(r.v[k]); }).length < pls * ads + pls + 1) return false;
+          }
           return started ? boxes.some(function (v) { return !blank(v); }) : boxes.length > 0 && boxes.every(function (v) { return !blank(v); });
+        }
+        if (r && typeof r === 'object' && Array.isArray(r.p) && Array.isArray(r.d)) {
+          // A stacked answer (vcalc): partial sums + sum (and the place labels when the child writes them), or digit boxes.
+          var vals = r.p.concat([r.s], r.n || [], r.d, Object.keys(r.b || {}).map(function (k) { return r.b[k]; }));
+          if (started) return vals.some(function (v) { return !blank(v); });
+          if (r.p.length) return r.p.concat([r.s]).every(function (v) { return !blank(v); }) && ((r.n || []).every(blank) || (r.n || []).every(function (v) { return !blank(v); }));
+          return r.d.some(function (v) { return !blank(v); }) || Object.keys(r.b || {}).some(function (k) { return !blank(r.b[k]); });
         }
         if (r && typeof r === 'object' && !Array.isArray(r)) return started ? LINE_PARTS.concat('why').some(function (k) { return filled(r, k); }) : LINE_PARTS.concat(r.needWhy ? ['why'] : []).every(function (k) { return filled(r, k); });
         if (Array.isArray(r)) {

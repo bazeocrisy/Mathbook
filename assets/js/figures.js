@@ -16,6 +16,7 @@
  *   bar      F8  { kind: 'ppw', parts, sizes, whole, bracket?, caption?, small? } | { kind: 'cmp', long, short, gap, sizes: [long, short], order?, caption?, small? }
  *   pics     F9  { items: [{ label: 'A', fig: {...} }], noun?: 'Diagram' }
  *   cmp      F10 { a, b, focus?: 'Th'|'H'|'T'|'O' }
+ *   eqs      F11 { lines: ['300 + 100 = 400', { text: '7 + 5 = ___', tag: 'Ones', hi: true }], caption? }: written work, lined up at '='; ___ is a blank box
  * Every spec may carry `label` (the full spoken sentence) and `caption` (visible text under the figure).
  * Labels in figures: a number, '?', { letter: 'a' }, or { slot: 'A' } (an empty lettered box the child fills in a part).
  */
@@ -273,6 +274,22 @@
     return wrap('cmp', label, h, s.caption);
   }
 
-  const REG = { arrows, groupV, counters, table, nline, tree, stack, bar, pics, cmp };
+  // ---------- F11 Equation lines (someone's written work, e.g. partial sums in a row) ----------
+  // Each line is split at its first " = " so the = signs line up down the column, as in the book (p. 56).
+  function eqs(s) {
+    const lines = s.lines.map((l) => (typeof l === 'string' ? { text: l } : l));
+    const tags = lines.some((l) => l.tag);
+    const blank = (t) => esc(t).split('___').join('<span class="blank"></span>');
+    const h = lines.map((l) => {
+      const i = l.text.indexOf(' = ');
+      const left = i < 0 ? l.text : l.text.slice(0, i), right = i < 0 ? '' : l.text.slice(i + 3);
+      return (tags ? `<span class="eq-tag">${esc(l.tag || '')}</span>` : '') +
+        `<span class="eq-l${l.hi ? ' is-hi' : ''}">${blank(left)}</span><span class="eq-eq">${i < 0 ? '' : '='}</span><span class="eq-r${l.hi ? ' is-hi' : ''}">${blank(right)}</span>`;
+    }).join('');
+    const label = s.label || lines.map((l) => l.text.replace(/___/g, 'blank').replace(/ \+ /g, ' plus ').replace(/ = /g, ' equals ')).join('. ') + '.';
+    return wrap('eqs', label, `<div class="eq-grid${tags ? ' has-tags' : ''}">${h}</div>`, s.caption);
+  }
+
+  const REG = { arrows, groupV, counters, table, nline, tree, stack, bar, pics, cmp, eqs };
   MB.fig = Object.assign({ render, html: render, register(name, fn) { REG[name] = fn; } }, REG);
 })(typeof window !== 'undefined' ? window : globalThis);
