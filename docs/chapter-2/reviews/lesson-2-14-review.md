@@ -117,3 +117,21 @@ My own scripts: `wizscroll.mjs` (all lessons), `vp.mjs`, `flows.mjs` and `focus3
 - Headless Chrome via `tests/lib/harness.mjs`. Viewports were simulated; 200% zoom was simulated as 683×384. No physical device.
 - Windows 11, 2026-10-11.
 - Only this report file was added and committed.
+
+## Re-check at 611f677
+
+I re-checked commit `611f677` with these runs, one at a time:
+- `r214/sample.cjs` (output `sample2.out`);
+- `r214/wizscroll2.mjs`, which opens "Now I'll Try" on every Learn step of **2-3…2-14** at 1366×768, 390×844 and 683×384 (201 step-openings);
+- `r214/carry.mjs`.
+
+I edited no app, lesson, engine or test file.
+
+| Finding | Status | Evidence |
+|---|---|---|
+| L214-01 | fixed | Focus now stays on the heading on all 201 step-openings, including 2-14 steps 3–4. **Other lessons are not affected:**<br>• `Q.bind`'s new option is read only by the vcalc control, and only for `digits` answers, which no other lesson uses in a Learn Your Turn;<br>• in every other lesson, scrollY and focus are the same as in my first sweep. The only differences are Check Answer heights from the randomly generated questions;<br>• Practice and Test still autofocus the ones box as before. |
+| L214-02 | fixed | In 20,000 seeds of every step: no duplicate choices (BAD 0, was 4) and no printed answers. |
+| L214-03 | fixed | The regroup boxes are now 44 × 48 px at 320 px (P1, P6) and wider screens. On the widest item at 320 px (P4, 15,203 + 2,416, six columns) they are 40 × 48 px, limited by the column width. That is acceptable for optional, ungraded boxes. No sideways scroll (`r214/shots/rc-pt4-320.png`). |
+| L214-04 | fixed | Learn 5 now has five slides. Two are new:<br>• "Packs: juice boxes come in packs of 150. A class needs 400. 150 (1 pack), 300 (2 packs): not enough. 450 (3 packs) covers 400. Buy 3 packs; 450 − 400 = 50 extra.";<br>• "Two steps: … We know Monday and Tuesday. Step 1: together, 132 + 215 = 347. Step 2: use 347. Wednesday: 347 + 104 = 451.".<br>Both are known → intermediate → step 2, in third-grade language, and correct. |
+
+**No regression:** keys, generator ranges and positions are unchanged, the wizard scroll behaves the same for 2-3…2-13, and there were no JavaScript errors.
