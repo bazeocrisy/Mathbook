@@ -215,3 +215,48 @@ Real old saves cannot trigger it, because Phase 4 never stored anything before t
 | NW4-01 | Minor | Yes/No label quotes the place only when the answer is No (p12, o12, t12) | One wording for both cases |
 | NW4-02 | Minor | Results say "Ready to move on to the next lesson." on Phase 4 | Brand the mastered advice |
 | NW4-03 | Minor (pre-existing) | Wrong-shaped saved JSON blanks the screen that reads it (engine-wide) | Optional shape guards, or defer |
+
+## Re-check (fix commit 37e17a7)
+
+I compared commit `37e17a7` against my review commit `f4ef847`. Five files changed:
+- `lesson-app.js`: 1 line;
+- `phase-4/lesson.js`: the `placeQ` labels;
+- the decision record;
+- one unit test and one browser check.
+
+| ID | Result | Evidence |
+|---|---|---|
+| NW4-01 | **Verified** | See below |
+| NW4-02 | **Verified** | See below |
+| NW4-03 | **Deferral accepted** | See below |
+
+**NW4-01.** `placeQ` now uses a single wording, with no quotes: "What digit is in the {place} place?" / "Do you say the {place} in the words?"
+- My sampler printed the labels: p12 (3,705, tens) → No; o12 (5,038, tens) → Yes; t12 (7,046, hundreds) → No. All read the same apart from the place name.
+- On screen, test t12 reads "Look at 7,046. What digit is in the hundreds place? Do you say the hundreds in the words? Yes No".
+- At 320×640 and 683×384, t12 has no sideways scroll and no control under 44 px.
+- Answer keys are unchanged: 0/No, 3/Yes, 0/No.
+- The new wording also settles the optional "How many tens?" point.
+
+**NW4-02.** The advice line now runs `m.advice.replace('the next lesson', 'the next ' + THING)`. I finished real tests in the browser:
+- Phase 4 at 100%: "Ready to move on to the next phase."
+- Lesson 2-13 at 100%: still "Ready to move on to the next lesson."
+- Phase 4 at 0%: the reteach advice is unchanged.
+- No page errors.
+
+**NW4-03.** I agree with leaving it for now:
+- It is shared engine behaviour; Lesson 2-13 behaves the same.
+- Phase 4 has no older saves that could trigger it.
+- In my damaged-data runs, the Parent Guide (where Reset lives) still rendered.
+- It is now recorded in the decision record as a remaining issue.
+
+**No regressions:**
+- `npm test`: 193/193.
+- Phase 4 browser: 75/75, including the new NW4-02 check.
+- `lessons.browser.mjs nw-4`: 109/109.
+- `lessons.browser.mjs 2-15`: 109/109 (lesson defaults).
+- Phase 1 browser: 64/64.
+- The sampler still finds 0 word mismatches for 100–9,999, no bad keys, and no leaks in Learn.
+
+**Note (pre-existing, shared, same family as the "new numbers" note above):** the reteach advice ends "Every new test uses different numbers." That is also not true for the fixed tests in Phase 4 and Lessons 2-8 … 2-15. No action is needed for this item.
+
+**Result:** all findings are closed (NW4-03 deferred by agreement). Ready to publish.
