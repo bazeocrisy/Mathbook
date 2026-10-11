@@ -28,7 +28,8 @@
     if (k < 0) return `Every place has the same digit, so ${fmt(a)} = ${fmt(b)}.`;
     const same = PLACES.slice(0, k).map((p, i) => `${p.toLowerCase()} ${A[i]} = ${B[i]}`);
     const lead = same.length ? cap(same.join(', ')) + '. ' : '';
-    return `${lead}${PLACES[k]}: ${A[k]} ${A[k] > B[k] ? '>' : '<'} ${B[k]}, so ${fmt(a)} ${sym(a, b)} ${fmt(b)}.`;
+    const unit = ['thousand', 'hundred', 'ten', 'one'][k], val = (d) => `${d} ${unit}${d === 1 ? '' : 's'}`, v = (d) => fmt(d * 10 ** (3 - k));
+    return `${lead}${PLACES[k]}: ${val(A[k])} ${A[k] > B[k] ? '>' : '<'} ${val(B[k])}${k < 3 ? ` (${v(A[k])} ${A[k] > B[k] ? '>' : '<'} ${v(B[k])})` : ''}, so ${fmt(a)} ${sym(a, b)} ${fmt(b)}.`;
   }
   const cap = (s) => s.charAt(0).toUpperCase() + s.slice(1);
 
@@ -181,7 +182,7 @@
       return digitsErrQ({ id: 'learn-4', small, big: big4, who: pv.pick(r, WHO), smallFirst: r() < 0.5, r });
     }
   }
-  const TRAILS = [['Which trail is longest?', 'trail'], ['Which river is longest?', 'river'], ['Which road is longest?', 'road']];
+  const TRAILS = [['trails', 'Which trail is longest?'], ['rivers', 'Which river is longest?'], ['roads', 'Which road is longest?']];
   function orderCheck(r) {
     for (;;) {
       const t = pv.randInt(r, 2, 8), h = pv.randInt(r, 0, 9);
@@ -189,8 +190,8 @@
       const z = (r() < 0.5 ? t - 1 : t + 1) * 1000 + pv.randInt(r, 0, 999);
       if (Math.floor(x / 10) % 10 === Math.floor(y / 10) % 10 || z < 1000 || z > 9999 || !ok(x, y, z)) continue;
       const nums = pv.shuffle(r, [x, y, z]);
-      const [q] = pv.pick(r, TRAILS);
-      return orderQ({ id: 'learn-5', nums, ask: q, prompt: `Three trails are ${nums.map((n) => fmt(n) + ' m').join(', ')} long. Order them from least to greatest.` });
+      const [things, q] = pv.pick(r, TRAILS);
+      return orderQ({ id: 'learn-5', nums, ask: q, prompt: `Three ${things} are ${nums.map((n) => fmt(n) + ' m').join(', ')} long. Order them from least to greatest.` });
     }
   }
 

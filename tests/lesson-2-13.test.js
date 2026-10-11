@@ -117,3 +117,19 @@ test('Learn generators follow the spec, stay in range and never repeat the demo 
   assert.deepEqual(Object.keys(syms).sort(), ['<', '=', '>', '≠']);
   assert.equal(Object.keys(places).length, 4, 'every place can decide');
 });
+
+test('review fixes L213-01…02', () => {
+  // L213-01: the story and the last question name the same thing.
+  for (let seed = 1; seed <= 600; seed++) {
+    const q = L.seeIt.steps[4].check(pv.rng(seed));
+    const thing = q.prompt.match(/^Three (\w+)s are/)[1];
+    assert.equal(q.parts[3].label, `Which ${thing} is longest?`, `seed ${seed}`);
+  }
+  // L213-02: the deciding place is explained with its value, not bare digits.
+  for (const q of L.guided.concat(L.bank, L._testItems).filter((x) => x.skill === 'pv' || x.skill === 'line')) {
+    const m = q.explanation.match(/(Thousands|Hundreds|Tens|Ones): (\d) (thousand|hundred|ten|one)s? [<>] (\d) \3s?/);
+    if (/Thousands \d = \d, hundreds \d = \d, tens \d = \d/.test(q.explanation) || /farther right/.test(q.explanation)) continue;
+    assert.ok(m, q.id + ': ' + q.explanation);
+  }
+  assert.match(L.guided[7].explanation, /6 tens < 9 tens \(60 < 90\)/);
+});
