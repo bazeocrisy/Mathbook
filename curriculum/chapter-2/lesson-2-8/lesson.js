@@ -44,14 +44,15 @@
 
   /** Adjust the numbers, then add or subtract (any valid adjustment). o: { id, a, op, b, skill?, prompt?, hint?, lead?, label? } */
   function adjustQ(o) {
-    const { a, op, b } = o;
+    const { a, b } = o;
+    const op = o.op === '+' ? '+' : MINUS; // review L28-02: the same − sign as the figure and the engine messages
     const s = suggest(a, op, b);
     const res = calc(a, op, b);
     const how = op === '+'
       ? `${fmt(a)} ${sign(s.na - a)} → ${fmt(s.na)} and ${fmt(b)} ${sign(s.nb - b)} → ${fmt(s.nb)}: one goes down, the other goes up the same amount.`
       : `${fmt(a)} ${sign(s.na - a)} → ${fmt(s.na)} and ${fmt(b)} ${sign(s.nb - b)} → ${fmt(s.nb)}: both change the same way.`;
     const q = {
-      id: o.id, type: 'chain', preset: 'adjust', a, b, op: op === '+' ? '+' : MINUS, skill: o.skill || (op === '+' ? 'add' : 'sub'),
+      id: o.id, type: 'chain', preset: 'adjust', a, b, op, skill: o.skill || (op === '+' ? 'add' : 'sub'),
       prompt: o.prompt || `Adjust the numbers to make ${opText(a, op, b)} easier. Then ${op === '+' ? 'add' : 'subtract'}.`,
       hint: o.hint || (op === '+' ? `What can you add to ${fmt(b)} to make a ten or a hundred? Take that much from ${fmt(a)}.` : `Change ${fmt(b)} to a ten or a hundred, and change ${fmt(a)} the same way.`),
       explanation: `${o.lead ? o.lead + ' ' : ''}${how} ${opText(s.na, op, s.nb)} = ${fmt(res)}, so ${opText(a, op, b)} = ${fmt(res)}. ${op === '+' ? RULE_ADD : RULE_SUB} Other adjustments work too.`
@@ -66,7 +67,9 @@
     const major = []; for (let v = lo; v <= hi; v += 100) major.push(v);
     const base = { min: lo, max: hi, minor: 10, major, below: major.map((v) => ({ v, text: fmt(v) })) };
     const orig = Object.assign({}, base, { bands: [{ from: b, to: a, text: '' }], points: [{ v: b, text: fmt(b) }, { v: a, text: fmt(a) }] });
-    const line = (to) => Object.assign({}, base, { bands: [{ from: b + shift, to, text: '' }], points: [{ v: b + shift, text: '' }, { v: to, text: '' }] });
+    // The moved gap: its ends are marked (no labels), with arrows from the old ends showing each slide (review L28-04).
+    const line = (to) => Object.assign({}, base, { bands: [{ from: b + shift, to, text: '' }], points: [{ v: b + shift, text: '' }, { v: to, text: '' }],
+      hops: [{ from: b, to: b + shift, text: sign(shift) }, { from: a, to, text: sign(to - a) }] });
     const good = { fig: 'nline', lines: [orig, line(a + shift)] };
     const bad = { fig: 'nline', lines: [orig, line(a + shift - 60)] };
     const items = rightFirst ? [good, bad] : [bad, good];
@@ -199,20 +202,24 @@
     return fixQ({ id: 'learn-5', who, pron: PRON[who], a, op: '−', b, nb: b + 10 - (b % 10), r });
   }
   // Step 6: a "how many more" story, adjusted.
+  // Each story names its unit, used as the answer box's label (review L28-05).
   const STORIES = [
-    (x, y) => `A shop had ${fmt(y)} orders in May and ${fmt(x)} in June. How many more orders in June?`,
-    (x, y) => `Ray scored ${fmt(x)} points. Kim scored ${fmt(y)} points. How many more points did Ray score?`,
-    (x, y) => `Lu walked ${fmt(x)} steps on Monday and ${fmt(y)} steps on Tuesday. How many more steps on Monday?`,
-    (x, y) => `${fmt(x)} tickets were sold for the play and ${fmt(y)} for the concert. How many more for the play?`
+    { text: (x, y) => `A shop had ${fmt(y)} orders in May and ${fmt(x)} in June. How many more orders in June?`, unit: 'More orders in June' },
+    { text: (x, y) => `Ray scored ${fmt(x)} points. Kim scored ${fmt(y)} points. How many more points did Ray score?`, unit: 'More points for Ray' },
+    { text: (x, y) => `Lu walked ${fmt(x)} steps on Monday and ${fmt(y)} steps on Tuesday. How many more steps on Monday?`, unit: 'More steps on Monday' },
+    { text: (x, y) => `${fmt(x)} tickets were sold for the play and ${fmt(y)} for the concert. How many more for the play?`, unit: 'More tickets for the play' }
   ];
   function storyCheck(r) {
     for (;;) {
       const x = pv.randInt(r, 200, 999), y = pv.randInt(r, 101, 989);
       if (y % 10 < 7 || x - y < 20 || x - y > 200 || isDemo(x, y)) continue;
-      return adjustQ({ id: 'learn-6', a: x, op: '-', b: y, skill: 'story', prompt: `${pv.pick(r, STORIES)(x, y)} Adjust the numbers, then subtract.`,
+      const S = pv.pick(r, STORIES);
+      return adjustQ({ id: 'learn-6', a: x, op: '-', b: y, skill: 'story', prompt: `${S.text(x, y)} Adjust the numbers, then subtract.`, label: S.unit,
         hint: 'How many more → subtract. Then change both numbers the same way.' });
     }
   }
+  /** Review L28-01: a Learn question never prints a number the child must type (retry with new numbers). */
+  const noLeak = (gen) => (r) => { let q; for (let g = 0; g < 200; g++) { q = gen(r); if (!leaks(q)) return q; } return q; };
 
   const steps = [
     {
@@ -223,7 +230,7 @@
         cards(['46 + 29 = 75', '45 + 30 = 75', '50 + 25 = 75', '48 + 27 = 75']) + say('Surprise: they all equal <b>75</b>!'),
         arrows(46, '+', 29, 45, 30) + say('46 + 29 → 45 + 30: <b>one moved</b> from 46 to 29. The total stays 75.')
       ],
-      check: sameCheck
+      check: noLeak(sameCheck)
     },
     {
       id: 'adjust-add', kind: 'slides', title: 'Adjust to add',
@@ -233,7 +240,7 @@
         arrows(236, '+', 198, 234, 200) + say('Take <b>2</b> from 236. Give <b>2</b> to 198. <b>234 + 200 = 434</b>.'),
         say('Check: 236 + 198 = <b>434</b> too. One number went down 2 and the other went up 2, so the sum did not change.')
       ],
-      check: addCheck
+      check: noLeak(addCheck)
     },
     {
       id: 'adjust-sub', kind: 'slides', title: 'Adjust to subtract',
@@ -246,7 +253,7 @@
           say('Both ends slid 3 to the right. <b>The gap did not change.</b>'),
         arrows(568, '−', 323, 565, 320) + say('You can also take away the same amount: −3 and −3. <b>565 − 320 = 245</b>.')
       ],
-      check: subCheck
+      check: noLeak(subCheck)
     },
     {
       id: 'add-vs-sub', kind: 'slides', title: 'Adding or subtracting?',
@@ -256,7 +263,7 @@
           say('Book example. Adding 224 + 109: <b>−1 and +1</b>, opposite ways. Subtracting 333 − 212: <b>−2 and −2</b>, the same way.'),
         say('Why? In adding, both numbers are parts of the total: what one loses, the other gets. In subtracting, the answer is the <b>gap</b> between them: slide both together and the gap stays.')
       ],
-      check: structCheck
+      check: noLeak(structCheck)
     },
     {
       id: 'fix', kind: 'slides', title: 'Spot and fix mistakes',
@@ -267,7 +274,7 @@
         say('Kim adds 645 + 298. She changes only 298 to 300 and gets 945. She added 2 extra, so <b>take 2 away</b>: <b>943</b>.'),
         say('Ann finds 625 − 197. She subtracts 200 instead and gets 425. She took away 3 too many, so <b>add 3 back</b>: <b>428</b>. In subtraction, the fix goes the other way!')
       ],
-      check: fixCheck
+      check: noLeak(fixCheck)
     },
     {
       id: 'stories', kind: 'slides', title: 'Story problems',
@@ -278,7 +285,7 @@
           arrows(236, '+', 198, 234, 200) + say('First add: opposite moves. <b>434</b> in the red tent.'),
         arrows(434, '−', 214, 420, 200) + say('Then subtract: same moves. <b>220</b> more people. Adding: opposite moves. Subtracting: same moves.')
       ],
-      check: storyCheck
+      check: noLeak(storyCheck)
     }
   ];
 
@@ -302,7 +309,7 @@
       right: 'She took 2 from 207 and gave 2 to 158, so 158 became 160, a friendly number.',
       wrong: ['She added 2 to both numbers.', 'She took 2 from both numbers.', 'She changed only one number.'] }),
     adjustQ({ id: 'pt5', a: 487, op: '-', b: 245, skill: 'numberline', hint: 'Slide both ends the same way. Try 240.' }),
-    pictureQ({ id: 'pt5b', a: 487, b: 245, shift: -5, rightFirst: false, hint: 'Slide both ends the same way. Which gap stays the same length?' }),
+    pictureQ({ id: 'pt5b', a: 487, b: 245, shift: -25, rightFirst: false, hint: 'Slide both ends the same way. Which gap stays the same length?' }),
     bothWays({ id: 'pt6', seed: 6, prompt: 'Owen adds 368 + 205. He changes them to 370 + 207 = 577. Do you agree?', answer: 573,
       right: 'No. He added 2 to both, so the sum is 4 too big.', wrong: ['Yes. Adding to both keeps the sum the same.', 'No. He should add 2 to both and 2 more.', 'No. The sum is 2 too big.'],
       hint: 'In addition, the moves must go opposite ways.', explanation: 'Owen added 2 to each number, so the sum grew by 4: 577 − 4 = 573. Right way: 370 + 203 = 573.' }),
@@ -311,7 +318,7 @@
       hint: 'Did each one change the numbers opposite ways?', explanation: '148 + 236 = 384. Sam moved 2 from 236 to 148, so the sum stays 384. Lily added 2 to both, so her sum is 4 too big.' }),
     fixQ({ id: 'pt8', who: 'Ray', pron: 'He', a: 563, op: '+', b: 302, nb: 300, seed: 8 }),
     adjustQ({ id: 'pt9', a: 712, op: '-', b: 634, skill: 'story', prompt: 'A bakery sold 634 rolls in May and 712 in June. How many more rolls in June? Adjust the numbers, then subtract.',
-      hint: 'How many more → subtract 712 − 634.', lead: 'How many more → 712 − 634.' }),
+      hint: 'How many more → subtract 712 − 634.', lead: 'How many more → 712 − 634.', label: 'More rolls in June' }),
     { id: 'pt10', type: 'explain', skill: 'reason', prompt: 'How can adjusting just one number change the answer?',
       parent: 'Look for: the answer goes up or down by the amount changed.',
       listenFor: ['If you change only one number, the answer changes by that much.', 'You have to fix the answer: add it back or take it away.'],
@@ -332,7 +339,7 @@
       right: 'He added 1 to 119 and took 1 from 208, so 119 became 120, a friendly number.',
       wrong: ['He added 1 to both numbers.', 'He took 1 from both numbers.', 'He changed only 119.'] }),
     adjustQ({ id: 'o8', a: 594, op: '-', b: 327, skill: 'numberline' }),
-    pictureQ({ id: 'o8b', a: 594, b: 327, shift: 3, rightFirst: true }),
+    pictureQ({ id: 'o8b', a: 594, b: 327, shift: 30, rightFirst: true }),
     choiceQ({ id: 'o9', skill: 'choose', seed: 9, prompt: 'Which keep the same difference as 345 − 128? Then choose the easiest one.',
       parts: [{ multi: true, label: 'Same difference as 345 − 128 (choose all):', right: ['347 − 130', '337 − 120', '350 − 133'], choices: ['347 − 130', '345 − 130', '337 − 120', '350 − 133', '343 − 130'] },
         { label: 'Which of these is easiest, and why?', right: '347 − 130, because 130 ends in 0, so it is easy to take away.',
@@ -342,7 +349,7 @@
     whoRight({ id: 'o10', seed: 10, prompt: 'For 139 + 268, Kim writes 140 + 269 = 409. Dev writes 140 + 267 = 407. Who is right?',
       right: 'Dev. He added 1 to 139 and took 1 from 268.', wrong: ['Kim. She added 1 to both numbers.', 'Both are right.', 'Neither is right.'],
       hint: 'Did each one change the numbers opposite ways?', explanation: '139 + 268 = 407. Dev moved 1 from 268 to 139. Kim added 1 to both, so her sum is 2 too big.' }),
-    adjustQ({ id: 'o11', a: 841, op: '-', b: 763, skill: 'story', prompt: 'A chef made 763 pies last year and 841 this year. How many more pies this year? Adjust the numbers, then subtract.', lead: 'How many more → 841 − 763.' }),
+    adjustQ({ id: 'o11', a: 841, op: '-', b: 763, skill: 'story', prompt: 'A chef made 763 pies last year and 841 this year. How many more pies this year? Adjust the numbers, then subtract.', lead: 'How many more → 841 − 763.', label: 'More pies this year' }),
     fixQ({ id: 'o12', who: 'Jo', pron: 'She', a: 624, op: '+', b: 199, nb: 200, seed: 13 }),
     fixQ({ id: 'o13', who: 'Lee', pron: 'He', a: 712, op: '−', b: 399, nb: 400, seed: 14 }),
     // O14 gives the test's "find the mistake" skill (T13) its own practice (new numbers).
@@ -362,7 +369,7 @@
       right: 'She added 1 to 309 and took 1 from 147, so 309 became 310.',
       wrong: ['She added 1 to both numbers.', 'She took 1 from both numbers.', 'She changed only 147.'] }),
     adjustQ({ id: 't8', a: 385, op: '-', b: 156, skill: 'numberline' }),
-    pictureQ({ id: 't8b', a: 385, b: 156, shift: 4, rightFirst: false }),
+    pictureQ({ id: 't8b', a: 385, b: 156, shift: 40, rightFirst: false }),
     choiceQ({ id: 't9', skill: 'choose', prompt: 'Which keep the same difference as 426 − 219? Then choose the easiest one.',
       parts: [{ multi: true, label: 'Same difference as 426 − 219 (choose all):', right: ['427 − 220', '407 − 200', '430 − 223'], choices: ['427 − 220', '426 − 220', '407 − 200', '430 − 223', '424 − 221'] },
         { label: 'Which of these is easiest, and why?', right: '407 − 200, because 200 is a hundred, so it is easiest to take away.',
@@ -371,7 +378,7 @@
     whoRight({ id: 't10', prompt: 'For 248 + 127, Ana writes 250 + 129 = 379. Ben writes 250 + 125 = 375. Who is right?',
       right: 'Ben. He added 2 to 248 and took 2 from 127.', wrong: ['Ana. She added 2 to both numbers.', 'Both are right.', 'Neither is right.'],
       explanation: '248 + 127 = 375. Ben moved 2 from 127 to 248. Ana added 2 to both, so her sum is 4 too big.' }),
-    adjustQ({ id: 't11', a: 917, op: '-', b: 864, skill: 'story', prompt: '917 tickets were sold on Saturday and 864 on Friday. How many more on Saturday? Adjust the numbers, then subtract.', lead: 'How many more → 917 − 864.' }),
+    adjustQ({ id: 't11', a: 917, op: '-', b: 864, skill: 'story', prompt: '917 tickets were sold on Saturday and 864 on Friday. How many more on Saturday? Adjust the numbers, then subtract.', lead: 'How many more → 917 − 864.', label: 'More tickets on Saturday' }),
     fixQ({ id: 't12', who: 'Kit', pron: 'She', a: 538, op: '+', b: 401, nb: 400 }),
     bothWays({ id: 't13', prompt: 'Pat adds 476 + 314 by changing them to 480 + 318 = 798. Do you agree?', answer: 790,
       right: 'No. He added 4 to both, so the sum is 8 too big.', wrong: ['Yes. Adding to both keeps the sum the same.', 'No. The sum is 4 too big.', 'No. He should have added 4 to only one number.'],

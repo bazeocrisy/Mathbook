@@ -155,3 +155,19 @@ test('no question prints a number the child must type; Learn generators follow t
     assert.ok(q6.a - q6.b >= 20 && q6.a - q6.b <= 200 && q6.b % 10 >= 7);
   }
 });
+
+test('review fixes L28-01, 02, 04, 05', () => {
+  // L28-01: no Learn question prints a number the child must type, over many seeds.
+  for (const s of L.seeIt.steps) for (let seed = 1; seed <= 3000; seed++) assert.ok(!L._leaks(s.check(pv.rng(seed))), `${s.id} ${seed}`);
+  // L28-02: one minus sign (−) in every prompt and explanation, never an ASCII hyphen between numbers.
+  const all = L.guided.concat(L.bank, L._testItems);
+  for (const q of all) assert.ok(!/\d - \d/.test(q.prompt + ' ' + q.explanation), q.id);
+  for (let seed = 1; seed <= 200; seed++) for (const s of L.seeIt.steps) { const q = s.check(pv.rng(seed)); assert.ok(!/\d - \d/.test(q.prompt + ' ' + q.explanation), `${s.id} ${seed}`); }
+  // L28-04: the slide is big enough to see, with arrows from the old ends.
+  for (const q of all.filter((x) => x.figure && x.figure.fig === 'pics')) {
+    q.figure.items.forEach((it) => { const hops = it.fig.lines[1].hops; assert.equal(hops.length, 2); assert.ok(Math.abs(hops[0].to - hops[0].from) >= 20, q.id); });
+  }
+  // L28-05: story answers are labelled with their unit.
+  for (const id of ['pt9', 'o11', 't11']) { const q = all.find((x) => x.id === id); assert.ok(q.labels && /^More /.test(q.labels[2]), id); }
+  for (let seed = 1; seed <= 50; seed++) assert.match(L.seeIt.steps[5].check(pv.rng(seed)).labels[2], /^More /);
+});
