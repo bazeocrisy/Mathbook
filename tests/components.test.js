@@ -374,3 +374,10 @@ test('README lists figures.js in the lesson page template', () => {
   const readme = fs.readFileSync(path.join(ROOT, 'README.md'), 'utf8');
   assert.match(readme, /figures\.js/);
 });
+
+test('chain adjust: q.show sets the shown adjustment only (grading unchanged)', () => {
+  const q = { type: 'chain', preset: 'adjust', a: 299, b: 456, op: '+', prompt: 'p', skill: 's', explanation: 'e', show: [300, 455] };
+  assert.deepEqual(Q.correctResponse(q).v, { na: '300', nb: '455', r: '755' });
+  assert.ok(Q.grade(q, { v: { na: '295', nb: '460', r: '755' }, t: [] }), 'other valid adjustments still count');
+  assert.match(Q.correctText(q), /300 \+ 455 = 755/);
+});
