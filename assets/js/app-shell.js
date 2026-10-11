@@ -233,7 +233,7 @@
           const hint = q.hint && !st.hint ? 'Hint: ' + esc(q.hint) + ' ' : '';
           resultBox.innerHTML = `<div class="feedback feedback-no"><p><b>Not yet.</b> ${esc(tip)}${hint}Fix it and check again.</p></div>`;
         } else if (st.result === 'empty') {
-          resultBox.innerHTML = `<div class="feedback feedback-info"><p>Write an answer first.</p></div>`;
+          resultBox.innerHTML = `<div class="feedback feedback-info"><p>${esc(Q.emptyTip(q, st.response) || 'Write an answer first.')}</p></div>`;
         } else {
           resultBox.innerHTML = '';
         }
@@ -311,8 +311,9 @@
     // One question at a time; D.pos === n is the review screen with the Finish Test button.
     const n = D.questions.length;
     D.pos = Math.min(D.pos || 0, n);
-    const save = () => cfg.store.set(cfg.draftKey, D);
     const answered = (q) => Q.isAnswered(q, D.responses[q.id]);
+    // `answered` (ids) lets the Home page count fully answered questions with the engine's own rule.
+    const save = () => { D.answered = D.questions.filter(answered).map((q) => q.id); cfg.store.set(cfg.draftKey, D); };
     const progress = () => {
       const done = D.questions.filter(answered).length;
       const text = `${done} of ${n} answered`;

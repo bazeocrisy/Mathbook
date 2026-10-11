@@ -554,7 +554,7 @@
           if (act === 'finish') { if (!W.done[step.id]) e.preventDefault(); return; }
           if (act === 'check') {
             const r = Q.read(qEl, c.q);
-            if (!Q.isAnswered(c.q, r)) { main.querySelector('[data-empty]').hidden = false; return; }
+            if (!Q.isAnswered(c.q, r)) { const e = main.querySelector('[data-empty]'); e.textContent = Q.emptyTip(c.q, r) || 'Type or choose an answer first.'; e.hidden = false; return; }
             c.response = r;
             c.tries += 1;
             if (Q.grade(c.q, r)) { c.solved = true; c.retry = false; W.done[step.id] = true; } else if (c.tries >= 2) { c.revealed = true; c.retry = false; } else { c.retry = true; }
@@ -689,6 +689,11 @@
     const setOf = (id) => L.bankSets.find((s) => s.id === id) || skillSet(id);
     const setState = (id) => { const B = isSkillId(id) ? S.skillBank : S.bank; return B[id] || (B[id] = { attempts: [], retries: [], active: null }); };
     const saveBank = () => {
+      // Each open attempt records which questions are fully answered (engine rule), for the Home "Continue" count.
+      [S.bank, S.skillBank].forEach((B) => Object.keys(B || {}).forEach((k) => {
+        const a = B[k] && B[k].active;
+        if (a && Array.isArray(a.order) && a.responses) a.answered = a.order.filter((id) => { const q = bankQ(id); return !!q && Q.isAnswered(q, a.responses[id]); });
+      }));
       store.set('bank-sets', S.bank); store.set('bank-open', S.openSet);
       if (S.skillBank && Object.keys(S.skillBank).length) store.set('skill-practice', S.skillBank);
     };
