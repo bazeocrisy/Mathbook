@@ -1144,7 +1144,9 @@
     if (I.blanks) {
       vcBlankKeys(I).sort((x, y) => x.place - y.place).forEach((b) => {
         const v = String(R.b[b.k] || '').trim();
-        if (!/^\d$/.test(v) || Number(v) !== vcTrue(I, b.row, b.place)) fail(b.k, `Look again at the ${PLACE_NAMES[b.place]}.`);
+        // An empty box is named ("Write …") so a partly filled answer says which box is missing (review L215-02).
+        if (!v) fail(b.k, `Write the missing ${PLACE_NAMES[b.place]} digit of the ${b.row === 'top' ? 'top number' : b.row === 'result' ? 'answer' : b.row === 'bottom' ? 'bottom number' : 'middle number'}.`);
+        else if (!/^\d$/.test(v) || Number(v) !== vcTrue(I, b.row, b.place)) fail(b.k, `Look again at the ${PLACE_NAMES[b.place]}.`);
       });
     } else if (I.input === 'rows') {
       I.partials.forEach((pp, k) => {
