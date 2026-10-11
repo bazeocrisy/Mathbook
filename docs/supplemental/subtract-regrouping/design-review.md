@@ -431,3 +431,40 @@ Design agent's notes. Section 1 is written before the build; later sections revi
   - history keeps `[10, 9]`;
   - no `scrollWidth > clientWidth`;
   - controls sit within one screen of the grid at 320×640 and 683×384.
+
+## 3. Re-check at 98748ae
+
+**Method:**
+- I re-ran the same scene scripts with real CDP mouse, touch and keys, one headless Chrome, at 320, 390, 768×1024, 1024×768, 1366×768, 1920×1080 and 683×384.
+- New screenshots overwrite the old ones in the scratchpad `shots/`. The extra position and measurement scenes are `pos-*.png` and `m-*.png`.
+- No JS errors on any screen, and no sideways scroll anywhere.
+
+**Result: 13 findings pass. SR-D04 passes with a minor leftover, SR-D07 and SR-D16 are partly fixed, and there is one new minor finding.**
+
+| ID | Result | Evidence at 98748ae |
+|---|---|---|
+| SR-D01 | **pass** | Click Check right after typing a mark: feedback shows and focus stays on Check. Box → box: focus goes to r3 and the typed digit lands. Tab → a3. Enter keeps r1. Touch at 390: tap → Check works, tap → next box gets focus. Test Q1: mark, then click an answer box, focus on a0. |
+| SR-D02 | **pass** | Zero-chain trace with real clicks: the filled box is selected (`0-2`). A wrong attempt keeps `{2:[10]}`. The final history is `{1:[10,9], 2:[10,9]}`, and the struck 10s render. |
+| SR-D03 | **pass** | History is 18.9 px/700 with a horizontal strike. "10" reads clearly at 320, 1366 and in the mini solution (`learn6-3002-exch-320.png`, `indep-solution-1366.png`). |
+| SR-D04 | **pass, minor leftover** | No sideways scroll at 320 or 390, and the headers are Th/H/T/O. At 320 the "Value" cells' text (3,002) is 58 px in a 53 px cell, touching the border (`learn1-chart-320.png`). Fix: `font-size: .95rem` or `padding-inline: .2rem` on `.sr-val` at 360 px and narrower. |
+| SR-D05 | **pass** | Wrong supplier → the pressed "Tens" button. Done → the `✓ You did it!` message. Solution → the "Full solution" heading. Clear → Undo. A wrong exchange → the giver box. |
+| SR-D06 | **pass** | One `.sk-live` node survives commits, Undo and Clear (a marker set on the node persisted), and the component has no `role="status"`. Announcements read "Tens now 8, was 9.", "Undone: tens back to 9." and "Regroup marks cleared." |
+| SR-D07 | **partial** | **Demo:** two panes at 683 zoom (Next beside the grid at y=356), and the controls come first on phones (320: grid 465–744, Next 816–866). **Tablet 768:** two-pane guided. **Still failing, guided at 683×384:** `.sk` is 589 px inside `.wiz-check`, under the 600 px threshold, so it stacks. Grid top at 339 to Check bottom at 804 is 465 px, more than 384 (`pos-guided-s5-exch-zoom.png`). Fix: lower the two-pane container threshold to about 560 px (grid 278 + gap 24 leaves ≥ 258 for the coach). |
+| SR-D08 | **pass** | Mistake items show "Omar's work" with his answer 2,653 under the line (`test-q13-mistake-320.png`, `skill-mistakes-1366.png`). See SR-D17. |
+| SR-D09 | **pass** | At 320 the 4-digit grid fits inside the Your Turn panel (`.sk` 251 px, `pos-guided-s5-exch-320.png`). |
+| SR-D10 | **pass** | Tab order: r2 → r1 → r0 → a3 → a2 → a1 → a0 → Hint → Check. |
+| SR-D11 | **pass** | The previous step's "✓ …" sits above "Working on the ones" and the question. |
+| SR-D12 | **pass** | ✓/✗ badges are 23×23 px at the top-right of the box. |
+| SR-D13 | **pass** | No leading zero (1,938), steps in an ordered list, and focus on the heading. At 390 the solution still scrolls the child's grid out of view (grid top at −236). That's accepted: the solution is a separate read-only copy. |
+| SR-D14 | **pass** | No interactive element under 44 px on any measured screen. |
+| SR-D15 | **pass** | 9,001 − 3,755: hint 1 is the ones, hint 2 "the thousands place can give", hint 3 the exchange chain, hint 4 "11 − 5 = 6". |
+| SR-D16 | **partial** | The wording is fixed ("your answer: 6,518 (reason chosen)"). The "Final answers **12 of / 12**" cell still wraps at 390 (`m-results-390.png`). The nowrap isn't reaching that cell: put `white-space: nowrap` on the score `<td>` itself. |
+
+**New finding**
+
+**SR-D17 · minor: someone's read-only answer looks like an input.**
+- **Evidence:** in the mistake items, "Omar's work" answer digits sit in the same purple-bordered 52 px boxes as the child's own answer boxes a few lines below (`test-q13-mistake-320.png`).
+- **Failure scenario:** on a phone a child taps Omar's digits to "fix" them, and nothing happens.
+- **Fix:** in `view` mode with a work answer, drop the box border and background, or use a light grey fill with no border, so the digits sit under the rule like printed work. Keep the visible caption.
+
+**Still needed to close:** SR-D07 (guided at 200% zoom) and SR-D16 (score cell). Optional: the SR-D04 leftover and SR-D17.
