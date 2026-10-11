@@ -29,7 +29,9 @@ const GUIDED = {
   pt4: ['parts', [234, 451, 685]],
   pt5: ['parts', ['Take the first number from each line to build one addend, and the second number from each line to build the other.']],
   pt6: ['stack', [200, 140, 12, 352]], pt7: ['row', [600, 70, 9, 679]],
-  pt9: ['parts', ['7 + 6 = 13, not 3. He must add the whole 13.', 383]]
+  pt9: ['parts', ['7 + 6 = 13, not 3. He must add the whole 13.', 383]],
+  // Added in review (L26-02, L26-03): 257 + 318 = 500 + 60 + 15; 156 + 302 + 227 = 600 + 70 + 15.
+  pt10: ['stack', [500, 60, 15, 575]], pt11: ['stack', [600, 70, 15, 685]]
 };
 const PRACTICE = {
   o1: ['row', [700, 70, 13, 783]], o2: ['stack', [800, 80, 13, 893]], o3: ['stack', [700, 70, 15, 785]], o4: ['row', [300, 110, 13, 423]],
@@ -38,7 +40,9 @@ const PRACTICE = {
   o7: ['stack', [200, 160, 12, 372]], o8: ['stack', [500, 110, 7, 617]], o9: ['row', [500, 90, 9, 599]], o10: ['stack', [700, 120, 13, 833]],
   o11: ['parts', ['He added only the hundreds. He forgot the tens and ones partial sums.', 697]],
   o12: ['stack', [600, 70, 17, 687]],
-  o13: ['parts', ['9 + 4 = 13, not 3. The ones partial sum is 13.', 483]]
+  o13: ['parts', ['9 + 4 = 13, not 3. The ones partial sum is 13.', 483]],
+  // Added in review (L26-03): 125 + 340 + 218 = 600 + 70 + 13.
+  o14: ['row', [600, 70, 13, 683]]
 };
 const TEST = {
   t1: ['row', [800, 70, 14, 884], 'row'], t2: ['stack', [800, 80, 15, 895], 'stack'], t3: ['row', [500, 120, 9, 629], 'row'], t4: ['stack', [500, 120, 15, 635], 'stack'],
@@ -50,7 +54,7 @@ const TEST = {
 };
 
 test('Practice Together and On My Own match the hand-checked key', () => {
-  assert.deepEqual(L.guided.map((q) => q.id), ['pt1', 'pt2', 'pt3', 'pt4', 'pt5', 'pt6', 'pt7', 'pt8', 'pt9']);
+  assert.deepEqual(L.guided.map((q) => q.id), ['pt1', 'pt2', 'pt3', 'pt4', 'pt5', 'pt6', 'pt7', 'pt8', 'pt9', 'pt10', 'pt11']);
   for (const q of L.guided) if (q.type !== 'explain') assert.deepEqual([mode(q), keyOf(q)], GUIDED[q.id], q.id);
   assert.equal(L.guided.find((q) => q.id === 'pt8').type, 'explain');
   assert.deepEqual(L.bank.map((q) => q.id), Object.keys(PRACTICE));
@@ -118,6 +122,25 @@ test('stacked mode: each partial and the sum; typed labels (convert) accept eith
   const st = L.bank.find((x) => x.id === 'o2');
   const miss = JSON.parse(JSON.stringify(Q.correctResponse(st))); miss.s = '800';
   assert.ok(!Q.grade(st, miss), 'stopping at the hundreds is wrong');
+});
+
+test('review fixes: stacked lines are tagged by place; a missing 0 box is named; explanations say the idea once', () => {
+  const st = L.bank.find((x) => x.id === 'o2');
+  const html = Q.render(st, 'k', { mode: 'guided' });
+  const tags = (h) => Array.from(h.matchAll(/class="vc-ptag">(\w+)</g)).map((m) => m[1]);
+  assert.deepEqual(tags(html), ['Hundreds', 'Tens', 'Ones'], 'L26-02');
+  assert.deepEqual(tags(Q.render(L.bank.find((x) => x.id === 'o8'), 'k', { mode: 'guided' })), ['Hundreds', 'Tens', 'Ones'], 'typed labels are tagged too');
+  assert.ok(!globalThis.Mathbook.fig.html({ fig: 'stack', rows: [367, 145], op: '+', partials: true }).includes('vc-ptag'), 'book-style figures stay as in the book');
+  const pt7 = L.guided.find((x) => x.id === 'pt7'); // 241 + 306 + 132: 306 has 0 tens
+  const r = Q.correctResponse(pt7); r.v.p1_1 = '';
+  assert.ok(!Q.isAnswered(pt7, r));
+  assert.match(Q.emptyTip(pt7, r), /every box of the tens line\. If a place has nothing in it, write 0\./, 'L26-04');
+  assert.equal(Q.emptyTip(pt7, Q.emptyResponse(pt7)), '', 'nothing typed: the plain "write an answer" message');
+  for (const q of L.guided.concat(L.bank)) {
+    if (q.type !== 'chain' && q.type !== 'vcalc') continue;
+    const ct = Q.correctText(q);
+    assert.ok(!q.explanation.includes('Hundreds:') && (ct.match(/ = /g) || []).length >= 4, `${q.id}: L26-05 the worked lines appear once`);
+  }
 });
 
 test('reverse items accept the two addends in either order, but not a wrong sum', () => {

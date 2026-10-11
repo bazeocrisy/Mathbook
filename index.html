@@ -98,6 +98,8 @@
       }
       // Continue appears once anything has been typed; the label counts fully answered questions (as the test does).
       function count(responses, started) { return Object.keys(responses || {}).filter(function (k) { return answered(responses[k], started); }).length; }
+      // The lesson saves which questions are fully answered (the engine's own rule) as `answered`; older saves fall back to count().
+      function nAnswered(x) { return Array.isArray(x.answered) ? x.answered.length : count(x.responses); }
       var found = [];
       // Each lesson keeps its own progress (its own storage prefix). The list of lessons lives in assets/js/catalog.js.
       Mathbook.catalog.lessons.forEach(function (lesson) {
@@ -105,19 +107,19 @@
         var page = lesson.path;
         lesson.tests.forEach(function (t) {
           var d = get(key + 'draft-' + t[0]);
-          var n = d && d.questions ? count(d.responses) : 0;
+          var n = d && d.questions ? nAnswered(d) : 0;
           if (d && d.questions && count(d.responses, true)) found.push({ href: page + '#test/' + t[0], what: 'Lesson ' + lesson.id + ' · ' + t[1] + ': ' + n + ' of ' + d.questions.length + ' answered' });
         });
         var bank = get(key + 'bank-sets') || {};
         Object.keys(bank).forEach(function (id) {
           var a = bank[id] && bank[id].active;
-          var n = a && !a.checked ? count(a.responses) : 0;
+          var n = a && !a.checked ? nAnswered(a) : 0;
           if (a && !a.checked && count(a.responses, true)) found.push({ href: page + '#practice/' + id, what: 'Lesson ' + lesson.id + ' · Practice on my own: ' + n + ' of ' + a.order.length + ' answered' });
         });
         var skills = get(key + 'skill-practice') || {};
         Object.keys(skills).forEach(function (id) {
           var a = skills[id] && skills[id].active;
-          var n = a && !a.checked ? count(a.responses) : 0;
+          var n = a && !a.checked ? nAnswered(a) : 0;
           if (a && !a.checked && count(a.responses, true)) found.push({ href: page + '#practice/' + id, what: 'Lesson ' + lesson.id + ' · Practice one skill: ' + n + ' of ' + a.order.length + ' answered' });
         });
         var w = get(key + 'see-wizard');

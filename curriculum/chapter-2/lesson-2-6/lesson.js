@@ -26,9 +26,9 @@
   /** "300 + 100 = 400" for each place (results blank when hide). */
   const workLines = (adds, hide) => lines(adds).map((l) => `${plus(l.vals)} = ${hide ? '___' : fmt(l.sum)}`);
   const partialSums = (adds) => lines(adds).map((l) => l.sum);
-  /** "Hundreds: 300 + 100 = 400. Tens: … 400 + 110 + 12 = 522." */
+  /** The idea once (the answer line already lists every place line): "Add each place, then the partial sums: 400 + 110 + 12 = 522." */
   function worked(adds) {
-    return lines(adds).map((l) => `${l.place}: ${plus(l.vals)} = ${fmt(l.sum)}.`).join(' ') + ` ${plus(partialSums(adds))} = ${fmt(sumOf(adds))}.`;
+    return `Add the hundreds, the tens and the ones, then add the partial sums: ${plus(partialSums(adds))} = ${fmt(sumOf(adds))}.`;
   }
 
   /** True when a number the child must type is printed anywhere in the question's text (not the figure). */
@@ -287,9 +287,15 @@
       prompt: 'Ivan adds 247 + 136. His partial sums are 300, 70 and 13, but he writes 300 + 70 + 3 = 373. What went wrong? What is the sum?',
       work: ['200 + 100 = 300', '40 + 30 = 70', '7 + 6 = 13', '300 + 70 + 3 = 373'],
       right: '7 + 6 = 13, not 3. He must add the whole 13.', wrong: ['He should add only the hundreds.', 'Nothing. 300 + 70 + 3 is right.', 'The tens partial sum should be 7.'],
-      hint: 'What is 7 + 6?', explanation: 'The ones partial sum is 13, so add the whole 13: 300 + 70 + 13 = 383.' })
+      hint: 'What is 7 + 6?', explanation: 'The ones partial sum is 13, so add the whole 13: 300 + 70 + 13 = 383.' }),
+    // Review L26-02, L26-03: the row → stacked format (labels typed) and three addends stacked, guided before On My Own and the test.
+    stackQ({ id: 'pt10', adds: [257, 318], skill: 'convert', notes: 'input', figure: { fig: 'eqs', lines: workLines([257, 318], true) },
+      prompt: 'Gia started 257 + 318 in a row. Finish it stacked. In each place, type what you add (a line like 100 + 400), then each partial sum, then the sum.',
+      hint: 'Copy each of Gia’s lines into its place: Hundreds, Tens, Ones. Then add.' }),
+    stackQ({ id: 'pt11', adds: [156, 302, 227], skill: 'three', prompt: 'Stack 156 + 302 + 227. Find the partial sums, then the sum.',
+      hint: 'Each line adds three numbers: one from each addend. 302 has 0 tens.' })
   ];
-  const parentTips = { pt1: 'Ask: what is the 5 in 258 worth?', pt3: 'Ask: how many partial sums are there?', pt5: 'Have your child explain it in their own words too.', pt9: 'Ask: where did the ten from 13 go?' };
+  const parentTips = { pt10: 'Ask: which of Gia’s lines goes with the hundreds?', pt1: 'Ask: what is the 5 in 258 worth?', pt3: 'Ask: how many partial sums are there?', pt5: 'Have your child explain it in their own words too.', pt9: 'Ask: where did the ten from 13 go?' };
   guided.forEach((q) => { if (parentTips[q.id]) q.parent = parentTips[q.id]; });
 
   const bank = [
@@ -305,7 +311,7 @@
     stackQ({ id: 'o7', adds: [186, 186], skill: 'word', prompt: 'A school ordered 186 pencils in the fall and the same number in the spring. How many pencils? Use partial sums.',
       hint: 'The same number twice: 186 + 186.', lead: 'The same number twice: 186 + 186.' }),
     stackQ({ id: 'o8', adds: [346, 271], skill: 'convert', notes: 'input', figure: { fig: 'eqs', lines: workLines([346, 271], true) },
-      prompt: 'Jay started 346 + 271 in a row. Finish it a different way: stacked. Write what you add in each place (like 300 + 200), each partial sum, and the sum.',
+      prompt: 'Jay started 346 + 271 in a row. Finish it a different way: stacked. Write what you add in each place (a line like 100 + 400), each partial sum, and the sum.',
       hint: 'Use the same place values as Jay. Stack them and add.' }),
     rowQ({ id: 'o9', adds: [247, 352], skill: 'convert', figure: { fig: 'stack', rows: [247, 352], op: '+', partials: true, hideResults: true },
       prompt: 'Here is the start of stacked work for 247 + 352. Write it in a row and finish it.', hint: 'Each label is one line in a row.' }),
@@ -321,7 +327,8 @@
       prompt: 'Kia adds 159 + 324. She writes 400 + 70 + 3 = 473. What went wrong? What is the sum?',
       work: ['400 + 70 + 3 = 473'],
       right: '9 + 4 = 13, not 3. The ones partial sum is 13.', wrong: ['She should add only the hundreds.', 'Nothing. 473 is right.', 'The hundreds partial sum should be 300.'],
-      hint: 'What is 9 + 4?', explanation: 'Hundreds: 100 + 300 = 400. Tens: 50 + 20 = 70. Ones: 9 + 4 = 13, not 3. 400 + 70 + 13 = 483.' })
+      hint: 'What is 9 + 4?', explanation: 'Hundreds: 100 + 300 = 400. Tens: 50 + 20 = 70. Ones: 9 + 4 = 13, not 3. 400 + 70 + 13 = 483.' }),
+    rowQ({ id: 'o14', adds: [125, 340, 218], skill: 'three', prompt: '125 + 340 + 218', hint: 'Add three hundreds, three tens, three ones.' })
   ];
 
   const testItems = [
@@ -432,7 +439,7 @@
     saveGuided: true,
     bank,
     skillPractice: true,
-    bankSets: [{ id: 's1', title: 'Partial Sums Practice', blurb: 'All 13 practice questions: partial sums in a row and stacked, finding the addends, mistakes, stories, and three addends.', ids: bank.map((q) => q.id) }],
+    bankSets: [{ id: 's1', title: 'Partial Sums Practice', blurb: 'All 14 practice questions: partial sums in a row and stacked, finding the addends, mistakes, stories, and three addends.', ids: bank.map((q) => q.id) }],
     tests: {
       partial: { id: 'partial', title: 'Partial Sums Test', questions: 13, blurb: 'Partial sums in a row and stacked, working backward, mistakes, and stories.', generate: partialSumsTest }
     },

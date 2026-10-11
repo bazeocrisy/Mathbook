@@ -416,8 +416,10 @@
           // up into it, right-aligned over the digit columns, instead of squeezing the columns.
           r++;
           const pos = `grid-row:var(--rw);grid-column:var(--cw);--rw:${r};--rn:${r - 1};--cw:1;--cn:${gc(0)} / -1`;
-          if (ctx.noteInputs) h += `<span class="vc-c vc-notec" style="${pos}">${boxHTML(ctx, `n:${k}`, (R.n || [])[k], `${cap(PLACE_NAMES[pp.place])}: the place values you add, like 300 + 100`, 'vc-note-in is-text')}</span>`;
-          else if (pp.note) h += `<span class="vc-c vc-note" style="${pos}">${esc(pp.note)}</span>`;
+          // The answer control names each line's place (Hundreds / Tens / Ones), as the row control does.
+          const tag = ctx.partialInputs && pp.place !== undefined ? `<span class="vc-ptag">${cap(PLACE_NAMES[pp.place])}</span>` : '';
+          if (ctx.noteInputs) h += `<span class="vc-c vc-notec" style="${pos}">${tag}${boxHTML(ctx, `n:${k}`, (R.n || [])[k], `${cap(PLACE_NAMES[pp.place])}: the place values you add, like 300 + 100`, 'vc-note-in is-text')}</span>`;
+          else if (pp.note) h += `<span class="vc-c vc-note" style="${pos}">${tag}${esc(pp.note)}</span>`;
         }
         if (k === partials.length - 1 && partials.length > 1) h += `<span class="vc-c vc-op" style="grid-row:${r};grid-column:${opAt}" aria-hidden="true">+</span>`;
         if (ctx.partialInputs) {
@@ -611,7 +613,7 @@
     const val = (x) => N(R.v[x.c.in]);
     const key = (x) => 'v:' + x.c.in;
     const missing = ins.filter((x) => val(x) === null);
-    if (missing.length) fail(missing.map(key), `Write a whole number in every box of ${where}.`);
+    if (missing.length) fail(missing.map(key), `Write a whole number in every box of ${where}.${missing.some((x) => x.c.answer === 0) ? ' If a place has nothing in it, write 0.' : ''}`);
     ins.forEach((x) => {
       const v = val(x);
       if (v === null) return;
@@ -1186,6 +1188,12 @@
     if (CHECK[q.type]) return CHECK[q.type](q, r).msg;
     return '';
   }
+  /** For a partly filled Chapter 2 box model: the first box still missing, in words; '' otherwise. */
+  function emptyTip(q, r) {
+    if (!CHECK[q.type] || !/\d/.test(JSON.stringify(r === undefined ? null : r))) return '';
+    const m = CHECK[q.type](q, r).msg;
+    return /^Write /.test(m) ? m : 'Fill in every box, then check.';
+  }
   function check(q, r) {
     if (CHECK[q.type]) return CHECK[q.type](q, r);
     return { ok: grade(q, r), bad: [], msg: tip(q, r) };
@@ -1592,6 +1600,6 @@
 
   MB.Q = { esc, visuals, render, read, bind, isAnswered, grade, correctResponse, describe, correctText, emptyResponse, expandedTip, partsTip, normSpell, rlExplain,
     // Chapter 2 additions
-    withBlanks, figureHTML, applyMarks, clearMarks, tip, check, note, reviewHTML,
+    withBlanks, figureHTML, applyMarks, clearMarks, tip, emptyTip, check, note, reviewHTML,
     lay: { arrowGrid, stackHTML, stackWords, decompose } };
 })(typeof window !== 'undefined' ? window : globalThis);
