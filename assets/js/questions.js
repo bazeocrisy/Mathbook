@@ -874,7 +874,8 @@
       return R;
     }
     if (q.preset === 'adjust') {
-      const s = adjustSuggest(q);
+      // q.show: [na, nb] — the adjustment the lesson asked for (e.g. "make 299 a whole hundred"); grading is unchanged.
+      const s = Array.isArray(q.show) ? { na: q.show[0], nb: q.show[1] } : adjustSuggest(q);
       const plus = !isMinus(q.op);
       R.v = { na: f(s.na), nb: f(s.nb), r: f(plus ? s.na + s.nb : s.na - s.nb) };
       if (q.oneNumber) R.v.f = f(plus ? q.a + q.b : q.a - q.b);
