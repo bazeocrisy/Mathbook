@@ -110,3 +110,22 @@ No JavaScript errors or missing files. No `mathbook-chrome` processes are left; 
 - Headless Chrome via `tests/lib/harness.mjs`. Viewports were simulated; 200% zoom was simulated as 683×384. No physical device.
 - Windows 11, 2026-10-11.
 - Only this report file was added and committed.
+
+## Re-check at cb76827
+
+I re-checked commit `cb76827` with light Node runs only:
+- `r213/sample.cjs` (output `r213/sample2.out`);
+- 20,000 Learn step-5 seeds;
+- `npm test` 165/165.
+
+I edited no app, lesson, engine or test file.
+
+| Finding | Status | Evidence |
+|---|---|---|
+| L213-01 | fixed | Learn 5 now picks the context once. Over 20,000 seeds, the noun in the story and in the question agree every time (mismatch **0**, before 13,419): "Three rivers are … / Which river is longest?", "Three roads are … / Which road is longest?", "Three trails are … / Which trail is longest?". |
+| L213-02 | fixed | The explanations now name the value in the deciding place, with correct singulars and no parenthesis for ones:<br>• P5 "Thousands: 4 thousands > 3 thousands (4,000 > 3,000)";<br>• P6 "Hundreds: 6 hundreds < 9 hundreds (600 < 900)";<br>• P4 "Tens: 1 ten < 4 tens (10 < 40)";<br>• P9 "Ones: 8 ones > 5 ones";<br>• T9 "Ones: 1 one < 8 ones";<br>• P7 "6 thousands > 0 thousands (6,000 > 0)".<br>The places that match stay short ("Thousands 8 = 8, hundreds 4 = 4"). |
+
+**No regression:**
+- My sampler still finds no errors (BAD 0).
+- The keys, symbols and positions are unchanged: the deciding place is still spread 5,047/4,914/5,033/5,006, and the equal / not-equal mix is the same.
+- Only explanation text and the Learn 5 story changed, so the layout results from the review still apply. No browser rerun was needed.
