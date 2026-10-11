@@ -37,6 +37,7 @@
   function validResponse(item, r) {
     if (!isObj(r)) return false;
     if (r.sd !== undefined && typeof r.sd !== 'boolean') return false;
+    if (r.sp !== undefined && !isInt(r.sp, 0, 60)) return false;
     if (r.ws !== undefined && r.ws !== null && !SK.validState(r.ws, item.top, item.bottom)) return false;
     if (r.ws2 !== undefined && r.ws2 !== null && !SK.validState(r.ws2, item.top, item.bottom)) return false;
     const okChoice = (v, list) => v === undefined || v === null || v === '' || (typeof v === 'string' && list.includes(v));
@@ -399,7 +400,7 @@
           show: `There were ${on} ones. 1 ten = 10 ones, so now there are ${on} + 10 = ${on + 10} ones.` }
       ];
       const parts = blockParts(n), last = parts.length - 1;
-      let demoK = -1; // the Show me part on screen (-1: not playing; once finished, R0.sd keeps the last part on screen)
+      let demoK = R0.sp !== undefined && !R0.sd && R0.q < 2 ? Math.min(R0.sp, last) : -1; // the Show me part on screen (-1: not playing; once finished, R0.sd keeps the last part on screen); saved as sp (SR-D30)
       box.innerHTML = '<div class="sr-xt"></div><p class="sk-sr" aria-live="polite" id="sr-show-live"></p>';
       const host = box.querySelector('.sr-xt'), liveEl = box.querySelector('#sr-show-live');
       const announce = (msg) => { liveEl.textContent = ''; setTimeout(() => { liveEl.textContent = msg; }, 50); };
@@ -442,10 +443,11 @@
         if (x === 'retry') { area.innerHTML = ''; const i = box.querySelector('#sr-q1in'); if (i) { i.focus(); i.select(); } return; }
         if (x === 'hint') { area.innerHTML = `<div class="feedback feedback-info"><p><span aria-hidden="true">💡 </span>${esc(Q.hint)}</p></div>`; return; }
         // Show me: play the exchange with the blocks, one part at a time. The answers are filled in only when it ends.
-        if (x === 'show') { demoK = 0; R0.helped = true; o.onChange(Object.assign({}, R0)); draw('.sr-showdemo-h'); announce(parts[0].say); return; }
+        if (x === 'show') { demoK = 0; R0.helped = true; R0.sp = 0; o.onChange(Object.assign({}, R0)); draw('.sr-showdemo-h'); announce(parts[0].say); return; }
         if (x === 'd-back' || x === 'd-next') {
           const cur = demoK >= 0 ? demoK : last;
           demoK = Math.max(0, Math.min(last, cur + (x === 'd-next' ? 1 : -1)));
+          if (R0.q < 2) { R0.sp = demoK; o.onChange(Object.assign({}, R0)); }
           if (demoK === last && R0.q < 2) {
             for (let j = R0.q; j < 2; j++) { R0[QS[j].key] = String(QS[j].want); R0['h' + j] = true; }
             R0.q = 2; R0.sd = true; o.onChange(Object.assign({}, R0));
@@ -534,7 +536,7 @@
           if (kind === 'hint') { area().innerHTML = `<div class="feedback feedback-info"><p><span aria-hidden="true">💡 </span>${esc(hintText(item, R))}</p></div>`; if (o.onHint) o.onHint(); return; }
           // Show me: the worked answer plays one step at a time (each exchange visible), in the same vertical model.
           // Only when it ends are the answers filled in; then the child may go on (recorded as completed WITH help).
-          helped = true; R.helped = true; fire();
+          helped = true; R.helped = true; R.sp = 0; fire();
           area().innerHTML = '';
           playWorked(false);
         }
@@ -542,9 +544,11 @@
         function playWorked(atEnd) {
           const worked = box.querySelector('.sr-worked');
           worked.innerHTML = `<p class="sr-shown-h" tabindex="-1"><b>Show me:</b> watch each step of ${esc(problemText(item))}. Press Next to see each exchange. The answers are filled in at the end.</p><div class="sr-ws" data-ws="worked"></div><div class="sr-shown-end"></div>`;
-          const demo = keep(SK.mount(worked.querySelector('[data-ws="worked"]'), { top: item.top, bottom: item.bottom, mode: 'demo', caption: 'Worked answer', demoStep: atEnd ? 99 : 0 }));
+          const demo = keep(SK.mount(worked.querySelector('[data-ws="worked"]'), { top: item.top, bottom: item.bottom, mode: 'demo', caption: 'Worked answer', noteFirst: true, demoStep: atEnd === true ? 99 : typeof atEnd === 'number' ? atEnd : 0 }));
           demo.on('complete', () => finishShown());
-          if (atEnd) { shownDone = true; worked.querySelector('.sr-shown-end').innerHTML = shownEnd(); return; }
+          demo.on('step', (d) => { if (!shownDone) { R.sp = d.index; fire(); } });
+          if (atEnd === true) { shownDone = true; worked.querySelector('.sr-shown-end').innerHTML = shownEnd(); return; }
+          if (atEnd !== false) return; // resumed after a refresh: no focus move
           const h = worked.querySelector('.sr-shown-h'); h.focus({ preventScroll: true }); if (h.scrollIntoView) h.scrollIntoView({ block: 'nearest' });
         }
         const shownEnd = () => { const st = showText(item); return (st ? `<p class="sr-shown"><b>Here is how:</b> ${esc(st)}</p>` : '') + `<ol class="sk-steps">${M.solutionLines(item.top, item.bottom).map((l) => `<li>${esc(l)}</li>`).join('')}</ol>`; };
@@ -565,6 +569,7 @@
           if (o.onCorrect) o.onCorrect(false, true);
         }
         if (R.sd) playWorked(true);
+        else if (R.helped && R.sp !== undefined) playWorked(R.sp); // resume a Show me that was playing (SR-D30)
         box.querySelectorAll('.sr-helprow [data-help]').forEach((b) => b.addEventListener('click', () => help(b.dataset.help)));
         box.querySelector('[data-check]').addEventListener('click', () => {
           if (!answered(item, R)) { area().innerHTML = `<div class="feedback"><p>Answer every part, then check.</p></div>`; return; }

@@ -150,6 +150,17 @@ try {
     box.querySelector('.feedback-area [data-help="retry"]').click(); await sleep(30);
     const a = document.activeElement; return { name: a.name, value: a.value, wrongCol, first: it.first };`);
   check('Learn decide: Try again focuses the wrong column choice, not the right "Yes/No"', /c2$/.test(dfx.name) && dfx.value === dfx.wrongCol, dfx);
+  // SR-D29 / SR-D30: the Show me player puts each sentence before its controls, and a refresh resumes it at the same part.
+  await b.load(URL + '#menu'); await js(`localStorage.setItem('${KEY}:see-wizard', JSON.stringify({ v: 1, step: 6, done: {}, phase: {}, ex: {}, checks: {}, helped: {} }))`);
+  await b.load(URL + '#see'); await b.reload(); await wait(250);
+  await js(`document.querySelector('[data-w="try"]').click()`); await wait(200);
+  const pl1 = await js(`${H} const box = document.querySelector('#sr-try'); box.querySelector('[data-help="show"]').click(); await sleep(40);
+    for (let k = 0; k < 2; k++) { box.querySelector('.sr-worked [data-act="next"]').click(); await sleep(30); }
+    const note = box.querySelector('.sr-worked .sk-note'), ctl = box.querySelector('.sr-worked .sk-democtl');
+    return { part: box.querySelector('.sr-worked .sk-partof').textContent, noteFirst: !!(note.compareDocumentPosition(ctl) & Node.DOCUMENT_POSITION_FOLLOWING) };`);
+  await b.reload(); await wait(300);
+  const pl2 = await js(`const box = document.querySelector('#sr-try'); return { part: (box.querySelector('.sr-worked .sk-partof') || {}).textContent, filled: Array.from(box.querySelectorAll('input[type=radio]')).some((r) => r.checked), locked: document.querySelector('[data-w="next"]').disabled };`);
+  check('Show me player: the sentence comes before its controls (stays in view on phones), and a refresh mid-play resumes the same part with nothing filled in yet', pl1.noteFirst && pl1.part === 'Part 3' + pl1.part.slice(6) && pl2.part === pl1.part && !pl2.filled && pl2.locked, { pl1, pl2 });
   // SR-M17: guided wrong getter (7,405 − 3,168: tens written 1) → Try again focuses the tens box, not the right hundreds box.
   await b.load(URL + '#menu'); await js(`localStorage.setItem('${KEY}:guided', JSON.stringify({ v: 1, pos: 5, seed: 0, states: {}, done: {} }))`);
   await b.load(URL + '#practice/together'); await b.reload(); await wait(300);

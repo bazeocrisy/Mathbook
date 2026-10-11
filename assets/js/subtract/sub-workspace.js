@@ -382,7 +382,8 @@
             `<p class="sk-topnow-cur sk-narrow-only">${esc(nowLine)}</p>` +
             (lines.length > 1 ? `<details class="sk-older sk-narrow-only"><summary>${esc(T.earlierLines(lines.length - 1))}</summary><ol>${lines.slice(0, -1).map((l) => `<li>${esc(l)}</li>`).join('')}</ol></details>` : '');
         }
-        return `${ctl}<p class="sk-note">${esc(st.note)}</p>${list}`; // controls first, next to the grid (SR-D07)
+        // Controls first, next to the grid (SR-D07); a Show me player (noteFirst) puts the sentence first so it stays in view (SR-D29).
+        return o.noteFirst ? `<p class="sk-note">${esc(st.note)}</p>${ctl}${list}` : `${ctl}<p class="sk-note">${esc(st.note)}</p>${list}`;
       }
       if (mode === 'guided') {
         const g = S.guided;
@@ -440,7 +441,7 @@
       const mini = coachEl.querySelector('[data-sk-mini]');
       if (mini) {
         // Show me plays the worked answer one step at a time (each exchange visible) in the same vertical model.
-        solutionInst = mount(mini, { top, bottom, mode: 'demo', demoStep: S.show || 0, text: o.text });
+        solutionInst = mount(mini, { top, bottom, mode: 'demo', demoStep: S.show || 0, text: o.text, noteFirst: true });
         solutionInst.on('step', (d) => { S.show = d.index; change(); });
         solutionInst.on('complete', () => finishShown());
       }
