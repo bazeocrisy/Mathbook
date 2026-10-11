@@ -607,7 +607,8 @@
         (L.vocabPractice ? choiceCard('#practice/words', 'Math Words', 'Practice the math words with hints.', 'Ab') : '') +
         (L.guided ? choiceCard('#practice/together', 'Practice Together', 'Solve problems with a grown-up. Hints and help are on.', '👥', 'icon-text') : '') +
         (L.bankSets ? choiceCard('#practice/own', 'On My Own', L.bankSets.length > 1
-          ? `Choose a set of ${L.bankSets[0].ids.length}. Answer every question, then check your work.`
+          // Sets of different sizes (2-2: Rounding Practice 12, Rounding Check-Up 4) get no single count.
+          ? (L.bankSets.every((s) => s.ids.length === L.bankSets[0].ids.length) ? `Choose a set of ${L.bankSets[0].ids.length}. ` : 'Choose a set. ') + 'Answer every question, then check your work.'
           : `Answer all ${L.bankSets[0].ids.length} questions, then check your work.`, '★') : '') +
         `</nav>` + menuNav();
     }

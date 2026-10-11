@@ -129,6 +129,9 @@ test('parts anyOrder: the group is graded as a set (either order), all right or 
   const plain = Object.assign({ type: 'parts', parts: [{ kind: 'num', label: 'A:', answer: 1 }, { kind: 'num', label: 'B:', answer: 2 }] }, base);
   assert.ok(!ok(plain, ['2', '1']));
   assert.equal(Q.partsTip(plain, ['1', '3']), 'Look again at: B.');
+  // A label that ends in a period gets one period, not two (review L24-05; 2-3 "Choose the best way.").
+  const dotted = { type: 'parts', parts: [{ kind: 'choice', label: 'Choose the best way.', choices: ['x', 'y'], answer: 'x' }, { kind: 'num', label: 'Estimate', answer: 5 }] };
+  assert.equal(Q.partsTip(dotted, ['y', '5']), 'Look again at: Choose the best way.');
 });
 
 test('parts compact chips and the symbol picker', () => {

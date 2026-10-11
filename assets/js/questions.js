@@ -1586,7 +1586,7 @@
   function partsTip(q, r) {
     if (q.type !== 'parts' || !Array.isArray(r)) return '';
     const ok = partsOK(q, r);
-    const wrong = q.parts.filter((p, i) => !ok[i]).map((p) => (p.label || (p.kind === 'symbol' ? 'the symbol' : 'this part')).replace(/[:?]$/, ''));
+    const wrong = q.parts.filter((p, i) => !ok[i]).map((p) => (p.label || (p.kind === 'symbol' ? 'the symbol' : 'this part')).replace(/[:?.]$/, ''));
     return wrong.length && wrong.length < q.parts.length ? `Look again at: ${wrong.join('; ')}.` : '';
   }
 
