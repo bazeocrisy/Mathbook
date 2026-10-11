@@ -115,3 +115,19 @@ No JavaScript errors or missing files. No `mathbook-chrome` processes are left; 
 - Headless Chrome via `tests/lib/harness.mjs`. Viewports were simulated; 200% zoom was simulated as 683×384. No physical device.
 - Windows 11, 2026-10-11.
 - The working tree has only this report as a new file. Nothing was committed.
+
+### Re-verification at c94231b
+
+I re-checked commit `c94231b` with light Node runs only:
+- `r212/sample.cjs` (output `r212/sample2.out`);
+- 5,000 Learn step-5 seeds.
+
+I edited no app, lesson, engine or test file. The change is limited to `lesson.js` (data) and the tests; the renderers are unchanged.
+
+| Finding | Status | Evidence |
+|---|---|---|
+| L212-01 | verified | The right pictures are now P3 **A**, P4 **C**, O3 **B**, O4 **A**, T3 **C**, T4 **A**. All three letters are used, the keys differ within each pair, and the test's two items are C and A. C-4 still holds:<br>• for `W − b = R` the right picture is the compare bar W / R / dashed *b* (P3 A, O3 B, T3 C);<br>• for `P + a = W` it is P \| *a* with bracket W (P4 C, O4 A, T4 A);<br>• no distractor is a valid picture.<br>The values are unchanged (354, 450, 347, 520, 365, 750). Learn 4 positions are still even (6,713/6,728/6,559). |
+| L212-02 | verified | Learn 5's work-backward story is now "A lemonade stand makes … cups in the morning and more in the afternoon. It sells … cups and has … left." In 5,000 seeds of step 5, "bakery" appears 0 times (lemonade 1,633, about a third, as expected). |
+| L212-03 | verified | The labels are "a = money he has now ($):" and "b = money he still needs ($):" (P6), and "Money left ($):" (spend items). The P6 message now reads "Look again at: b = money he still needs ($)." |
+
+My sampler still finds no printed answers, no duplicate choices and no errors (BAD 0). No new findings, and no browser run was needed for these data-only changes.
