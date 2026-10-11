@@ -66,7 +66,7 @@
     const major = []; for (let v = lo; v <= hi; v += 100) major.push(v);
     const base = { min: lo, max: hi, minor: 10, major, below: major.map((v) => ({ v, text: fmt(v) })) };
     const orig = Object.assign({}, base, { bands: [{ from: b, to: a, text: '' }], points: [{ v: b, text: fmt(b) }, { v: a, text: fmt(a) }] });
-    const line = (to) => Object.assign({}, base, { bands: [{ from: b + shift, to, text: '' }] });
+    const line = (to) => Object.assign({}, base, { bands: [{ from: b + shift, to, text: '' }], points: [{ v: b + shift, text: '' }, { v: to, text: '' }] });
     const good = { fig: 'nline', lines: [orig, line(a + shift)] };
     const bad = { fig: 'nline', lines: [orig, line(a + shift - 60)] };
     const items = rightFirst ? [good, bad] : [bad, good];

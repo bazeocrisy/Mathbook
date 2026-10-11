@@ -104,7 +104,7 @@ test('number-line pictures (B-07): only the original ends are labelled; the righ
     q.figure.items.forEach((it) => {
       const [top, bottom] = it.fig.lines;
       assert.deepEqual(top.points.map((p) => p.v).sort((x, y) => x - y), [b, a].sort((x, y) => x - y));
-      assert.ok(!bottom.points, 'the moved gap has no labels');
+      assert.ok(bottom.points.every((p) => p.text === ''), 'the ends of the moved gap are marked but not labelled');
       const len = bottom.bands[0].to - bottom.bands[0].from;
       assert.equal(len, it.label === right ? a - b : a - b - 60, `${q.id} ${it.label}`);
       [top, bottom].forEach((l) => l.bands.forEach((bd) => assert.equal(bd.text, '', 'no gap label')));
