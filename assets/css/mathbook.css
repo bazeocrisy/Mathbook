@@ -787,6 +787,10 @@ a.btn.is-disabled { background: #eceef5; color: #545a75; pointer-events: none; }
 .ch-helper { color: var(--muted); font-size: 1rem; margin: 0.4rem 0 0; text-align: center; }
 .ch-adjust { margin: 0.4rem 0; }
 .ch-trees { display: grid; gap: 1rem; margin: 0.4rem 0 0.8rem; }
+/* 2-7: subtract two ways (one block per way); the row of a left-out (empty or 0) tree part is greyed */
+.ch-way { border: 2px solid var(--line); border-radius: 14px; padding: 0.6rem 0.75rem 0.8rem; margin: 0.6rem 0; background: #fff; }
+.ch-row.is-skip { opacity: 0.45; }
+.ch-skipnote { flex-basis: 100%; text-align: right; font-size: 0.8rem; font-weight: 700; color: var(--muted); }
 @media (min-width: 560px) { .ch-trees.is-two { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 @media (max-width: 400px) {
   .ch .ci { width: 3.6rem; font-size: 1.1rem; }

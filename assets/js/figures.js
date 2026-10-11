@@ -286,7 +286,7 @@
       return (tags ? `<span class="eq-tag">${esc(l.tag || '')}</span>` : '') +
         `<span class="eq-l${l.hi ? ' is-hi' : ''}">${blank(left)}</span><span class="eq-eq">${i < 0 ? '' : '='}</span><span class="eq-r${l.hi ? ' is-hi' : ''}">${blank(right)}</span>`;
     }).join('');
-    const label = s.label || lines.map((l) => l.text.replace(/___/g, 'blank').replace(/ \+ /g, ' plus ').replace(/ = /g, ' equals ')).join('. ') + '.';
+    const label = s.label || lines.map((l) => l.text.replace(/___/g, 'blank').replace(/ \+ /g, ' plus ').replace(/ [−-] /g, ' minus ').replace(/ = /g, ' equals ')).join('. ') + '.';
     return wrap('eqs', label, `<div class="eq-grid${tags ? ' has-tags' : ''}">${h}</div>`, s.caption);
   }
 

@@ -206,8 +206,14 @@ test('chain steps (2-7): any valid decomposition, each step against the child\'s
   assert.equal(slip.msg, 'Check 362 − 100.');
   const last = chk(q, R({ r0: '262', r1: '192', r2: '187', f: '178' }, [['100', '70', '5']]));
   assert.equal(last.msg, 'Your last step shows 187. Write it as the answer.');
-  assert.ok(!ok(q, R({ r0: '362', r1: '292', r2: '187', f: '187' }, [['0', '70', '105']])), 'a part of 0 is not allowed');
-  assert.equal(chk(q, R({ r0: '362', r1: '292', r2: '187', f: '187' }, [['0', '70', '105']])).msg, 'Write each part as a whole number, 1 or more.');
+  // Spec 2-7 B-01: an empty or 0 part is left out (its row is not graded); at least 2 parts must remain.
+  assert.ok(ok(q, R({ r1: '292', r2: '187', f: '187' }, [['0', '70', '105']])), 'a 0 part is left out');
+  assert.ok(ok(q, R({ r0: '362', r1: '292', r2: '187', f: '187' }, [['0', '70', '105']])), 'whatever is typed in its row');
+  assert.ok(ok(q, R({ r0: '262', r2: '187', f: '187' }, [['100', '', '75']])), 'an empty middle part: the next step starts from the last one that counts');
+  assert.equal(chk(q, R({ r0: '187', f: '187' }, [['175', '0', '']])).msg, 'Write at least 2 parts that add to 175.');
+  assert.equal(chk(q, R({ r0: '262', r1: '192', f: '187' }, [['100', '7o', '5']])).msg, 'Write each part as a whole number.');
+  assert.ok(Q.isAnswered(q, R({ r0: '262', r1: '187', f: '187' }, [['100', '75', '']])), 'an empty third part box does not block "answered"');
+  assert.ok(!Q.isAnswered(q, R({ r0: '187', f: '187' }, [['175', '', '']])), 'one part is not broken apart');
   const one = chain({ preset: 'steps', a: 362, b: 175, tree: { start: 2 } });
   assert.equal(Q.emptyResponse(one).t[0].length, 2);
   assert.equal(chain({ preset: 'steps', a: 1, b: 1, tree: { start: 9 } }) && Q.emptyResponse(chain({ preset: 'steps', a: 362, b: 175, tree: { start: 9 } })).t[0].length, 4, 'never more than 4 parts');
@@ -215,6 +221,29 @@ test('chain steps (2-7): any valid decomposition, each step against the child\'s
   assert.ok(ok(given, R({ r0: '374', r1: '324', r2: '322', f: '322' })));
   assert.ok(ok(given, R({ r0: '374', r1: '324', r2: '322', f: '322' }, [['352', '0', '0']])), 'given parts cannot be changed by the response');
   assert.match(Q.correctText(q), /\(any parts that add to 175 work\)$/);
+});
+
+test('chain steps with ways: 2 (2-7 subtract two ways): each way valid, the trees differ, both answers exact', () => {
+  const q = chain({ preset: 'steps', a: 634, b: 287, ways: 2 });
+  const good = R({ r0: '434', r1: '354', r2: '347', f: '347', w1r0: '400', w1r1: '347', f1: '347' }, [['200', '80', '7'], ['234', '53']]);
+  assert.ok(ok(q, good));
+  assert.ok(ok(q, Q.correctResponse(q)), 'the shown answer is right');
+  const R0 = Q.correctResponse(q);
+  assert.notEqual(R0.t[0].slice().sort().join(), R0.t[1].slice().sort().join(), 'the shown ways differ');
+  assert.match(chk(q, R({ r0: '434', r1: '354', r2: '347', f: '347', w1r0: '434', w1r1: '354', w1r2: '347', f1: '347' }, [['200', '80', '7'], ['7', '200', '80']])).msg, /Both ways use the same parts/);
+  const slip = chk(q, Object.assign({}, good, { v: Object.assign({}, good.v, { w1r1: '357', f1: '357' }) }));
+  assert.equal(slip.msg, 'Check 400 − 53.');
+  assert.deepEqual(slip.bad.sort(), ['v:f1', 'v:w1r1']);
+  assert.equal(chk(q, Object.assign({}, good, { v: Object.assign({}, good.v, { f1: '' }) })).msg, 'Way 2: Write the answer.');
+  const html = Q.render(q, 'k', { mode: 'guided' });
+  assert.equal((html.match(/class="ch-way"/g) || []).length, 2);
+  assert.ok(/Way 2: So 634 − 287 equals/.test(html), 'each answer box names its way');
+  assert.match(Q.correctText(q), /Way 1: parts 200, 80, 7 .* Way 2: parts .*\(any parts that add to 287 work\)$/);
+  // A 0 part: its row is greyed and the gentle tip suggests removing it.
+  const zero = R({ r0: '434', r1: '354', r2: '347', f: '347', w1r0: '400', w1r2: '347', f1: '347' }, [['200', '80', '7'], ['234', '0', '53']]);
+  assert.ok(ok(q, zero));
+  assert.ok(/ch-row is-skip/.test(Q.render(q, 'k', { mode: 'guided', response: zero })));
+  assert.equal(Q.note(q, zero), 'Tip: you can remove the 0 part.');
 });
 
 test('chain trees (2-7 two ways): each tree valid (2–4 parts ≥ 1 adding to n), and the two sets differ (order ignored)', () => {

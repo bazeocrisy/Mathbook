@@ -295,7 +295,7 @@
   function boxHTML(ctx, k, val, label, cls, extra) {
     if (ctx.mode === 'review') {
       const shown = blankStr(val) ? '—' : String(val).trim();
-      const m = ctx.bad ? !ctx.bad.has(k) : undefined;
+      const m = ctx.bad && !(ctx.none && ctx.none.has(k)) ? !ctx.bad.has(k) : undefined;
       return `<span class="cell is-read ${cls || ''}${m === true ? ' mk-ok' : m === false ? ' mk-no' : ''}" data-k="${esc(k)}">${esc(shown)}${markBadge(m)}</span>`;
     }
     const attrs = /\bis-text\b/.test(cls || '') ? 'type="text" inputmode="text" autocomplete="off" spellcheck="false"' : INPUT_ATTRS;
@@ -478,6 +478,7 @@
     el.querySelectorAll('input[data-k]').forEach((inp) => {
       const k = inp.dataset.k;
       if (k.startsWith('c:')) return; // regroup marks are never graded
+      if ((res.none || []).includes(k)) return; // left-out tree parts and their rows (2-7 B-01) are not graded
       const wrong = bad.has(k);
       if (!wrong && (!res.ok || !inp.value.trim())) return; // an empty leading box that is right stays unmarked
       const box = inp.closest('.cell') || inp.parentElement;
@@ -500,7 +501,8 @@
     return { n, min, max, start: t.given ? t.given.length : Math.min(max, Math.max(min, t.start || 3)), given: t.given || null };
   }
   function chTrees(q) {
-    if (q.preset === 'steps') return [treeCfg(q.b, q.tree)];
+    // `ways: 2` (2-7 "subtract two ways"): one tree and one chain of steps per way, and the trees must differ.
+    if (q.preset === 'steps') return Array.from({ length: q.ways || 1 }, () => treeCfg(q.b, q.tree));
     if (q.preset === 'trees') return Array.from({ length: q.count || 2 }, () => treeCfg(q.n, q.tree));
     return [];
   }
@@ -519,6 +521,11 @@
     if (id.indexOf('t:') === 0) { const p = id.split(':'); return (R.t[Number(p[1])] || [])[Number(p[2])]; }
     return R.v[id];
   }
+  // Step and final ids per way (way 1 keeps the original ids r0, r1 … and f).
+  const stepId = (wi, k) => (wi ? `w${wi}r${k}` : `r${k}`);
+  const finalId = (wi) => (wi ? `f${wi}` : 'f');
+  /** A tree part that is left out (spec 2-7 B-01): an empty box or 0. Given parts are never left out. */
+  const partOff = (T, v) => !T.given && (blankStr(v) || pv.parseWholeNumber(v) === 0);
 
   /** Expands a chain question (and the current response) into rows, trees, a final line and rules. */
   function chainSpec(q, R) {
@@ -548,12 +555,27 @@
       last.push('=', { in: 'S', answer: sumOf(adds), label: 'Sum' });
       S.rows.push({ cells: last, tag: 'Sum' });
     } else if (p === 'steps') {
-      const T = S.trees[0];
-      S.rows = R.t[0].map((_, k) => ({
-        cells: [k ? { echo: `r${k - 1}` } : q.a, MINUS, T.given ? Number(T.given[k]) : { echo: `t:0:${k}` }, '=', { in: `r${k}`, label: `Step ${k + 1} answer` }],
-        true: true, step: true
-      }));
-      S.final = { in: 'f', label: (q.final && q.final.label) || `So ${pv.fmt(q.a)} − ${pv.fmt(q.b)} =`, answer: q.a - q.b };
+      // One row per tree part. A part that is empty or 0 gets a greyed row that is not graded, and the next row
+      // starts from the last row that counts (spec 2-7 B-01).
+      S.finals = [];
+      S.trees.forEach((T, wi) => {
+        let prev = -1;
+        const two = S.trees.length > 1;
+        // skip: not graded (the part is empty or 0). dim: drawn greyed, only for a 0 part or an empty part with a typed
+        // part after it; a row still waiting for its part looks normal and follows on from the row above (review L27-01).
+        const lastTyped = R.t[wi].reduce((m, v, k) => (blankStr(v) ? m : k), -1);
+        R.t[wi].forEach((v, k) => {
+          const skip = partOff(T, v);
+          const dim = skip && (!blankStr(v) || k < lastTyped);
+          S.rows.push({
+            cells: [prev < 0 ? q.a : { echo: stepId(wi, prev) }, MINUS, T.given ? Number(T.given[k]) : { echo: `t:${wi}:${k}` }, '=', { in: stepId(wi, k), label: `${two ? `Way ${wi + 1}, s` : 'S'}tep ${k + 1} answer` }],
+            true: true, step: true, way: wi, skip, dim, name: `${two ? `way ${wi + 1}, ` : ''}step ${k + 1}`
+          });
+          if (!dim) prev = k;
+        });
+        S.finals.push({ in: finalId(wi), way: wi, label: (q.final && q.final.label) || `So ${pv.fmt(q.a)} − ${pv.fmt(q.b)} =`, answer: q.a - q.b });
+      });
+      S.final = S.finals[0];
     } else if (p === 'trees') {
       S.differ = q.differ !== false;
     } else if (p === 'adjust') {
@@ -568,16 +590,25 @@
       S.rows = (q.rows || []).map((row) => Object.assign({}, row));
       if (q.final) S.final = Object.assign({ in: 'f' }, q.final);
     }
+    if (!S.finals) S.finals = S.final ? [S.final] : [];
     return S;
   }
 
-  /** Every input of a chain as { k, label } (tree parts and the final line included). */
+  /**
+   * Every input of a chain as { k, cell?, opt? } (tree parts and the final lines included). `opt` inputs may stay
+   * empty: tree part boxes (a tree needs only its minimum number of parts) and the rows of left-out parts.
+   */
   function chInputs(S, R) {
     const out = [];
-    S.trees.forEach((T, ti) => { if (!T.given) R.t[ti].forEach((_, k) => out.push({ k: `t:${ti}:${k}` })); });
-    S.rows.forEach((row) => row.cells.forEach((c) => { if (c && typeof c === 'object' && c.in) out.push({ k: 'v:' + c.in, cell: c }); }));
-    if (S.final) out.push({ k: 'v:' + S.final.in, cell: S.final });
+    S.trees.forEach((T, ti) => { if (!T.given) R.t[ti].forEach((_, k) => out.push({ k: `t:${ti}:${k}`, opt: true })); });
+    S.rows.forEach((row) => row.cells.forEach((c) => { if (c && typeof c === 'object' && c.in) out.push({ k: 'v:' + c.in, cell: c, opt: !!row.skip }); }));
+    S.finals.forEach((f) => out.push({ k: 'v:' + f.in, cell: f }));
     return out;
+  }
+  /** The parts of tree ti that count (not empty, not 0), as { k, n } (n is null when it isn't a whole number). */
+  function treeKept(S, R, ti) {
+    const T = S.trees[ti];
+    return R.t[ti].map((v, k) => ({ k, v, n: pv.parseWholeNumber(v) })).filter((x) => !partOff(T, x.v));
   }
   const chGet = (R, k) => (k.indexOf('v:') === 0 ? R.v[k.slice(2)] : chVal(R, k));
 
@@ -606,10 +637,11 @@
 
   function chRowCheck(q, row, ri, R, S, fail) {
     const N = pv.parseWholeNumber;
+    if (row.skip) return; // the row of a left-out part (empty or 0) is not graded
     const cells = row.cells;
     const eq = cells.indexOf('=');
     const ins = cells.map((c, j) => ({ c, j })).filter((x) => x.c && typeof x.c === 'object' && x.c.in);
-    const where = row.tag ? `the ${row.tag.toLowerCase()} line` : S.rows.length > 1 ? `step ${ri + 1}` : 'the equation';
+    const where = row.tag ? `the ${row.tag.toLowerCase()} line` : row.name ? row.name : S.rows.length > 1 ? `step ${ri + 1}` : 'the equation';
     const val = (x) => N(R.v[x.c.in]);
     const key = (x) => 'v:' + x.c.in;
     const missing = ins.filter((x) => val(x) === null);
@@ -704,18 +736,19 @@
     S.trees.forEach((T, ti) => {
       treeOK[ti] = true;
       if (T.given) return;
-      const vals = R.t[ti];
-      const keys = vals.map((_, k) => `t:${ti}:${k}`);
-      const nums = vals.map(N);
+      // Empty boxes and 0 parts are left out (spec 2-7 B-01); the parts that remain must be 2 to 4 whole numbers.
+      const keys = R.t[ti].map((_, k) => `t:${ti}:${k}`);
+      const kept = treeKept(S, R, ti);
       const pre = S.trees.length > 1 ? `Way ${ti + 1}: ` : '';
-      const badK = keys.filter((k, i) => nums[i] === null || nums[i] < 1);
-      if (badK.length) { treeOK[ti] = false; fail(badK, `${pre}Write each part as a whole number, 1 or more.`); return; }
-      if (vals.length < T.min || vals.length > T.max) { treeOK[ti] = false; fail(keys, `${pre}Use ${T.min} to ${T.max} parts.`); return; }
-      const sum = sumOf(nums);
-      if (sum !== T.n) { treeOK[ti] = false; fail(keys, `${pre}Your parts add to ${pv.fmt(sum)}, not ${pv.fmt(T.n)}.`); }
+      const badK = kept.filter((x) => x.n === null).map((x) => keys[x.k]);
+      if (badK.length) { treeOK[ti] = false; fail(badK, `${pre}Write each part as a whole number.`); return; }
+      if (kept.length < T.min) { treeOK[ti] = false; fail(keys, `${pre}Write at least ${T.min} parts that add to ${pv.fmt(T.n)}.`); return; }
+      if (kept.length > T.max) { treeOK[ti] = false; fail(keys, `${pre}Use ${T.min} to ${T.max} parts.`); return; }
+      const sum = sumOf(kept.map((x) => x.n));
+      if (sum !== T.n) { treeOK[ti] = false; fail(kept.map((x) => keys[x.k]), `${pre}Your parts add to ${pv.fmt(sum)}, not ${pv.fmt(T.n)}.`); }
     });
-    if (S.differ && S.trees.length > 1 && treeOK.every(Boolean)) {
-      const sig = (ti) => R.t[ti].map(N).sort((x, y) => x - y).join(',');
+    if ((S.differ || q.ways > 1) && S.trees.length > 1 && treeOK.every(Boolean)) {
+      const sig = (ti) => treeKept(S, R, ti).map((x) => x.n).sort((x, y) => x - y).join(',');
       for (let ti = 1; ti < S.trees.length; ti++) {
         for (let tj = 0; tj < ti; tj++) {
           if (sig(ti) === sig(tj)) fail(R.t[ti].map((_, k) => `t:${ti}:${k}`), `Both ways use the same parts. Break ${pv.fmt(S.trees[ti].n)} apart a different way.`);
@@ -724,15 +757,19 @@
     }
     if (S.adj) adjustCheck(q, R, S, fail);
     else S.rows.forEach((row, ri) => chRowCheck(q, row, ri, R, S, fail));
-    if (S.final) {
-      const v = N(R.v[S.final.in]);
-      const k = 'v:' + S.final.in;
-      if (v === null) fail([k], 'Write the answer.');
-      else if (v !== S.final.answer) {
-        let m = 'Look again at the answer.';
+    S.finals.forEach((F) => {
+      const v = N(R.v[F.in]);
+      const k = 'v:' + F.in;
+      const pre = S.finals.length > 1 ? `Way ${F.way + 1}: ` : '';
+      if (v === null) fail([k], `${pre}Write the answer.`);
+      else if (v !== F.answer) {
+        let m = `${pre}Look again at the answer.`;
         if (q.preset === 'steps') {
-          const last = N(R.v['r' + (R.t[0].length - 1)]);
-          if (last !== null && last !== v) m = `Your last step shows ${pv.fmt(last)}. Write it as the answer.`;
+          // The last step that counts (rows of left-out parts are skipped).
+          const rows = S.rows.filter((row) => row.way === F.way && !row.skip);
+          const lastRow = rows[rows.length - 1];
+          const last = lastRow ? N(R.v[lastRow.cells[4].in]) : null;
+          if (last !== null && last !== v) m = `${pre}Your last step shows ${pv.fmt(last)}. Write it as the answer.`;
         } else if (q.oneNumber && S.adj) {
           const na = N(R.v.na), nb = N(R.v.nb);
           const k2 = na !== null && nb !== null ? Math.abs((na - S.adj.a) || (nb - S.adj.b)) : 0;
@@ -740,8 +777,12 @@
         }
         fail([k], m);
       }
-    }
-    return { ok: bad.size === 0 && !msg, bad: Array.from(bad), msg };
+    });
+    // Boxes that are left out (empty or 0 tree parts, and their step rows): never marked ✓ or ✗.
+    const none = [];
+    S.trees.forEach((T, ti) => { if (!T.given) R.t[ti].forEach((v, k) => { if (partOff(T, v)) none.push(`t:${ti}:${k}`); }); });
+    S.rows.forEach((row) => { if (row.skip) row.cells.forEach((c) => { if (c && typeof c === 'object' && c.in) none.push('v:' + c.in); }); });
+    return { ok: bad.size === 0 && !msg, bad: Array.from(bad), msg, none };
   }
 
   /** Place-value parts of n (non-zero places), split or merged to fit min..max parts. */
@@ -757,6 +798,17 @@
     }
     while (parts.length > max) { parts.sort((x, y) => y - x); const t = parts.pop() + parts.pop(); parts.push(t); }
     return parts.sort((x, y) => y - x);
+  }
+
+  /** A second way to break b apart for a − b, different from place value: a first part that lands on a hundred (353 − 153 = 200), else on a ten. */
+  function friendlyParts(a, b, T) {
+    const pvSig = decompose(b, T.min, T.max).sort((x, y) => x - y).join(',');
+    for (const first of [a % 100, a % 10]) {
+      if (first < 1 || first >= b) continue;
+      const parts = [first].concat(decompose(b - first, 1, T.max - 1));
+      if (parts.length >= T.min && parts.slice().sort((x, y) => x - y).join(',') !== pvSig) return parts;
+    }
+    return b > 10 ? [b - 10, 10] : [b - 1, 1];
   }
 
   function adjustSuggest(q) {
@@ -797,12 +849,14 @@
       return R;
     }
     if (q.preset === 'steps') {
-      const T = chTrees(q)[0];
-      const parts = T.given ? T.given.map(Number) : decompose(q.b, T.min, T.max);
-      R.t[0] = parts.map(String);
-      let cur = q.a;
-      parts.forEach((p, k) => { cur -= p; R.v[`r${k}`] = f(cur); });
-      R.v.f = f(q.a - q.b);
+      // Way 1 by place value; way 2 (if any) lands on a hundred or a ten first.
+      chTrees(q).forEach((T, wi) => {
+        const parts = T.given ? T.given.map(Number) : wi ? friendlyParts(q.a, q.b, T) : decompose(q.b, T.min, T.max);
+        R.t[wi] = parts.map(String);
+        let cur = q.a;
+        parts.forEach((p, k) => { cur -= p; R.v[stepId(wi, k)] = f(cur); });
+        R.v[finalId(wi)] = f(q.a - q.b);
+      });
       return R;
     }
     if (q.preset === 'trees') {
@@ -847,9 +901,20 @@
     const R = chNorm(q, r);
     const S = chainSpec(q, R);
     const bits = [];
-    S.trees.forEach((T, ti) => bits.push(`${S.trees.length > 1 ? `Way ${ti + 1}: parts` : 'Parts'} ${R.t[ti].map((v) => (blankStr(v) ? '—' : String(v).trim())).join(', ')}`));
-    if (S.adj) bits.push(`${pv.fmt(S.adj.a)} ${S.adj.op} ${pv.fmt(S.adj.b)} → ${S.rows[0].cells.map((c) => cellText(c, R)).join(' ')}`);
-    else S.rows.forEach((row) => bits.push(row.cells.map((c) => cellText(c, R)).join(' ')));
+    const partsText = (ti) => `${S.trees.length > 1 ? `Way ${ti + 1}: parts` : 'Parts'} ${R.t[ti].map((v) => (blankStr(v) ? '—' : String(v).trim())).join(', ')}`;
+    const rowText = (row) => row.cells.map((c) => cellText(c, R)).join(' ');
+    if (q.preset === 'steps') {
+      // Per way: its parts, the steps that count, and its answer.
+      S.trees.forEach((T, wi) => {
+        bits.push(partsText(wi));
+        S.rows.filter((row) => row.way === wi && !row.skip).forEach((row) => bits.push(rowText(row)));
+        bits.push(`Answer ${cellText({ in: S.finals[wi].in }, R)}`);
+      });
+      return bits.join(' · ');
+    }
+    S.trees.forEach((T, ti) => bits.push(partsText(ti)));
+    if (S.adj) bits.push(`${pv.fmt(S.adj.a)} ${S.adj.op} ${pv.fmt(S.adj.b)} → ${rowText(S.rows[0])}`);
+    else S.rows.forEach((row) => bits.push(rowText(row)));
     if (S.final) bits.push(`Answer ${cellText({ in: S.final.in }, R)}`);
     return bits.join(' · ');
   }
@@ -874,7 +939,13 @@
 
   /** The gentle, ungraded tip for an adjustment that doesn't make a friendlier number (decision 10). */
   function chainNote(q, r) {
-    if (q.type !== 'chain' || q.preset !== 'adjust' || q.oneNumber) return '';
+    if (q.type !== 'chain') return '';
+    if (q.preset === 'steps' || q.preset === 'trees') {
+      // A 0 part is fine (it is left out), but it isn't needed (spec 2-7 B-01).
+      const R0 = chNorm(q, r);
+      return R0.t.some((t) => t.some((v) => !blankStr(v) && pv.parseWholeNumber(v) === 0)) ? 'Tip: you can remove the 0 part.' : '';
+    }
+    if (q.preset !== 'adjust' || q.oneNumber) return '';
     const R = chNorm(q, r);
     const na = pv.parseWholeNumber(R.v.na), nb = pv.parseWholeNumber(R.v.nb);
     if (na === null || nb === null || na % 10 === 0 || nb % 10 === 0) return '';
@@ -894,25 +965,36 @@
 
   function chainBody(q, R, mode, key) {
     const S = chainSpec(q, R);
-    const ctx = { mode, bad: mode === 'review' ? new Set(chainCheck(q, R).bad) : null };
+    const res = mode === 'review' ? chainCheck(q, R) : null;
+    const ctx = { mode, bad: res ? new Set(res.bad) : null, none: res ? new Set(res.none) : null };
     const two = S.trees.length > 1;
-    let h = '';
-    if (S.trees.length) {
-      h += `<div class="ch-trees${two ? ' is-two' : ''}">` + S.trees.map((T, ti) => {
-        const parts = R.t[ti];
-        const n = parts.length;
-        const boxes = parts.map((v, k) => (T.given ? `<span class="tr-box">${pv.fmt(Number(T.given[k]))}</span>`
-          : boxHTML(ctx, `t:${ti}:${k}`, v, `Part ${k + 1} of ${n}${two ? `, way ${ti + 1}` : ''}: a part of ${pv.fmt(T.n)}`, 'tr-in')));
-        const btns = mode === 'review' || T.given ? '' : `<div class="tr-btns">` +
-          `<button type="button" class="btn btn-ghost tr-btn" data-tree-add="${ti}"${n >= T.max ? ' disabled' : ''}>+ Add a part</button>` +
-          `<button type="button" class="btn btn-ghost tr-btn" data-tree-remove="${ti}"${n <= T.min ? ' disabled' : ''}>− Remove a part</button></div>`;
-        const helper = mode === 'guided' && !T.given ? `<p class="ch-helper" aria-live="polite" data-tree-sum="${ti}">${esc(chainHelperSum(R, ti))}</p>` : '';
-        return `<div class="tr" role="group" aria-label="${two ? `Way ${ti + 1}: ` : ''}Break ${pv.fmt(T.n)} into parts">` +
-          (two ? `<p class="tr-title">Way ${ti + 1}</p>` : '') +
-          `<div class="tr-top"><span class="tr-box tr-n">${pv.fmt(T.n)}</span></div>` +
-          `<div class="tr-parts" style="--n:${n}">${boxes.map((b) => `<div class="tr-slot">${b}</div>`).join('')}</div>${btns}${helper}</div>`;
-      }).join('') + `</div>`;
+    const steps = q.preset === 'steps';
+    const treeHTML = (ti) => {
+      const T = S.trees[ti];
+      const parts = R.t[ti];
+      const n = parts.length;
+      const boxes = parts.map((v, k) => (T.given ? `<span class="tr-box">${pv.fmt(Number(T.given[k]))}</span>`
+        : boxHTML(ctx, `t:${ti}:${k}`, v, `Part ${k + 1} of ${n}${two ? `, way ${ti + 1}` : ''}: a part of ${pv.fmt(T.n)}`, 'tr-in')));
+      const btns = mode === 'review' || T.given ? '' : `<div class="tr-btns">` +
+        `<button type="button" class="btn btn-ghost tr-btn" data-tree-add="${ti}"${n >= T.max ? ' disabled' : ''}>+ Add a part</button>` +
+        `<button type="button" class="btn btn-ghost tr-btn" data-tree-remove="${ti}"${n <= T.min ? ' disabled' : ''}>− Remove a part</button></div>`;
+      const helper = mode === 'guided' && !T.given ? `<p class="ch-helper" aria-live="polite" data-tree-sum="${ti}">${esc(chainHelperSum(R, ti))}</p>` : '';
+      return `<div class="tr" role="group" aria-label="${two ? `Way ${ti + 1}: ` : ''}Break ${pv.fmt(T.n)} into parts">` +
+        (two && !steps ? `<p class="tr-title">Way ${ti + 1}</p>` : '') +
+        `<div class="tr-top"><span class="tr-box tr-n">${pv.fmt(T.n)}</span></div>` +
+        `<div class="tr-parts" style="--n:${n}">${boxes.map((b) => `<div class="tr-slot">${b}</div>`).join('')}</div>${btns}${helper}</div>`;
+    };
+    const finalHTML = (F) => `<div class="ch-final"><span class="ch-flabel">${esc(F.label)}</span>` +
+      boxHTML(ctx, 'v:' + F.in, R.v[F.in], `${two ? `Way ${F.way + 1}: ` : ''}${F.label.replace(/\s*=\s*$/, ' equals')}`, 'ch-c ch-in') + `</div>`;
+    if (steps) {
+      // Each way: its tree, its steps and its answer (one block when there is one way).
+      return S.trees.map((T, wi) => {
+        const inner = `<div class="ch-trees">${treeHTML(wi)}</div><div class="ch-rows" data-way="${wi}">${chainRowsHTML(q, R, S, ctx, wi)}</div>${finalHTML(S.finals[wi])}`;
+        return two ? `<section class="ch-way" aria-label="Way ${wi + 1}"><p class="tr-title">Way ${wi + 1}</p>${inner}</section>` : inner;
+      }).join('');
     }
+    let h = '';
+    if (S.trees.length) h += `<div class="ch-trees${two ? ' is-two' : ''}">` + S.trees.map((T, ti) => treeHTML(ti)).join('') + `</div>`;
     if (S.adj) {
       const A = S.adj;
       const guided = mode === 'guided';
@@ -925,39 +1007,43 @@
         (guided ? `<span class="sr-only" id="${esc(key)}-dna" data-tagsr="na">${esc(adjustTag(q, R, 'na') ? 'changed by ' + adjustTag(q, R, 'na') : '')}</span>` +
           `<span class="sr-only" id="${esc(key)}-dnb" data-tagsr="nb">${esc(adjustTag(q, R, 'nb') ? 'changed by ' + adjustTag(q, R, 'nb') : '')}</span>` : '') + `</div>`;
     } else if (S.rows.length) {
-      const nRows = S.rows.length;
-      h += `<div class="ch-rows">` + S.rows.map((row, ri) => {
-        const eq = row.cells.indexOf('=');
-        const rowLabel = row.label || row.tag || (nRows > 1 ? `Step ${ri + 1} of ${nRows}` : 'Equation');
-        const words = (self) => row.cells.map((c) => {
-          if (typeof c === 'number') return pv.fmt(c);
-          if (c === '?') return 'question mark';
-          if (typeof c === 'string') return opWord(c);
-          if (c.in) return c === self ? 'this box' : 'box';
-          const v = chVal(R, c.echo);
-          return blankStr(v) ? 'your number' : String(v).trim();
-        }).join(' ');
-        const draw = (c) => {
-          if (typeof c === 'number') return `<span class="ch-c ch-num">${pv.fmt(c)}</span>`;
-          if (c === '?') return `<span class="ch-c ch-unk">?</span>`;
-          if (typeof c === 'string') return `<span class="ch-op" aria-hidden="true">${esc(opGlyph(c))}</span>`;
-          if (c.in) return boxHTML(ctx, 'v:' + c.in, R.v[c.in], `${c.label || 'Box'}. ${rowLabel}: ${words(c)}`, 'ch-c ch-in');
-          const v = chVal(R, c.echo);
-          return `<span class="ch-c ch-echo" data-echo="${esc(c.echo)}">${esc(blankStr(v) ? '…' : String(v).trim())}</span>`;
-        };
-        const L = eq < 0 ? row.cells : row.cells.slice(0, eq);
-        const Rr = eq < 0 ? [] : row.cells.slice(eq);
-        const operands = L.filter((c) => typeof c !== 'string' || c === '?').length;
-        return `<div class="ch-row${operands > 3 ? ' is-long' : ''}${operands > 2 ? ' is-three' : ''}" role="group" aria-label="${esc(rowLabel)}">` +
-          (row.tag ? `<span class="ch-tag">${esc(row.tag)}</span>` : '') +
-          `<span class="ch-l">${L.map(draw).join('')}</span><span class="ch-r">${Rr.map(draw).join('')}</span></div>`;
-      }).join('') + `</div>`;
+      h += `<div class="ch-rows">${chainRowsHTML(q, R, S, ctx, null)}</div>`;
     }
-    if (S.final) {
-      h += `<div class="ch-final"><span class="ch-flabel">${esc(S.final.label)}</span>` +
-        boxHTML(ctx, 'v:' + S.final.in, R.v[S.final.in], S.final.label.replace(/\s*=\s*$/, ' equals'), 'ch-c ch-in') + `</div>`;
-    }
+    if (S.final) h += finalHTML(S.final);
     return h;
+  }
+
+  /** The rows of a chain (only way wi's rows when wi is a number). Rows of left-out tree parts are greyed. */
+  function chainRowsHTML(q, R, S, ctx, wi) {
+    const rows = S.rows.filter((row) => wi === null || row.way === wi);
+    const nRows = rows.length;
+    return rows.map((row, ri) => {
+      const eq = row.cells.indexOf('=');
+      const rowLabel = (row.label || row.tag || (nRows > 1 ? `Step ${ri + 1} of ${nRows}` : 'Equation')) + (row.dim ? ' (not used: its part is empty or 0)' : '');
+      const words = (self) => row.cells.map((c) => {
+        if (typeof c === 'number') return pv.fmt(c);
+        if (c === '?') return 'question mark';
+        if (typeof c === 'string') return opWord(c);
+        if (c.in) return c === self ? 'this box' : 'box';
+        const v = chVal(R, c.echo);
+        return blankStr(v) ? 'your number' : String(v).trim();
+      }).join(' ');
+      const draw = (c) => {
+        if (typeof c === 'number') return `<span class="ch-c ch-num">${pv.fmt(c)}</span>`;
+        if (c === '?') return `<span class="ch-c ch-unk">?</span>`;
+        if (typeof c === 'string') return `<span class="ch-op" aria-hidden="true">${esc(opGlyph(c))}</span>`;
+        if (c.in) return boxHTML(ctx, 'v:' + c.in, R.v[c.in], `${c.label || 'Box'}. ${rowLabel}: ${words(c)}`, 'ch-c ch-in');
+        const v = chVal(R, c.echo);
+        return `<span class="ch-c ch-echo" data-echo="${esc(c.echo)}">${esc(blankStr(v) ? '…' : String(v).trim())}</span>`;
+      };
+      const L = eq < 0 ? row.cells : row.cells.slice(0, eq);
+      const Rr = eq < 0 ? [] : row.cells.slice(eq);
+      const operands = L.filter((c) => typeof c !== 'string' || c === '?').length;
+      return `<div class="ch-row${operands > 3 ? ' is-long' : ''}${operands > 2 ? ' is-three' : ''}${row.dim ? ' is-skip' : ''}" role="group" aria-label="${esc(rowLabel)}">` +
+        (row.tag ? `<span class="ch-tag">${esc(row.tag)}</span>` : '') +
+        `<span class="ch-l">${L.map(draw).join('')}</span><span class="ch-r">${Rr.map(draw).join('')}</span>` +
+        (row.skip && ctx.mode === 'review' ? '<span class="ch-skipnote" aria-hidden="true">not used</span>' : '') + `</div>`;
+    }).join('');
   }
 
   function bindChain(el, q, fire) {
@@ -983,6 +1069,12 @@
       if (!k) return;
       setKey(k, e.target.value);
       clearMarks(el);
+      // A tree part changed: redraw that way's steps (a part that is empty or 0 is left out), keeping focus in the tree.
+      if (q.preset === 'steps' && k.indexOf('t:') === 0) {
+        const wi = Number(k.split(':')[1]);
+        const rowsEl = box.querySelector('.ch-rows[data-way="' + wi + '"]');
+        if (rowsEl) rowsEl.innerHTML = chainRowsHTML(q, R, chainSpec(q, R), { mode, bad: null }, wi);
+      }
       live(); sync(); fire();
     });
     box.addEventListener('keydown', (e) => { if (e.key === 'Enter' && e.target.matches('input')) e.preventDefault(); });
@@ -993,7 +1085,7 @@
       const T = chTrees(q)[ti];
       const parts = R.t[ti];
       if (add && parts.length < T.max) parts.push('');
-      else if (rem && parts.length > T.min) { parts.pop(); if (q.preset === 'steps') delete R.v['r' + parts.length]; }
+      else if (rem && parts.length > T.min) { parts.pop(); if (q.preset === 'steps') delete R.v[stepId(ti, parts.length)]; }
       else return;
       redraw();
       const target = box.querySelector(`input[data-k="t:${ti}:${parts.length - 1}"]`);
@@ -1196,7 +1288,7 @@
   function emptyTip(q, r) {
     if (!CHECK[q.type] || !/\d/.test(JSON.stringify(r === undefined ? null : r))) return '';
     const m = CHECK[q.type](q, r).msg;
-    return /^Write /.test(m) ? m : 'Fill in every box, then check.';
+    return /^(Way \d+: )?Write /.test(m) ? m : 'Fill in every box, then check.';
   }
   function check(q, r) {
     if (CHECK[q.type]) return CHECK[q.type](q, r);
@@ -1475,7 +1567,10 @@
     if (q.type === 'parts') return Array.isArray(r) && q.parts.every((p, i) => partAnswered(p, r[i]));
     if (q.type === 'chain') {
       const R = chNorm(q, r);
-      return chInputs(chainSpec(q, R), R).every((x) => !blankStr(chGet(R, x.k)));
+      const S = chainSpec(q, R);
+      // Every required box, and each tree has enough parts (empty and 0 boxes are left out, spec 2-7 B-01).
+      return chInputs(S, R).every((x) => x.opt || !blankStr(chGet(R, x.k))) &&
+        S.trees.every((T, ti) => T.given || treeKept(S, R, ti).length >= T.min);
     }
     if (q.type === 'vcalc') return vcIsAnswered(q, r);
     return String(r === undefined || r === null ? '' : r).trim() !== '';
