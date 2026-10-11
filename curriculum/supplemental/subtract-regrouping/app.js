@@ -11,6 +11,7 @@
   const SK = root.SubtractKit;
   const M = SK.math;
   const C = MB.subtractRegrouping;
+  const pv = MB.pv;
   const shell = MB.shell;
   const head = (...args) => shell.sectionHead(...args); // looked up when used, so the sanitizers load without the shell (Node tests)
   const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -40,7 +41,7 @@
     const okChoice = (v, list) => v === undefined || v === null || v === '' || (typeof v === 'string' && list.includes(v));
     if (item.kind === 'decide') return okChoice(r.c1, ['Yes', 'No']) && okChoice(r.c2, item.placeChoices);
     if (item.kind === 'mistake' || item.kind === 'check') return okChoice(r.c1, item.choices);
-    if (item.kind === 'exchange') return (r.t === undefined || typeof r.t === 'string') && (r.o === undefined || typeof r.o === 'string') && okChoice(r.c1, ['Yes', 'No']);
+    if (item.kind === 'exchange') return (r.t === undefined || typeof r.t === 'string') && (r.o === undefined || typeof r.o === 'string') && (r.q === undefined || isInt(r.q, 0, 2)) && (r.helped === undefined || typeof r.helped === 'boolean');
     return true;
   }
   /** Answer digits / chosen values in a shape Home's "Continue" can count (p: [], d: [...]). */
@@ -72,7 +73,7 @@
     if (item.kind === 'decide') { const d = r.c1 === item.needs && r.c2 === item.first; return { correct: d, parts: { decide: d } }; }
     if (item.kind === 'mistake') { const m = r.c1 === item.answer, f = fin(r.ws2); return { correct: m && f, parts: { mistake: m, final: f } }; }
     if (item.kind === 'check') { const c = r.c1 === item.answer, f = fin(r.ws); return { correct: c && f, parts: { final: f, check: c } }; }
-    if (item.kind === 'exchange') { const t = Number(r.t) === item.tens - 1 && /^\d+$/.test(String(r.t).trim()), o = Number(r.o) === item.ones + 10 && /^\d+$/.test(String(r.o).trim()); return { correct: t && o && r.c1 === 'Yes', parts: { tens: t, ones: o, value: r.c1 === 'Yes' } }; }
+    if (item.kind === 'exchange') { const t = /^\d+$/.test(String(r.t || '').trim()) && Number(r.t) === item.tens - 1, o = /^\d+$/.test(String(r.o || '').trim()) && Number(r.o) === item.ones + 10; return { correct: t && o, parts: { tens: t, ones: o } }; }
     return { correct: false, parts: {} };
   }
   const problemText = (item) => `${fmt(item.top)} − ${fmt(item.bottom)}`;
@@ -87,7 +88,7 @@
     return out;
   }
   const validSetup = (x) => isObj(x) && [2, 3, 4, 'mixed'].includes(x.size) && ['easy', 'medium', 'hard', 'mixed'].includes(x.difficulty) && C.SETUP.lengths.includes(x.length) && !M.unavailableReason(x.size, x.difficulty);
-  const cleanResults = (r) => pickKeys(r, (k, v) => /^q\d+$/.test(k) && isObj(v) && typeof v.correct === 'boolean' && isInt(v.tries, 0, 9999) && isInt(v.hints, 0, 9999) && (v.firstTry === undefined || typeof v.firstTry === 'boolean'));
+  const cleanResults = (r) => pickKeys(r, (k, v) => /^q\d+$/.test(k) && isObj(v) && typeof v.correct === 'boolean' && isInt(v.tries, 0, 9999) && isInt(v.hints, 0, 9999) && (v.firstTry === undefined || typeof v.firstTry === 'boolean') && (v.helped === undefined || typeof v.helped === 'boolean'));
   const validPracticeAttempt = (x) => isObj(x) && typeof x.at === 'string' && isInt(x.total, 1, 50) && isInt(x.correct, 0, 50) && isInt(x.firstTry, 0, 50) && isInt(x.hints, 0, 99999);
   /** The items of a run (rebuilt from its seed): a setup session or one skill. */
   function runItemsFor(kind, a) {
@@ -119,10 +120,12 @@
       done: pickKeys(w.done, (k, v) => STEP_IDS.includes(k) && v === true),
       phase: pickKeys(w.phase, (k, v) => STEP_IDS.includes(k) && ['example', 'try'].includes(v)),
       ex: pickKeys(w.ex, (k, v) => STEP_IDS.includes(k) && isInt(v, 0, 9)),
-      checks: pickKeys(w.checks, (k, v) => STEP_IDS.includes(k) && isObj(v) && SEED(v.seed)) } : null,
+      checks: pickKeys(w.checks, (k, v) => STEP_IDS.includes(k) && isObj(v) && SEED(v.seed)),
+      helped: pickKeys(w.helped, (k, v) => STEP_IDS.includes(k) && v === true) } : null,
     together: (t) => isObj(t) ? { v: V, pos: isInt(t.pos, 0, C.together.length - 1) ? t.pos : 0, seed: SEED(t.seed) ? t.seed : 0,
       states: pickKeys(t.states, (k, v) => isInt(Number(k), 0, C.together.length - 1) && isObj(v)),
-      done: pickKeys(t.done, (k, v) => isInt(Number(k), 0, C.together.length - 1) && v === true) } : null,
+      done: pickKeys(t.done, (k, v) => isInt(Number(k), 0, C.together.length - 1) && v === true),
+      helped: pickKeys(t.helped, (k, v) => isInt(Number(k), 0, C.together.length - 1) && v === true) } : null,
     sessions: (b) => {
       if (!isObj(b)) return null;
       const st = isObj(b.setup) ? b.setup : {};
@@ -164,8 +167,8 @@
     }
     const save = (key, val) => store.set(key, val);
     const STEP_IDS = SAN.STEP_IDS;
-    const wizard = () => read('see-wizard', SAN.wizard, () => ({ v: V, step: 0, done: {}, phase: {}, ex: {}, checks: {} }));
-    const together = () => read('guided', SAN.together, () => ({ v: V, pos: 0, seed: 0, states: {}, done: {} }));
+    const wizard = () => read('see-wizard', SAN.wizard, () => ({ v: V, step: 0, done: {}, phase: {}, ex: {}, checks: {}, helped: {} }));
+    const together = () => read('guided', SAN.together, () => ({ v: V, pos: 0, seed: 0, states: {}, done: {}, helped: {} }));
     const sessions = () => read('bank-sets', SAN.sessions, () => ({ v: V, setup: { active: null, attempts: [] } }));
     const skillStore = () => read('skill-practice', SAN.skills, () => ({ v: V }));
     const draft = () => read('draft-test', SAN.draft, () => null);
@@ -236,8 +239,18 @@
       }
       drawStep(W);
     }
+    function bindParts() {
+      main.querySelectorAll('[data-part]').forEach((b) => b.addEventListener('click', () => {
+        exPart = Math.max(0, exPart + (b.dataset.part === 'next' ? 1 : -1));
+        const W = wizard(), step = C.learn[W.step], ex = step.examples[Math.min(W.ex[step.id] || 0, step.examples.length - 1)];
+        main.querySelector('.sr-example').innerHTML = exampleHTML(ex);
+        bindParts();
+        const nb = main.querySelector(`[data-part="${b.dataset.part}"]:not([disabled])`) || main.querySelector('[data-part]:not([disabled])'); if (nb) nb.focus({ preventScroll: true });
+      }));
+    }
     function drawStep(W) {
       cleanup();
+      if (!W.helped) W.helped = {};
       const k = W.step, step = C.learn[k], phase = W.phase[step.id] || 'example';
       const done = !!W.done[step.id];
       const last = k === C.learn.length - 1;
@@ -252,20 +265,32 @@
         body = `<div class="wiz-check sr-try" id="sr-try"></div>` +
           `<div class="wiz-actions"><button type="button" class="btn btn-ghost" data-w="example">← See the Example Again</button>` +
           (last ? `<a class="btn btn-primary btn-big${done ? '' : ' is-disabled'}" href="#see/done" ${done ? '' : 'aria-disabled="true" tabindex="-1"'} data-w="finish">Finish →</a>` : `<button type="button" class="btn btn-primary btn-big" data-w="next"${done ? '' : ' disabled'}>Next Step →</button>`) +
-          `</div>${done ? '' : `<p class="wiz-locked-note">Answer correctly to unlock ${last ? 'Finish' : 'the next step'}.</p>`}`;
+          `</div>${done ? '' : `<p class="wiz-locked-note">Answer correctly (or use Show me) to unlock ${last ? 'Finish' : 'the next step'}.</p>`}`;
       }
       main.innerHTML = `<section class="hero act-hero"><p class="eyebrow">${eyebrow('Learn')}</p><div class="act-title"><h1 tabindex="-1">Learn</h1><p class="wiz-count">Step ${k + 1} of ${STEP_IDS.length}</p></div></section>` +
         `<section class="card wiz-card" data-phase="${phase === 'example' ? 'example' : 'try'}"><h2 tabindex="-1" class="wiz-h"><span class="phase-tag phase-${phase === 'example' ? 'example' : 'try'}">${phase === 'example' ? 'Example' : 'Your Turn'}</span><span class="wiz-step-title">${esc(step.title)}</span></h2>${body}</section>` +
         `<div class="wiz-menu"><a class="btn btn-ghost" href="#menu">Section Menu</a></div>`;
-      if (phase === 'example') mountExample(step.examples[Math.min(W.ex[step.id] || 0, step.examples.length - 1)]);
+      if (phase === 'example') {
+        mountExample(step.examples[Math.min(W.ex[step.id] || 0, step.examples.length - 1)]);
+        main.querySelectorAll('[data-part]').forEach((b) => b.addEventListener('click', () => {
+          exPart = Math.max(0, exPart + (b.dataset.part === 'next' ? 1 : -1));
+          const ex = step.examples[Math.min(W.ex[step.id] || 0, step.examples.length - 1)];
+          main.querySelector('.sr-example').innerHTML = exampleHTML(ex);
+          bindParts();
+          const nb = main.querySelector(`[data-part="${b.dataset.part}"]:not([disabled])`) || main.querySelector('[data-part]:not([disabled])'); if (nb) nb.focus({ preventScroll: true });
+          const sayEl = main.querySelector('.sr-say'); if (sayEl) { sayEl.setAttribute('aria-live', 'polite'); }
+        }));
+      }
       else mountTry(W, step);
       main.querySelectorAll('[data-w]').forEach((b) => b.addEventListener('click', (e) => {
         const a = b.dataset.w;
-        if (a === 'finish') { if (!done) e.preventDefault(); return; }
+        // Completion is read live: a step finished after this screen was drawn must unlock Next and Finish at once.
+        if (a === 'finish') { if (!W.done[step.id]) e.preventDefault(); return; }
+        exPart = 0;
         if (a === 'prev-ex' || a === 'next-ex') W.ex[step.id] = Math.max(0, Math.min(step.examples.length - 1, (W.ex[step.id] || 0) + (a === 'next-ex' ? 1 : -1)));
         else if (a === 'try') W.phase[step.id] = 'try';
         else if (a === 'example') W.phase[step.id] = 'example';
-        else if (a === 'next' && done && k < STEP_IDS.length - 1) W.step = k + 1;
+        else if (a === 'next' && W.done[step.id] && k < STEP_IDS.length - 1) W.step = k + 1;
         else if (a === 'prev-step' && k > 0) W.step = k - 1;
         else return;
         save('see-wizard', W);
@@ -276,15 +301,31 @@
         else { const h = main.querySelector('.wiz-h'); if (h) h.focus({ preventScroll: true }); }
       }));
     }
+    /** Tens and ones as base-ten blocks (the existing Mathbook blocks), with the affected columns marked. */
+    function blocks2(tens, ones, o) {
+      o = o || {};
+      const col = (pi, count, hi, chip) => { const P = pv.PLACES[pi];
+        return `<div class="blocks-col place-${P.key}${hi ? ' is-hi' : ''}"><div class="blocks-label">${P.name}${chip ? ` <span class="sr-chip">${chip}</span>` : ''}</div><div class="blocks-art">${pv.placeSVG(pi, count)}</div>` +
+          `<figcaption><b>${count}</b> ${count === 1 ? P.one : P.key} = ${fmt(count * P.value)}</figcaption></div>`; };
+      return `<figure class="blocks sr-blocks2" aria-label="${tens} tens and ${ones} ones">${col(2, tens, o.hiT, o.chipT)}${col(3, ones, o.hiO, o.chipO)}</figure>`;
+    }
+    /** Step 1's example, one action at a time: 49 → exchange 1 ten for 10 ones → 3 tens and 19 ones → 30 + 19 = 49. */
+    function blockParts(n) {
+      const t = Math.floor(n / 10), o = n % 10;
+      return [
+        { html: blocks2(t, o), say: `${n} has ${t} tens and ${o} ones.` },
+        { html: blocks2(t, o, { hiT: true, chipT: '−1' }) + `<p class="sr-swap"><span>1 ten</span> <span aria-hidden="true">➜</span> <span>10 ones</span></p>`, say: 'Exchange 1 ten for 10 ones. Take 1 ten from the tens.' },
+        { html: blocks2(t - 1, o + 10, { hiT: true, chipT: '−1', hiO: true, chipO: '+10' }), say: `The tens go from ${t} to ${t - 1}. The ones go from ${o} to ${o + 10}. Now there are ${t - 1} tens and ${o + 10} ones.` },
+        { html: blocks2(t - 1, o + 10), say: `${(t - 1) * 10} + ${o + 10} = ${n}. The value is the same: we only changed how it is shown.` }
+      ];
+    }
+    let exPart = 0;
     function exampleHTML(ex) {
-      if (ex.kind === 'value') {
-        // One exchange from the largest place: tens → ones for 52, hundreds → tens for 436, thousands → hundreds for 3,002.
-        const from = ex.from.length - 1;
-        const aft = M.exchange(ex.from, from).amounts;
-        const n = ex.from.length, names = M.PLACES.slice(0, n).map((p) => p.name).reverse();
-        const row = (a, cls) => `<tr class="${cls || ''}">${a.slice().reverse().map((x) => `<td>${x}</td>`).join('')}<td class="sr-val">${fmt(M.value(a))}</td></tr>`;
-        return `<table class="sr-chart"><caption class="sk-sr">Place values before and after one exchange</caption><thead><tr>${names.map((x) => `<th scope="col"><span class="sr-long">${x.charAt(0).toUpperCase() + x.slice(1)}</span><abbr class="sr-short" title="${x}">${({ thousands: 'Th', hundreds: 'H', tens: 'T', ones: 'O' })[x]}</abbr></th>`).join('')}<th scope="col">Value</th></tr></thead>` +
-          `<tbody>${row(ex.from, 'is-before')}${row(aft, 'is-after')}</tbody></table><p class="slide-say">${esc(ex.note)}</p>`;
+      if (ex.kind === 'blocks') {
+        const parts = blockParts(ex.n), k = Math.min(exPart, parts.length - 1);
+        return `<div class="sr-blockdemo">${parts[k].html}<p class="slide-say sr-say">${esc(parts[k].say)}</p></div>` +
+          `<div class="demo-controls"><button type="button" class="btn btn-ghost" data-part="back"${k === 0 ? ' disabled' : ''}>◀ Back</button><span class="demo-count">Part ${k + 1} of ${parts.length}</span>` +
+          `<button type="button" class="btn btn-primary" data-part="next"${k === parts.length - 1 ? ' disabled' : ''}>Next ▶</button></div>`;
       }
       if (ex.kind === 'demo') return `<div class="sr-ws" id="sr-ex-ws"></div>`;
       if (ex.kind === 'mistake') { const w = M.buggyWork(ex.top, ex.bottom, ex.bug); return `<p class="slide-say"><b>${esc(ex.who)}'s work:</b> ${esc(problemText(ex))} = ${fmt(w.answer)}?</p><div class="sr-ws" id="sr-ex-ws"></div><p class="slide-say">${esc(ex.note)}</p>`; }
@@ -310,26 +351,95 @@
       const ck = W.checks[step.id];
       const item = Object.assign({}, step.yourTurn(M.rng(ck.seed)));
       const box = main.querySelector('#sr-try');
-      const solved = () => {
-        if (!W.done[step.id]) { W.done[step.id] = true; save('see-wizard', W); }
+      /** Completed: independently, or with help (Show me). Help never blocks moving on, and is recorded as help. */
+      const solved = (helped) => {
+        W.done[step.id] = true;
+        if (helped) W.helped[step.id] = true; else delete W.helped[step.id];
+        save('see-wizard', W);
         const nb = main.querySelector('[data-w="next"]'); if (nb) nb.disabled = false;
-        const fb = main.querySelector('[data-w="finish"]'); if (fb) { fb.classList.remove('is-disabled'); fb.removeAttribute('aria-disabled'); fb.setAttribute('href', '#see/done'); }
+        const fb = main.querySelector('[data-w="finish"]'); if (fb) { fb.classList.remove('is-disabled'); fb.removeAttribute('aria-disabled'); fb.removeAttribute('tabindex'); fb.setAttribute('href', '#see/done'); }
         const note = main.querySelector('.wiz-locked-note'); if (note) note.remove();
+        showAgain(helped);
       };
-      const again = `<button type="button" class="btn btn-ghost" data-new>New problem</button>`;
+      const showAgain = (helped) => {
+        let a = box.querySelector('.sr-again');
+        if (!a) { box.insertAdjacentHTML('beforeend', '<div class="sr-again"></div>'); a = box.querySelector('.sr-again'); }
+        a.innerHTML = (helped ? '<p class="sr-helped">Done with help. When you are ready, try a similar problem on your own (or go on).</p>' : '') +
+          `<button type="button" class="btn btn-ghost" data-new>${helped ? 'Try a similar problem' : 'New problem'}</button>`;
+        a.querySelector('[data-new]').addEventListener('click', () => { W.checks[step.id] = { seed: shell.newSeed() }; save('see-wizard', W); drawStep(W); focusH('.wiz-h'); });
+      };
       if (item.kind === 'guided') {
-        box.innerHTML = `<p class="q-prompt">Work through ${esc(problemText(item))}, one decision at a time.</p><div class="sr-ws" id="sr-yt"></div>${W.done[step.id] ? `<p>${again}</p>` : ''}`;
+        box.innerHTML = `<p class="q-prompt">Work through ${esc(problemText(item))}, one decision at a time. Use 💡 Hint or Show me if you get stuck.</p><div class="sr-ws" id="sr-yt"></div>`;
         const inst = keep(SK.mount(box.querySelector('#sr-yt'), { top: item.top, bottom: item.bottom, mode: 'guided', state: ck.state && SK.validState(ck.state, item.top, item.bottom) ? ck.state : null }));
         inst.on('change', (d) => { ck.state = d.state; save('see-wizard', W); });
-        inst.on('complete', () => { solved(); if (!box.querySelector('[data-new]')) box.insertAdjacentHTML('beforeend', `<p>${again}</p>`); bindNew(); });
-        if (ck.state && ck.state.guided && ck.state.guided.stage === 'done') solved();
+        inst.on('complete', (d) => solved(!!d.helped));
+        if (ck.state && ck.state.guided && ck.state.guided.stage === 'done') showAgain(!!W.helped[step.id]);
+      } else if (item.kind === 'exchange') {
+        const resp = validResponse(item, ck.resp) ? ck.resp : {};
+        exchangeTry(box, item, resp, { onChange: (r) => { ck.resp = r; save('see-wizard', W); }, onDone: (helped) => solved(helped) });
+        if (W.done[step.id] && resp.q === 2) showAgain(!!W.helped[step.id]);
       } else {
         const resp = validResponse(item, ck.resp) ? ck.resp : {};
-        formItem(box, item, resp, { mode: 'learn', onChange: (r) => { ck.resp = r; save('see-wizard', W); }, onCorrect: () => { solved(); bindNew(); } });
-        if (W.done[step.id] && !box.querySelector('[data-new]')) box.insertAdjacentHTML('beforeend', `<p>${again}</p>`);
+        formItem(box, item, resp, { mode: 'learn', onChange: (r) => { ck.resp = r; save('see-wizard', W); }, onCorrect: (first, helped) => solved(!!helped) });
+        if (W.done[step.id]) showAgain(!!W.helped[step.id]);
       }
-      const bindNew = () => { const nb = box.querySelector('[data-new]'); if (nb && !nb.dataset.bound) { nb.dataset.bound = '1'; nb.addEventListener('click', () => { W.checks[step.id] = { seed: shell.newSeed() }; save('see-wizard', W); drawStep(W); focusH('.wiz-h'); }); } };
-      bindNew();
+    }
+
+    /**
+     * Step 1's Your Turn, one question at a time, with the starting blocks always on screen:
+     * "How many tens are left?" then "How many ones are there now?" Each has Check Answer, Hint and Show me.
+     */
+    function exchangeTry(box, item, resp, o) {
+      const R0 = Object.assign({ q: 0 }, resp), n = item.n, t = item.tens, on = item.ones;
+      const QS = [
+        { key: 't', label: 'How many tens are left?', want: t - 1,
+          hint: `Start with the ${t} tens. 1 ten is exchanged, so take 1 away from the tens.`,
+          wrong: (v) => `${n} has ${t} tens. When 1 ten is exchanged for 10 ones, there is 1 fewer ten${v === t + 1 ? ', not 1 more' : ''}.`,
+          show: `${n} has ${t} tens. Exchange 1 ten for 10 ones: ${t} − 1 = ${t - 1} tens are left.` },
+        { key: 'o', label: 'How many ones are there now?', want: on + 10,
+          hint: `There were ${on} ones. The ten you exchanged becomes 10 ones. Add them.`,
+          wrong: (v) => `There were ${on} ones, and the exchanged ten becomes 10 ones${v === on + 1 ? ' (10 ones, not 1)' : ''}.`,
+          show: `There were ${on} ones. 1 ten = 10 ones, so now there are ${on} + 10 = ${on + 10} ones.` }
+      ];
+      const draw = (focusSel) => {
+        const q = R0.q;
+        let h = `<p class="q-prompt">Exchange 1 ten for 10 ones in <b>${n}</b>.</p>${blocks2(t, on)}`;
+        QS.forEach((Q, k) => { if (k < q) h += `<p class="sr-done-line"><span aria-hidden="true">✓ </span>${esc(Q.label)} <b>${R0[Q.key]}</b>${R0['h' + k] ? ' <span class="sr-helped-tag">(shown)</span>' : ''}</p>${R0['h' + k] ? `<p class="sr-shown">${esc(Q.show)}</p>` : ''}`; });
+        if (q < 2) {
+          const Q = QS[q];
+          h += `<div class="sr-q1"><label class="sr-q1-label" for="sr-q1in">${esc(Q.label)}</label> <input id="sr-q1in" class="ci sr-num" inputmode="numeric" maxlength="2" autocomplete="off" value="${esc(R0[Q.key] || '')}"></div>` +
+            `<div class="check-row sr-helprow"><button type="button" class="btn btn-primary" data-x="check">Check Answer</button><button type="button" class="btn btn-ghost" data-x="hint">💡 Hint</button><button type="button" class="btn btn-ghost" data-x="show">Show me</button></div>` +
+            `<div class="feedback-area" aria-live="polite"></div>`;
+        } else {
+          h += `<p class="sr-after-h">After the exchange:</p>${blocks2(t - 1, on + 10, { hiT: true, chipT: '−1', hiO: true, chipO: '+10' })}` +
+            `<div class="feedback feedback-ok"><p><span aria-hidden="true">✓ </span>Now there are ${t - 1} tens and ${on + 10} ones. ${(t - 1) * 10} + ${on + 10} = ${n}. The value is the same.</p></div>`;
+        }
+        box.innerHTML = h;
+        const inp = box.querySelector('#sr-q1in');
+        if (inp) inp.addEventListener('input', () => { inp.value = inp.value.replace(/\D/g, '').slice(0, 2); R0[QS[R0.q].key] = inp.value; o.onChange(Object.assign({}, R0)); });
+        box.querySelectorAll('[data-x]').forEach((b) => b.addEventListener('click', () => act(b.dataset.x)));
+        if (focusSel) { const f = box.querySelector(focusSel); if (f) f.focus({ preventScroll: true }); }
+      };
+      const fbArea = () => box.querySelector('.feedback-area');
+      const retryRow = '<div class="check-row sr-helprow"><button type="button" class="btn btn-ghost" data-x="retry">Try again</button><button type="button" class="btn btn-ghost" data-x="hint">Get a hint</button><button type="button" class="btn btn-ghost" data-x="show">Show me how</button></div>';
+      const next = (helpedNow) => {
+        if (helpedNow) { R0['h' + R0.q] = true; R0.helped = true; }
+        R0.q += 1; o.onChange(Object.assign({}, R0));
+        draw(R0.q < 2 ? '#sr-q1in' : '.feedback-ok');
+        if (R0.q === 2) o.onDone(!!R0.helped);
+      };
+      function act(x) {
+        const Q = QS[R0.q], area = fbArea();
+        if (x === 'retry') { area.innerHTML = ''; const i = box.querySelector('#sr-q1in'); if (i) { i.focus(); i.select(); } return; }
+        if (x === 'hint') { area.innerHTML = `<div class="feedback feedback-info"><p><span aria-hidden="true">💡 </span>${esc(Q.hint)}</p></div>`; return; }
+        if (x === 'show') { R0[Q.key] = String(Q.want); next(true); return; } // the worked line is drawn under its question (see draw)
+        const v = String(R0[Q.key] || '').trim();
+        if (!/^\d+$/.test(v)) { area.innerHTML = '<div class="feedback"><p>Type a number, then check.</p></div>'; return; }
+        if (Number(v) === Q.want) { next(false); return; }
+        area.innerHTML = `<div class="feedback feedback-no"><p><span aria-hidden="true">✗ </span>${esc(Q.wrong(Number(v)))}</p></div>` + retryRow;
+        area.querySelectorAll('[data-x]').forEach((b) => b.addEventListener('click', () => act(b.dataset.x)));
+      }
+      draw(null);
     }
 
     /**
@@ -344,12 +454,7 @@
         `<label class="choice"><input type="radio" name="${name}" value="${esc(v)}"${val === v ? ' checked' : ''}> <span>${esc(v)}</span></label>`).join('')}</div></fieldset>`;
       const uid = 'f' + Math.floor(Math.random() * 1e9);
       let h = '';
-      if (item.kind === 'exchange') {
-        h = `<p class="q-prompt">Exchange 1 ten for 10 ones in <b>${item.n}</b>.</p>` +
-          `<div class="sr-pair"><label>New tens <input class="ci sr-num" data-f="t" inputmode="numeric" maxlength="2" value="${esc(R.t || '')}" autocomplete="off"></label>` +
-          `<label>New ones <input class="ci sr-num" data-f="o" inputmode="numeric" maxlength="2" value="${esc(R.o || '')}" autocomplete="off"></label></div>` +
-          radios(uid + 'c1', `Is the value still ${item.n}?`, ['Yes', 'No'], R.c1);
-      } else if (item.kind === 'decide') {
+      if (item.kind === 'decide') {
         h = `<p class="q-prompt">Look at ${esc(problemText(item))} before you subtract.</p><div class="sr-ws" data-ws="view"></div>` +
           radios(uid + 'c1', 'Does it need regrouping?', ['Yes', 'No'], R.c1) + radios(uid + 'c2', 'Which column needs an exchange first?', item.placeChoices, R.c2);
       } else if (item.kind === 'mistake') {
@@ -363,7 +468,7 @@
         h = `<div class="sr-ws" data-ws="answer"></div>`;
       }
       const showCheck = !testing && item.kind !== 'sub';
-      box.innerHTML = h + (showCheck ? `<div class="check-row"><button type="button" class="btn btn-primary" data-check>Check Answer</button></div><div class="feedback-area" aria-live="polite"></div>` : '');
+      box.innerHTML = h + (showCheck ? `<div class="check-row sr-helprow"><button type="button" class="btn btn-primary" data-check>Check Answer</button><button type="button" class="btn btn-ghost" data-help="hint">💡 Hint</button><button type="button" class="btn btn-ghost" data-help="show">Show me</button></div><div class="feedback-area" aria-live="polite"></div><div class="sr-worked"></div>` : '');
       // Workspaces.
       const wsView = box.querySelector('[data-ws="view"]'), wsAns = box.querySelector('[data-ws="answer"]'), wsSteps = box.querySelector('[data-ws="steps"]');
       if (wsView) keep(SK.mount(wsView, item.kind === 'mistake'
@@ -384,18 +489,41 @@
       box.querySelectorAll('input[type=radio]').forEach((r) => r.addEventListener('change', () => { R[r.name.slice(-2)] = r.value; fire(); }));
       box.querySelectorAll('[data-f]').forEach((i) => i.addEventListener('input', () => { i.value = i.value.replace(/\D/g, '').slice(0, 2); R[i.dataset.f] = i.value; fire(); }));
       if (showCheck) {
-        let misses = 0;
+        let misses = 0, helped = !!R.helped;
+        const area = () => box.querySelector('.feedback-area');
+        const bindRow = () => area().querySelectorAll('[data-help]').forEach((b) => b.addEventListener('click', () => help(b.dataset.help)));
+        const retryRow = '<div class="check-row sr-helprow"><button type="button" class="btn btn-ghost" data-help="retry">Try again</button><button type="button" class="btn btn-ghost" data-help="hint">Get a hint</button><button type="button" class="btn btn-ghost" data-help="show">Show me how</button></div>';
+        function help(kind) {
+          if (kind === 'retry') { area().innerHTML = ''; const f = box.querySelector('input:not([disabled])'); if (f) f.focus(); return; }
+          if (kind === 'hint') { area().innerHTML = `<div class="feedback feedback-info"><p><span aria-hidden="true">💡 </span>${esc(hintText(item, R))}</p></div>`; if (o.onHint) o.onHint(); return; }
+          // Show me: the right answer, worked in the same vertical model, then the child may go on (recorded as help).
+          helped = true; R.helped = true;
+          if (item.kind === 'decide') { R.c1 = item.needs; R.c2 = item.first; }
+          if (item.kind === 'mistake' || item.kind === 'check') R.c1 = item.answer;
+          box.querySelectorAll('input[type=radio]').forEach((r) => { const key = r.name.slice(-2); r.checked = R[key] === r.value; });
+          const p = M.plan(item.top, item.bottom), ann = {};
+          p.exchanges.forEach((e) => { (ann[e.from] = ann[e.from] || []).push(e.after[e.from]); (ann[e.to] = ann[e.to] || []).push(e.after[e.to]); });
+          if (ansInst) { const st = ansInst.getState(); st.d = M.digitsOf(item.top - item.bottom, M.lengthOf(item.top)).map(String); while (st.d.length > 1 && st.d[st.d.length - 1] === '0') st.d.pop(); ansInst.setState(st); R[ansKey] = ansInst.getState(); }
+          fire();
+          const worked = box.querySelector('.sr-worked');
+          worked.innerHTML = `<p class="sr-shown"><b>Here is how:</b> ${esc(showText(item))}</p>` + (item.kind === 'decide' ? '' : `<div class="sr-ws" data-ws="worked"></div><ol class="sk-steps">${M.solutionLines(item.top, item.bottom).map((l) => `<li>${esc(l)}</li>`).join('')}</ol>`);
+          const wv = worked.querySelector('[data-ws="worked"]');
+          if (wv) keep(SK.mount(wv, { top: item.top, bottom: item.bottom, mode: 'view', work: { ann, d: p.columns.map((c) => String(c.digit)) }, caption: 'Worked answer' }));
+          area().innerHTML = '<div class="feedback feedback-info"><p>Shown. Read it, then go on, or try a similar problem on your own.</p></div>';
+          const h = worked.querySelector('.sr-shown'); if (h) { h.setAttribute('tabindex', '-1'); h.focus({ preventScroll: true }); h.scrollIntoView({ block: 'nearest' }); }
+          if (o.onCorrect) o.onCorrect(false, true);
+        }
+        box.querySelectorAll('.sr-helprow [data-help]').forEach((b) => b.addEventListener('click', () => help(b.dataset.help)));
         box.querySelector('[data-check]').addEventListener('click', () => {
-          const area = box.querySelector('.feedback-area');
-          if (!answered(item, R) && item.kind !== 'exchange') { area.innerHTML = `<div class="feedback"><p>Answer every part, then check.</p></div>`; return; }
-          if (item.kind === 'exchange' && (blank(R.t) || blank(R.o) || blank(R.c1))) { area.innerHTML = `<div class="feedback"><p>Answer every part, then check.</p></div>`; return; }
+          if (!answered(item, R)) { area().innerHTML = `<div class="feedback"><p>Answer every part, then check.</p></div>`; return; }
           const g = grade(item, R);
           if (g.correct) {
-            area.innerHTML = `<div class="feedback feedback-ok"><p><span aria-hidden="true">✓ </span>${esc(rightText(item))}</p></div>`;
-            if (o.onCorrect) o.onCorrect(misses === 0);
+            area().innerHTML = `<div class="feedback feedback-ok"><p><span aria-hidden="true">✓ </span>${esc(rightText(item))}</p></div>`;
+            if (o.onCorrect) o.onCorrect(misses === 0 && !helped, helped);
           } else {
             misses += 1;
-            area.innerHTML = `<div class="feedback feedback-no"><p><span aria-hidden="true">✗ </span>${esc(wrongText(item, R, g, misses))}</p></div>`;
+            area().innerHTML = `<div class="feedback feedback-no"><p><span aria-hidden="true">✗ </span>${esc(wrongText(item, R, g, misses))}</p></div>` + retryRow;
+            bindRow();
             if (o.onWrong) o.onWrong();
           }
         });
@@ -403,20 +531,37 @@
       return { get response() { return compat(item, R); } };
     }
     function rightText(item) {
-      if (item.kind === 'exchange') return `Yes: ${item.tens - 1} tens and ${item.ones + 10} ones. ${(item.tens - 1) * 10} + ${item.ones + 10} = ${item.n}, so the value stays the same.`;
       if (item.kind === 'decide') return item.needs === 'Yes' ? `Right. The ${item.first.toLowerCase()} column needs an exchange first.` : 'Right. Every top digit is enough, so no regrouping is needed.';
       if (item.kind === 'mistake') return `Right. ${problemText(item)} = ${fmt(item.top - item.bottom)}.`;
       if (item.kind === 'check') return `Right. ${fmt(item.top - item.bottom)} + ${fmt(item.bottom)} = ${fmt(item.top)}.`;
       return 'Right.';
     }
-    function wrongText(item, R, g, misses) {
-      if (item.kind === 'exchange') {
-        if (!g.parts.tens) return 'The tens gives 1 away, so it has 1 less than before.';
-        if (!g.parts.ones) return 'The ones gets 10 more than it had.';
-        return `An exchange changes how we write the number, not how much it is. The value is still ${item.n}.`;
+    /** A next-step clue that never gives the whole answer. */
+    function hintText(item, R) {
+      const p = M.plan(item.top, item.bottom), o = M.digitsOf(item.top, M.lengthOf(item.top)), b = M.digitsOf(item.bottom, M.lengthOf(item.top));
+      if (item.kind === 'decide') return `Start with the ones: the top has ${o[0]} and the bottom has ${b[0]}. Is ${o[0]} enough to take away ${b[0]}? If yes, move one column left and ask again.`;
+      if (item.kind === 'mistake') {
+        const c = p.columns.find((x) => String(x.digit) !== String(item.work.d[x.place])) || p.columns[0];
+        return `Look at the ${M.PLACES[c.place].name} column. ${item.who} wrote ${item.work.d[c.place]} there. Work that column yourself and compare.`;
       }
+      if (item.kind === 'check') return `First subtract, one column at a time from the ones. To check: answer + ${fmt(item.bottom)} should make the top number.`;
+      return 'Start with the ones column.';
+    }
+    /** The worked explanation behind Show me (the vertical model is shown beside it). */
+    function showText(item) {
+      const p = M.plan(item.top, item.bottom);
       if (item.kind === 'decide') {
-        if (R.c1 !== item.needs) return item.needs === 'Yes' ? 'Look at each column from the ones: is any top digit less than the digit under it?' : 'Every top digit is at least the digit under it, so no exchange is needed.';
+        const lines = p.columns.map((c) => `${M.PLACES[c.place].name}: ${c.before[c.place]} ${c.needs ? 'is less than' : 'is enough for'} ${c.bottomDigit}${c.needs ? ' → exchange' : ''}.`);
+        return `${item.needs === 'Yes' ? `Yes. The ${item.first.toLowerCase()} column needs an exchange first.` : 'No regrouping is needed.'} ${lines.join(' ')}`;
+      }
+      if (item.kind === 'mistake') return `${item.who}'s mistake: ${item.answer} The right answer is ${fmt(item.top - item.bottom)}, worked below.`;
+      if (item.kind === 'check') return `${problemText(item)} = ${fmt(item.top - item.bottom)}. Check: ${fmt(item.top - item.bottom)} + ${fmt(item.bottom)} = ${fmt(item.top)}, the top number.`;
+      return '';
+    }
+    function wrongText(item, R, g, misses) {
+      if (item.kind === 'decide') {
+        if (R.c1 !== item.needs) { const o = M.digitsOf(item.top, M.lengthOf(item.top)), b = M.digitsOf(item.bottom, M.lengthOf(item.top)); const c = M.plan(item.top, item.bottom).columns.find((x) => x.needs);
+          return c ? `Look at the ${M.PLACES[c.place].name}: ${c.before[c.place]} is less than ${c.bottomDigit}, so that column needs an exchange.` : `Every top digit is at least the digit under it (ones: ${o[0]} and ${b[0]}), so no exchange is needed.`; }
         return misses > 1 ? `Start at the ones and move left. The first column whose top amount is less than its bottom digit is the ${item.first.toLowerCase()}.` : 'Start at the ones and move left. Which column is the first one that is too small?';
       }
       if (item.kind === 'mistake') {
@@ -471,7 +616,7 @@
       const st = T.states[i];
       const inst = keep(SK.mount(main.querySelector('#sr-tg'), { top: q.top, bottom: q.bottom, mode: 'guided', state: st && SK.validState(st, q.top, q.bottom) ? st : null }));
       inst.on('change', (d) => { T.states[i] = d.state; save('guided', T); });
-      inst.on('complete', () => { T.done[i] = true; save('guided', T); });
+      inst.on('complete', (d) => { T.done[i] = true; if (!T.helped) T.helped = {}; if (d.helped) T.helped[i] = true; else delete T.helped[i]; save('guided', T); });
       main.querySelectorAll('[data-t]').forEach((b) => b.addEventListener('click', () => {
         const a = b.dataset.t;
         if (a === 'prev') T.pos = Math.max(0, i - 1); else if (a === 'next') T.pos = Math.min(set.length - 1, i + 1);
@@ -571,19 +716,21 @@
       const box = main.querySelector('#sr-q');
       const resp = validResponse(item, run.responses[item.id]) ? run.responses[item.id] : {};
       const record = (r) => { run.responses[item.id] = r; run.answered = items.filter((q) => answered(q, run.responses[q.id])).map((q) => q.id); save(G.key, G.all); };
-      const result = (ok) => {
+      const result = (ok, helped) => {
         const rr = run.results[item.id] = run.results[item.id] || { correct: false, tries: 0, hints: 0 };
-        rr.tries += 1; if (ok && !rr.correct) { rr.correct = true; rr.firstTry = rr.tries === 1; }
+        if (helped) rr.helped = true;
+        rr.tries += 1; if (ok && !rr.correct) { rr.correct = true; rr.firstTry = rr.tries === 1 && !rr.helped; }
         save(G.key, G.all);
       };
       if (item.kind === 'sub') {
         box.innerHTML = `<p class="q-prompt">Subtract. Regroup marks above the columns are up to you.</p><div class="sr-ws" id="sr-ws"></div>`;
         const inst = keep(SK.mount(box.querySelector('#sr-ws'), { top: item.top, bottom: item.bottom, mode: 'independent', state: resp.ws || null }));
         inst.on('change', (d) => record(compat(item, { ws: d.state })));
-        inst.on('answer', (d) => { if (d.status === 'correct' || d.status === 'wrong') result(d.correct); });
+        inst.on('answer', (d) => { if (d.status === 'correct' || d.status === 'wrong') result(d.correct, !!d.helped); });
+        inst.on('hint', (d) => { if (d.shown) { const rr = run.results[item.id] = run.results[item.id] || { correct: false, tries: 0, hints: 0 }; rr.helped = true; save(G.key, G.all); } });
         inst.on('hint', () => { const rr = run.results[item.id] = run.results[item.id] || { correct: false, tries: 0, hints: 0 }; rr.hints += 1; save(G.key, G.all); });
       } else {
-        formItem(box, item, resp, { mode: 'practice', onChange: record, onCorrect: () => result(true), onWrong: () => result(false) });
+        formItem(box, item, resp, { mode: 'practice', onChange: record, onCorrect: (first, helped) => result(!helped, !!helped), onWrong: () => result(false), onHint: () => { const rr = run.results[item.id] = run.results[item.id] || { correct: false, tries: 0, hints: 0 }; rr.hints += 1; save(G.key, G.all); } });
       }
       main.querySelectorAll('[data-r]').forEach((b) => b.addEventListener('click', () => {
         const a = b.dataset.r;
@@ -594,14 +741,15 @@
       }));
     }
     function runSummary(spec, G, run, items, title) {
-      const ok = items.filter((q) => run.results[q.id] && run.results[q.id].correct).length;
+      const ok = items.filter((q) => run.results[q.id] && run.results[q.id].correct && !run.results[q.id].helped).length;
+      const withHelp = items.filter((q) => run.results[q.id] && run.results[q.id].helped).length;
       const first = items.filter((q) => run.results[q.id] && run.results[q.id].firstTry).length;
       const hints = items.reduce((s, q) => s + ((run.results[q.id] && run.results[q.id].hints) || 0), 0);
-      if (!run.recorded) { G.rec.attempts.push({ v: V, at: new Date().toISOString(), total: items.length, correct: ok, firstTry: first, hints, setup: run.setup || null }); G.rec.attempts = G.rec.attempts.slice(-20); run.recorded = true; save(G.key, G.all); }
+      if (!run.recorded) { G.rec.attempts.push({ v: V, at: new Date().toISOString(), total: items.length, correct: ok, firstTry: first, hints, helped: withHelp, setup: run.setup || null }); G.rec.attempts = G.rec.attempts.slice(-20); run.recorded = true; save(G.key, G.all); }
       main.innerHTML = `<section class="hero act-hero"><p class="eyebrow">${eyebrow('Practice')}</p><h1 tabindex="-1">${esc(title)}: done!</h1></section>` +
-        `<section class="card done-card"><p class="done-title">${ok} of ${items.length} solved · ${first} on the first try · ${hints} hint${hints === 1 ? '' : 's'} used</p>` +
+        `<section class="card done-card"><p class="done-title">${ok} of ${items.length} solved on your own · ${first} on the first try${withHelp ? ` · ${withHelp} with help` : ''} · ${hints} hint${hints === 1 ? '' : 's'} used</p>` +
         `<p class="muted">Practice is for learning; it is not a test score.</p>` +
-        `<ul class="sr-list">${items.map((q, k) => `<li>${k + 1}. ${esc(itemLabel(q))} ${run.results[q.id] && run.results[q.id].correct ? '<span class="badge-done">✓</span>' : '<span class="muted">not finished</span>'}</li>`).join('')}</ul>` +
+        `<ul class="sr-list">${items.map((q, k) => `<li>${k + 1}. ${esc(itemLabel(q))} ${run.results[q.id] && run.results[q.id].helped ? '<span class="muted">done with help</span>' : run.results[q.id] && run.results[q.id].correct ? '<span class="badge-done">✓ on your own</span>' : '<span class="muted">not finished</span>'}</li>`).join('')}</ul>` +
         `<div class="actions"><button type="button" class="btn btn-primary btn-big" data-again>Practice again</button>` +
         (spec.kind === 'setup' ? `<a class="btn btn-ghost btn-big" href="#practice/setup">Change setup</a>` : `<a class="btn btn-ghost btn-big" href="#practice/skills">Other skills</a>`) + `</div></section>` + menuNav('#practice', 'Practice choices');
       main.querySelector('[data-again]').addEventListener('click', () => {
@@ -689,12 +837,13 @@
     }
 
     // ===== Results =====
+    const helpN = (o) => Object.keys(o || {}).length;
     function resultsView() {
       activity(false);
       const all = attempts(), last = all[all.length - 1];
       const W = wizard(), T = together(), S = sessions(), SKS = skillStore();
       const guidedNote = `<section class="card">${head('', 'Learning and practice (not part of the test score)', 'student')}<ul class="rules">` +
-        `<li>Learn: ${Object.keys(W.done).length} of ${STEP_IDS.length} steps done.</li><li>Practice Together: ${Object.keys(T.done).length} of ${C.together.length} problems done.</li>` +
+        `<li>Learn: ${Object.keys(W.done).length} of ${STEP_IDS.length} steps done${helpN(W.helped) ? ` (${helpN(W.helped)} with help)` : ''}.</li><li>Practice Together: ${Object.keys(T.done).length} of ${C.together.length} problems done${helpN(T.helped) ? ` (${helpN(T.helped)} with help)` : ''}.</li>` +
         `<li>Practice on My Own: ${S.setup.attempts.length} session${S.setup.attempts.length === 1 ? '' : 's'} finished.</li>` +
         `<li>Practice One Skill: ${C.skills.filter((s) => SKS['skill-' + s.id] && SKS['skill-' + s.id].attempts.length).length} of ${C.skills.length} skills practiced.</li></ul></section>`;
       if (!last) {
@@ -710,11 +859,18 @@
         `<table class="sr-table"><caption>Each kind of question, scored separately</caption><tbody>${part('final')}${part('steps')}${part('decide')}${part('mistake')}</tbody></table>` +
         `<p class="muted">Final answers are graded on their own. Regroup marks never count against a right answer.</p></section>` +
         (missed.length ? `<section class="card">${head('', 'Questions to look at again', 'student')}<ul class="sr-list">${missed.map((x) =>
-          `<li><b>Question ${Number(x.id.slice(1))}</b> · ${esc(SKILL[x.skill].title)} · ${esc(fmt(x.top))} − ${esc(fmt(x.bottom))}${x.kind === 'sub' || x.kind === 'mistake' ? ` = ${fmt(x.top - x.bottom)}` : ''} <span class="muted">(your answer: ${esc(x.response)})</span> <a class="btn btn-small" href="#practice/skill-${esc(x.skill)}">Practice this skill</a></li>`).join('')}</ul>` +
+          `<li><b>Question ${Number(x.id.slice(1))}</b> · ${esc(SKILL[x.skill].title)} · ${esc(fmt(x.top))} − ${esc(fmt(x.bottom))}${x.kind === 'sub' || x.kind === 'mistake' ? ` = ${fmt(x.top - x.bottom)}` : ''} <span class="muted">(your answer: ${esc(x.response)})</span> <a class="btn btn-small" href="#practice/skill-${esc(x.skill)}">Practice this skill</a>${x.kind === 'decide' ? '' : `<details class="sr-review" data-top="${x.top}" data-bottom="${x.bottom}"><summary>See the worked answer</summary><div class="sr-ws"></div></details>`}</li>`).join('')}</ul>` +
           `<p class="muted">These links come from the kind of question, not from a guess about the mistake.</p></section>` : '') +
         guidedNote +
         (all.length > 1 ? `<details class="card"><summary>Earlier attempts (${all.length - 1})</summary><ul class="sr-list">${all.slice(0, -1).reverse().map((a) => `<li>${esc(shell.formatDate(a.at))}: ${a.score} of ${a.total} (${a.pct}%)</li>`).join('')}</ul></details>` : '') +
         `<div class="actions"><a class="btn btn-primary btn-big" href="#test">Take a new test</a></div>` + menuNav();
+      main.querySelectorAll('.sr-review').forEach((d) => d.addEventListener('toggle', () => {
+        const box = d.querySelector('.sr-ws'); if (!d.open || box.dataset.done) return; box.dataset.done = '1';
+        const top = Number(d.dataset.top), bottom = Number(d.dataset.bottom), p = M.plan(top, bottom), ann = {};
+        p.exchanges.forEach((e) => { (ann[e.from] = ann[e.from] || []).push(e.after[e.from]); (ann[e.to] = ann[e.to] || []).push(e.after[e.to]); });
+        keep(SK.mount(box, { top, bottom, mode: 'view', work: { ann, d: p.columns.map((c) => String(c.digit)) }, caption: 'Worked answer' }));
+        box.insertAdjacentHTML('beforeend', `<ol class="sk-steps">${M.solutionLines(top, bottom).map((l) => `<li>${esc(l)}</li>`).join('')}</ol>`);
+      }));
     }
 
     ctx.render();

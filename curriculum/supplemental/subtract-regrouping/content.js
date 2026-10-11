@@ -64,12 +64,9 @@
   const learn = [
     {
       id: 'value', title: 'Regrouping keeps the value', topics: [1],
-      explain: 'Regrouping changes how we represent the number. Its value stays the same.',
-      examples: [
-        { kind: 'value', from: [2, 5], note: 'Exchange 1 ten for 10 ones. 52 = 5 tens and 2 ones = 4 tens and 12 ones. 50 + 2 = 52 and 40 + 12 = 52: the value stays the same.' },
-        { kind: 'value', from: [2, 0, 0, 3], note: 'Exchange 1 thousand for 10 hundreds. 3,002 = 3 thousands, 0 hundreds, 0 tens, 2 ones = 2 thousands, 10 hundreds, 0 tens, 2 ones. 2,000 + 1,000 + 2 = 3,002.' },
-        { kind: 'value', from: [6, 3, 4], note: 'Exchange 1 hundred for 10 tens. 436 = 4 hundreds, 3 tens, 6 ones = 3 hundreds, 13 tens, 6 ones. 300 + 130 + 6 = 436.' }
-      ],
+      explain: 'Regrouping changes how a number is shown. Its value stays the same.',
+      // Start small: one two-digit number, one exchange, one action at a time (larger numbers and zeros come later).
+      examples: [{ kind: 'blocks', n: 49 }, { kind: 'blocks', n: 72 }],
       yourTurn: (r) => { const t = 2 + Math.floor(r() * 8), o = Math.floor(r() * 10); return { kind: 'exchange', n: t * 10 + o, tens: t, ones: o }; }
     },
     {
