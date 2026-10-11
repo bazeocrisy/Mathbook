@@ -33,7 +33,7 @@
     return J.length > 1 ? `${steps}. Add the jumps: ${J.map(([x, y]) => fmt(y - x)).join(' + ')} = ${fmt(w - p)}.` : `${steps}.`;
   }
   /** Number-line hops for counting up (open line). */
-  const hopsFig = (p, w) => fig({ fig: 'nline', open: true, marks: [p].concat(jumps(p, w).map((j) => j[1])), hops: jumps(p, w).map(([x, y]) => ({ from: x, to: y, text: `+${fmt(y - x)}` })) });
+  const hopsFig = (p, w) => fig({ fig: 'nline', open: true, minGap: 24, marks: [p].concat(jumps(p, w).map((j) => j[1])), hops: jumps(p, w).map(([x, y]) => ({ from: x, to: y, text: `+${fmt(y - x)}` })) });
   const sub = (w, p) => `${fmt(w)} − ${fmt(p)}`;
 
   /** True when an answer the child must work out is printed in the question's own text (diagram boxes come from the story). */
@@ -57,7 +57,7 @@
     const eq = o.left ? `___ = ${sub(w, p)}` : `${sub(w, p)} = ___`;
     return {
       id: o.id, type: 'parts', skill: o.skill || 'solve',
-      prompt: o.prompt || `${eq}. Use addition: ${fmt(p)} + ? = ${fmt(w)}.`,
+      prompt: o.prompt || (o.noEq ? `${eq}. Use addition to find it.` : `${eq}. Use addition: ${fmt(p)} + ? = ${fmt(w)}.`),
       parts: [{ kind: 'num', label: o.label || (o.money ? 'Amount left: $' : 'The blank is'), answer: w - p }],
       hint: o.hint || `Count up from ${fmt(p)} to the next ten, then to the next hundred if you can, then to ${fmt(w)}. Add your jumps.`,
       explanation: `${fmt(p)} + ? = ${fmt(w)}. Count up: ${countUp(p, w)} Check: ${fmt(p)} + ${fmt(w - p)} = ${fmt(w)}, so ${sub(w, p)} = ${fmt(w - p)}.`
@@ -285,12 +285,12 @@
   const guided = [
     relatedQ({ id: 'p1', w: 584, p: 342, num: true, seed: 1, prompt: 'Lena wants to use addition to solve 584 − 342 = ?.', label: 'Which addition equation can she use?', hint: 'Start with the part you know.' }),
     frameQ({ id: 'p2', w: 728, p: 315, hint: 'The whole goes after the = sign.' }),
-    solveQ({ id: 'p3', w: 500, p: 263, hint: 'Count up from 263 to 270, to 300, to 500.' }),
-    solveQ({ id: 'p4', w: 600, p: 348, left: true, hint: 'The blank is on the left. It still means 600 − 348.' }),
+    solveQ({ id: 'p3', w: 500, p: 263, hint: 'Count up from 263 to 270, to 300, to 500. Then add your jumps.' }),
+    solveQ({ id: 'p4', w: 600, p: 348, left: true, hint: 'The blank is on the left. It still means 600 − 348. Count up from 348 and add your jumps.' }),
     errorQ({ id: 'p5', who: 'Omar', pron: 'him', p: 214, w: 563, seed: 5 }),
     compareQ({ id: 'p6', S: 386, L: 712, eq: true, seed: 6, story: 'The library has 386 picture books and 712 chapter books. How many more chapter books?', ask: 'More chapter books:', hint: 'The bigger number is the long bar.' }),
-    solveQ({ id: 'p7', w: 600, p: 358, skill: 'apply', prompt: 'Mia needs 600 beads for a necklace. She has strung 358. How many more beads does she need?', label: 'More beads:', hint: '358 + ? = 600.' }),
-    solveQ({ id: 'p8', w: 800, p: 517, skill: 'apply', money: true, prompt: 'A club has $800 to buy a tent and a stove. The tent costs $517. How much is left for the stove?', hint: '517 + ? = 800.' }),
+    solveQ({ id: 'p7', w: 600, p: 358, skill: 'apply', prompt: 'Mia needs 600 beads for a necklace. She has strung 358. How many more beads does she need?', label: 'More beads:', hint: '358 + ? = 600. Count up and add your jumps.' }),
+    solveQ({ id: 'p8', w: 800, p: 517, skill: 'apply', money: true, prompt: 'A club has $800 to buy a tent and a stove. The tent costs $517. How much is left for the stove?', hint: '517 + ? = 800. Count up and add your jumps.' }),
     unknownQ({ id: 'p9', w: 652, rest: 418, seed: 9, hint: '652 is the whole.' }),
     { id: 'p10', type: 'explain', skill: 'reason', prompt: 'How are addition and subtraction related? Use 300, 120 and 180.',
       parent: 'Parent marks. Accept any true pair of related facts.',
@@ -306,14 +306,19 @@
     frameQ({ id: 'o3', w: 936, p: 255 }),
     errorQ({ id: 'o4', who: 'Nia', pron: 'her', p: 205, w: 638, seed: 14 }),
     compareQ({ id: 'o5', S: 468, L: 735, eq: true, seed: 15, story: '468 people rode the ferry on Saturday. 735 rode on Sunday. How many more rode on Sunday?', ask: 'More on Sunday:' }),
-    solveQ({ id: 'o6', w: 570, p: 326 }),
-    solveQ({ id: 'o7', w: 700, p: 285, left: true }),
-    solveQ({ id: 'o8', w: 803, p: 457 }),
-    solveQ({ id: 'o9', w: 231, p: 164 }),
+    solveQ({ id: 'o6', w: 570, p: 326, noEq: true }),
+    solveQ({ id: 'o7', w: 700, p: 285, left: true, noEq: true }),
+    solveQ({ id: 'o8', w: 803, p: 457, noEq: true }),
+    solveQ({ id: 'o9', w: 231, p: 164, noEq: true }),
     // O10 also practises filling in the part-whole diagram (the test's "diagram" skill, T5).
     diagramQ({ id: 'o10', W: 400, P: 186, story: 'Kids must plant 400 tulip bulbs. They planted 186. How many are left to plant?', ask: 'Bulbs left to plant:' }),
     solveQ({ id: 'o11', w: 900, p: 638, skill: 'apply', money: true, prompt: 'A science club can spend $900 on a telescope and a camera. The telescope costs $638. How much is left for the camera?' }),
-    unknownQ({ id: 'o12', w: 563, rest: 327, seed: 18 })
+    unknownQ({ id: 'o12', w: 563, rest: 327, seed: 18 }),
+    // O13 practises the test's "which must also be true" format (T12), with new numbers (review L29-02).
+    { id: 'o13', type: 'parts', skill: 'related', prompt: '418 + 265 = 683. Which must also be true? Choose all.',
+      parts: [{ kind: 'multi', label: 'Which must also be true?', answer: ['683 − 418 = 265', '683 − 265 = 418'], choices: ['683 − 265 = 418', '418 − 683 = 265', '683 − 418 = 265', '265 + 683 = 418'] }],
+      hint: 'The whole is 683. Subtract a part from the whole to get the other part.',
+      explanation: '418 + 265 = 683 uses the same three numbers as 683 − 418 = 265 and 683 − 265 = 418. The whole, 683, is the number you subtract from.' }
   ];
 
   const testItems = [
@@ -322,10 +327,10 @@
     errorQ({ id: 't3', who: 'Ben', pron: 'him', p: 312, w: 586 }),
     compareQ({ id: 't4', S: 297, L: 524, eq: true, story: 'Ava read 297 pages in March and 524 in April. How many more pages in April?', ask: 'More pages in April:' }),
     diagramQ({ id: 't5', W: 900, P: 438, story: 'A train trip is 900 miles. The train has gone 438 miles. How many miles are left?', ask: 'Miles left:' }),
-    solveQ({ id: 't6', w: 680, p: 435 }),
-    solveQ({ id: 't7', w: 800, p: 364, left: true }),
-    solveQ({ id: 't8', w: 604, p: 278 }),
-    solveQ({ id: 't9', w: 322, p: 157 }),
+    solveQ({ id: 't6', w: 680, p: 435, noEq: true }),
+    solveQ({ id: 't7', w: 800, p: 364, left: true, noEq: true }),
+    solveQ({ id: 't8', w: 604, p: 278, noEq: true }),
+    solveQ({ id: 't9', w: 322, p: 157, noEq: true }),
     solveQ({ id: 't10', w: 600, p: 455, skill: 'apply', money: true, prompt: 'You have $600 for a bike and a helmet. The bike costs $455. How much is left for the helmet?' }),
     unknownQ({ id: 't11', w: 712, rest: 485 }),
     { id: 't12', type: 'parts', skill: 'related', prompt: '356 + 287 = 643. Which must also be true? Choose all.',
@@ -416,7 +421,7 @@
     saveGuided: true,
     bank,
     skillPractice: true,
-    bankSets: [{ id: 's1', title: 'Use Addition to Subtract', blurb: 'All 12 practice questions: related equations, bar diagrams, counting up, mistakes, and word problems.', ids: bank.map((q) => q.id) }],
+    bankSets: [{ id: 's1', title: 'Use Addition to Subtract', blurb: 'All 13 practice questions: related equations, bar diagrams, counting up, mistakes, and word problems.', ids: bank.map((q) => q.id) }],
     tests: {
       related: { id: 'related', title: 'Use Addition to Subtract Test', questions: 12, blurb: 'Bar diagrams, related equations, counting up, and word problems.', generate: relatedTest }
     },

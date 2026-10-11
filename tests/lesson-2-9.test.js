@@ -26,7 +26,7 @@ const GUIDED = {
 };
 const PRACTICE = {
   o1: ['frame', 413, 847, 434], o2: ['162 + ? = 300'], o3: ['frame', 255, 936, 681], o4: [HELP(205, 638), 433],
-  o5: [735, 468, '468 + ? = 735', 267], o6: [244], o7: [415], o8: [346], o9: [67], o10: [400, 186, 214], o11: [262], o12: ['327 + ? = 563', 236]
+  o5: [735, 468, '468 + ? = 735', 267], o6: [244], o7: [415], o8: [346], o9: [67], o10: [400, 186, 214], o11: [262], o12: ['327 + ? = 563', 236], o13: [['683 − 265 = 418', '683 − 418 = 265']]
 };
 const TEST = {
   t1: [['frame', 425, 769, 344], 'related'], t2: [['173 + ? = 500'], 'related'], t3: [[HELP(312, 586), 274], 'error'],
@@ -111,4 +111,18 @@ test('no question prints an answer the child must work out; Learn generators fol
   }
   let regroup = 0; for (let seed = 1; seed <= 400; seed++) { const q = L.seeIt.steps[2].check(pv.rng(seed)); const [p, w] = q.parts[0].label.match(/(\d+) \+ \? = (\d+)/).slice(1).map(Number); if (p % 10 > w % 10) regroup++; }
   assert.ok(regroup >= 200 * 0.8, `regrouping case often (${regroup}/400)`);
+});
+
+test('review fixes L29-01…04', () => {
+  // L29-01: counting-up marks have room for 3-digit labels.
+  const html = L.seeIt.steps[2].slides[1];
+  const left = Array.from(html.matchAll(/nline-label" style="left:([\d.]+)%/g)).map((m) => Number(m[1]));
+  for (let i = 1; i < left.length; i++) assert.ok(left[i] - left[i - 1] >= 20, html.slice(0, 80));
+  // L29-02: the T12 format is practised.
+  assert.ok(L.bank.some((q) => q.parts && q.parts[0].kind === 'multi' && /Which must also be true/.test(q.prompt)));
+  // L29-03: guided counting hints say to add the jumps.
+  for (const id of ['p3', 'p4', 'p7', 'p8']) assert.match(L.guided.find((q) => q.id === id).hint, /add your jumps/i, id);
+  // L29-04: On My Own and the test don't print the addition equation for "find the difference".
+  for (const q of L.bank.concat(L._testItems).filter((x) => x.skill === 'solve')) assert.ok(!/\+ \? =/.test(q.prompt), q.id);
+  assert.ok(left.length >= 3, 'the counting-up line has its marks');
 });

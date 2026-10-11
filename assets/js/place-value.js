@@ -336,7 +336,8 @@
       // Proportional positions inside 4%–96%, stretched so neighbouring marks are at least 12% apart (the line is a sketch).
       const span = marks[marks.length - 1] - marks[0] || 1;
       const raw = marks.slice(1).map((m, i) => ((m - marks[i]) / span) * 92);
-      const minGap = Math.min(12, 92 / raw.length);
+      // cfg.minGap (percent, optional): wider spacing for 3-digit labels on a phone (2-9 counting up); 12 by default.
+      const minGap = Math.min(cfg.minGap || 12, 92 / raw.length);
       // Short gaps are stretched to exactly the minimum; the rest share what is left in proportion.
       const fixed = raw.map((g) => g < minGap);
       let gaps = raw;
