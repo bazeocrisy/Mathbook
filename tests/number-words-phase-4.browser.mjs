@@ -166,7 +166,7 @@ try {
   for (const [name, val] of Object.entries(bad)) {
     await b.load(server.origin + BASE); await js(`localStorage.setItem('${KEY}:skill-practice', ${JSON.stringify(val)});`); await b.reload(); await wait(150);
     await b.load(URL + '#practice/s1'); await b.reload(); await wait(200);
-    const fullOk = await js(`return /Set 1: Number Words Practice/.test(document.querySelector('h1').textContent) && (/Question \d+ of 12/.test((document.querySelector('.q-count') || {}).textContent || '') || /of 15 correct/.test((document.querySelector('.set-score') || {}).textContent || ''))`);
+    const fullOk = await js(`return /Set 1: Number Words Practice/.test(document.querySelector('h1').textContent) && (/Question \d+ of 12/.test((document.querySelector('.q-count') || {}).textContent || '') || /of 12 correct/.test((document.querySelector('.set-score') || {}).textContent || ''))`);
     await b.load(URL + '#practice/skill-towords'); await b.reload(); await wait(200);
     const r = await js(`${H} if (!one()) return { text: text().slice(0, 300), store: localStorage.getItem('${KEY}:skill-practice') }; const c0 = count(); fill(one(), bq(curId()), true); document.querySelector('[data-q="next"]').click(); return { c0, c1: count() };`);
     await b.reload(); await wait(200);
