@@ -359,3 +359,143 @@ Practice and the test accept a blank instead.
 | SR-M10 | Minor | Component API | `buggyWork('misaligned')` with bottom 0 returns the right answer (unreachable in the app) |
 
 Phase 2 (browser checks: persistence, reset, two instances, restore, destroy, test isolation) is pending the coordinator's go-ahead.
+
+## Phase 2 (browser) and re-check (build 7bd015f)
+
+**Scope:** fixes in `1df0bc5` (SR-M01…M10), plus the design rewrite of `sub-workspace.js` (98748ae, f41cdc2).
+
+**How I tested:**
+- One headless browser at a time, in the foreground; no Chrome left running afterwards.
+- Real CDP mouse clicks (`Input.dispatchMouseEvent`) and typing (`Input.insertText` plus Tab) wherever input behaviour matters: guided decisions and exchanges, regroup marks, answer digits, hints, Check, setup, test navigation and Reset.
+- Bulk test answers were filled by script, with values from my own oracle.
+- No app, content or test file was edited.
+
+**Scripts** (scratchpad, not committed):
+- `oracle.js`, `extra.js`, `tips2.js`, `persist.js` (Node);
+- `p2a.mjs` and `p2b.mjs` (the section);
+- `p2c.mjs` (`dev/subtract-demo/`).
+
+**Results:**
+- The builder's unit tests: 19/19.
+- My Node oracle again shows no math mismatches on 858,783 pairs. The one remaining flag was my own test's fault: an error-analysis item whose right answer is 9, so typing 9 as a deliberately wrong answer was actually right.
+- All three browser scripts ran with no page errors.
+
+### Re-check of SR-M01 … SR-M10
+
+| ID | Result | Evidence |
+|---|---|---|
+| SR-M01 | **Pass** | See below |
+| SR-M02 | **Pass** | See below |
+| SR-M03 | **Pass** | See below |
+| SR-M04 | **Pass** | See below |
+| SR-M05 | **Pass** | See below |
+| SR-M06 | **Pass** | See below |
+| SR-M07 | **Pass** | See below |
+| SR-M08 | **Pass** | See below |
+| SR-M09 | **Pass** | See below |
+| SR-M10 | **Pass** | See below |
+
+**SR-M01: one bad value no longer wipes a record.** The new sanitizers clean records entry by entry. I injected good and bad entries into every key, then triggered real saves:
+- **attempts:** 4 attempts, one with `pct: "eighty"` and one with bad items. My Results shows "Earlier attempts (2)" plus the latest. After a real finished test, the saved history is 1, 2, 4 (the bad items removed) + the new 15/15. Only attempt 3 was dropped.
+- **skill-practice:** skill-one and skill-multi histories survive; only the `'broken'` active run, the bad attempt and the unknown `skill-nope` are dropped.
+- **see-wizard:** the 4 good completed steps and `checks.four` (seed 12) are kept; `bogus`, `phase: 'oops'`, `ex: 99` and `seed: −4` are dropped.
+- **bank-sets:** after an unusable active run (2-digit Hard, pos 99) and a `"junk"` entry, starting a new session keeps the 1 good finished-session record.
+- **guided:** `done[0]` is kept; `pos: 42`, `seed: 'x'`, `done[1]: 'yes'` and `states[9]` are dropped.
+- **draft-test:** the good response is kept and counted in `answered`; the string response `t2` is dropped.
+
+**SR-M02: damaged values no longer stop screens from working.** With those saves plus `ws.d` as a string and attempt items that are `null` or `{ id: 'zz', skill: 'nope' }`, every screen rendered with no page error: all 13 section routes (menu, Parent Guide, Learn, Practice choices, Together, setup, run, skills, skill-one, skill-zero1, Test, test run, Results), Home and the Math Lessons list. In Node, `cleanResults` keeps out non-object result entries, so the old `rr.tries += 1` crash can no longer happen.
+
+**SR-M03: Home's count now matches the section's.** The draft and runs carry an `answered` list.
+- Home reads "Subtract with Regrouping · Regrouping Test: 1 of 15 answered", linking to the test.
+- The section's own button says "Continue the test (1 of 15 answered)".
+- After a half-typed second answer (a tens digit only), Home still says 1 of 15.
+
+**SR-M04: hints now restart for each column.** With real clicks:
+- **In the section** (4-digit Medium practice): Hint 1 and Hint 2 on the ones; then the ones digit is typed; the next hint is "Hint 1 of 4: Look at the tens column…".
+- **In the component on its own** (4,532 − 1,768): the same restart, and then "Hint 4 of 4: Tens: 12 − 6 = 6", which is only that column's digit.
+- The full solution is still a separate button, and no hint text contained 2,764.
+- The hint state survives a refresh.
+
+**SR-M05: "added 10 without reducing" is now named across a 0.** For 3,002 − 1,578 with ones 12 only, `evaluateWork` and `diagnose` now return `no-reduce` at the ones. The normal case (4,532) is unchanged.
+
+**SR-M06: valid alternatives get a neutral marker.** In Practice Together (724 − 386), choosing the hundreds as the supplier gives `sk-info-note` "↺ That could work too…". A real mistake (ones 13 instead of 14) still gets "✗".
+
+**SR-M07: guided mode no longer asks for leading zeros.** With real input:
+- **In the section:** a Learn step 6 Your Turn whose answer is shorter than the top number (1,000 − 958) finishes after the tens; nothing is typed in the hundreds or thousands; Next Step unlocks; the step is saved and survives a refresh.
+- **In the component:** 1,000 − 857 finishes after the hundreds (thousands box empty).
+
+**SR-M08: Practice Together tips now fit the problem.** After "New problems", tips come from `C.tipFor`. On 8,000 regenerated problems (1,000 sets), every tip matched my own reading of the problem: which column, the zeros named, whether there is more than one exchange. Examples:
+- 515 − 174 → "is the top digit in the tens enough…"
+- 7,020 − 4,781 → "the hundreds has 0…"
+
+**SR-M09: error-analysis items now vary in difficulty.** Over 500 attempts, t13 is easy 247 times and medium 253 times, across smaller-from-larger, no-reduce and original-digit.
+
+**SR-M10: the misaligned guard is in place.** My simulation and `buggyWork` now agree on all 40,000 problems for every mistake; bottom 0 gives `null`.
+
+**Also re-confirmed in Node:** the spec examples, exchanges, plan and classify on 858,783 pairs, sessions, grading, hints (level 1 never contains the answer), the test blueprint (15 items, 11 four-digit, every required kind and zero case, no ambiguous error-analysis items), and generators.
+
+**The Mixed-session note is resolved.** A ten-question Mixed session now always contains an equal pair (zero answer): 40 of 40 sessions for every size.
+
+### Browser checks
+
+**Guided work, end to end, with real input:**
+- 7,405 − 3,168 = 4,237, 6,003 − 2,847 = 3,156 and 800 − 356 = 444 each finish correctly and are saved as done.
+- On 6,003 − 2,847, every exchange through each zero is confirmed. The saved history is thousands 6→5, hundreds 0→10→9, tens 0→10→9, ones 3→13, matching my stage list.
+- Leaving the hundreds at 10 when passing on to the tens is refused with the "gives 1 away" clue. Only the correct value is recorded (the design change "check-ex records only correct values" works).
+- 1,000 − 857 in the component confirms each of the three exchanges ("…The value is still the same.").
+
+**Refresh and navigation keep the work:**
+- **Learn:** a finished Your Turn and Next Step survive a refresh.
+- **Practice Together:** a refresh mid-chain restores the stage (exchange 2 of 3) and the first exchange's marks, and the problem can be finished from there.
+- **Practice on My Own:** the typed digit, a typed mark (99) and the hint level survive both a refresh and Menu → back.
+- **Practice One Skill:** saved under `skill-practice` only. A right answer there leaves the full-set run's responses and results empty.
+- **Test:** marks and digits survive Next → Previous.
+
+**Test integrity:**
+- On a test question I typed a nonsense mark (77) and the right answer. The test shows:
+  - no Hint, Check or Show-solution controls;
+  - no feedback text;
+  - no `is-ok`/`is-no` classes and no ✓/✗/↺ notes;
+  - nothing about correctness in the live regions.
+  - Undo is available, so marks are allowed.
+- **Grading:** answering 13 right and 2 wrong gives 13 of 15. The question with the nonsense mark is graded correct; marks don't count against a right final answer. The final-answer score (`parts.final`) is 2 below its total, and My Results shows "Final answers" and "Regrouping steps" on separate rows.
+- **Results:**
+  - the missed-question list names no mistake type;
+  - it says "These links come from the kind of question, not from a guess about the mistake";
+  - the error-analysis entry shows the child's answer and "(reason chosen)", without judging the reason.
+
+**Reset:**
+- The Parent Guide asks to confirm ("Yes, reset").
+- Every `mathbook:v2:subtract-regrouping:` key is removed.
+- These are kept byte-for-byte: `lesson-2-15:attempts`, Number Words Phase 1 and Phase 4 attempts, and a decoy key `mathbook:v2:subtract-regroupingx:keep`.
+
+**Portability (`dev/subtract-demo/`, no Mathbook):**
+- The page loads only `sub-math.js` and `sub-workspace.js`; `window.Mathbook` is undefined.
+- Every instance has its own `data-sk` id, and there are no duplicate element ids.
+- **Two instances of the same problem:** typing a digit and a mark in one changes only that one's state and events. Every event carries that instance's id; the other receives none.
+- **Listeners:** checked with CDP `DOMDebugger.getEventListeners`. Mounting adds no listener to `document` or `window`. `destroy()` takes the host element from its listeners to 0, clears the markup and the `sk` classes, and emits nothing afterwards.
+- **Export/restore:** a new instance mounted with `getState()` shows the same marks and digits. A state for another problem is ignored (fresh start), and `setState(bad)` returns false.
+- **Test-mode isolation:** an instance in `test` mode with `hints: true, feedback: true, solution: true` shows none of those controls. `hint()` and `showSolution()` do nothing (hint level stays 0, no `hint` event); `check()` returns its result silently, with no marks or announcements.
+- The component never writes to localStorage or sessionStorage.
+
+### New finding
+
+#### SR-M11 (minor): public methods throw after `destroy()`
+
+**Evidence.** After `X2.destroy()`, calling these throws "Cannot read properties of null (reading 'classList')" from `renderCoach`:
+- `check()`
+- `hint()`
+- `reset()`
+- `setState(validState)`
+
+`getState`, `result`, `undo`, `clearWork`, `focus` and `showSolution` don't throw.
+
+**Failure scenario.** A host that keeps a reference and calls `reset()` or `check()` after a screen change (a late timer or event handler) gets an uncaught TypeError. Mathbook's adapter destroys instances on every screen change, so this only matters for other hosts, and for Mathbook if a callback outlives its screen.
+
+**Fix.** Return early (`null`/`false`) from every public method when `destroyed` is true, and add a unit or browser check.
+
+### Phase 2 result
+
+- All ten Phase 1 findings are fixed and pass, in Node and in the browser.
+- Persistence, malformed saves, reset scope, Home Continue, test integrity and portability all behave as the spec requires.
+- One new minor finding (SR-M11), which affects only host code that keeps using a destroyed instance.
