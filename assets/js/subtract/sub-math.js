@@ -381,7 +381,7 @@
     let l2, l3;
     if (!col.needs) {
       l2 = `${topNow} is enough to take away ${col.bottomDigit}, so the ${P.name} column does not need an exchange.`;
-      l3 = `No exchange is needed in the ${P.name}.`;
+      l3 = `Subtract in the ${P.name}: ${topNow} take away ${col.bottomDigit}.`; // no repeat of level 2 (review SR-D15)
     } else {
       const left = PLACES[col.place + 1];
       l2 = col.chain === 0

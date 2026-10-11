@@ -283,7 +283,7 @@
         const aft = M.exchange(ex.from, from).amounts;
         const n = ex.from.length, names = M.PLACES.slice(0, n).map((p) => p.name).reverse();
         const row = (a, cls) => `<tr class="${cls || ''}">${a.slice().reverse().map((x) => `<td>${x}</td>`).join('')}<td class="sr-val">${fmt(M.value(a))}</td></tr>`;
-        return `<table class="sr-chart"><caption class="sk-sr">Place values before and after one exchange</caption><thead><tr>${names.map((x) => `<th scope="col">${x.charAt(0).toUpperCase() + x.slice(1)}</th>`).join('')}<th scope="col">Value</th></tr></thead>` +
+        return `<table class="sr-chart"><caption class="sk-sr">Place values before and after one exchange</caption><thead><tr>${names.map((x) => `<th scope="col"><span class="sr-long">${x.charAt(0).toUpperCase() + x.slice(1)}</span><abbr class="sr-short" title="${x}">${({ thousands: 'Th', hundreds: 'H', tens: 'T', ones: 'O' })[x]}</abbr></th>`).join('')}<th scope="col">Value</th></tr></thead>` +
           `<tbody>${row(ex.from, 'is-before')}${row(aft, 'is-after')}</tbody></table><p class="slide-say">${esc(ex.note)}</p>`;
       }
       if (ex.kind === 'demo') return `<div class="sr-ws" id="sr-ex-ws"></div>`;
@@ -299,7 +299,7 @@
       const box = main.querySelector('#sr-ex-ws');
       if (!box) return;
       if (ex.kind === 'demo') keep(SK.mount(box, { top: ex.top, bottom: ex.bottom, mode: 'demo' }));
-      else if (ex.kind === 'mistake') { const w = M.buggyWork(ex.top, ex.bottom, ex.bug); keep(SK.mount(box, { top: ex.top, bottom: ex.bottom, mode: 'view', work: w })); }
+      else if (ex.kind === 'mistake') { const w = M.buggyWork(ex.top, ex.bottom, ex.bug); keep(SK.mount(box, { top: ex.top, bottom: ex.bottom, mode: 'view', work: w, caption: `${ex.who}'s work`, answerLabel: `${ex.who}'s answer` })); }
       else if (ex.kind === 'check') {
         const p = M.plan(ex.top, ex.bottom), ann = {};
         p.exchanges.forEach((e) => { (ann[e.from] = ann[e.from] || []).push(e.after[e.from]); (ann[e.to] = ann[e.to] || []).push(e.after[e.to]); });
@@ -366,7 +366,9 @@
       box.innerHTML = h + (showCheck ? `<div class="check-row"><button type="button" class="btn btn-primary" data-check>Check Answer</button></div><div class="feedback-area" aria-live="polite"></div>` : '');
       // Workspaces.
       const wsView = box.querySelector('[data-ws="view"]'), wsAns = box.querySelector('[data-ws="answer"]'), wsSteps = box.querySelector('[data-ws="steps"]');
-      if (wsView) keep(SK.mount(wsView, { top: item.top, bottom: item.bottom, mode: 'view', answer: false, work: item.kind === 'mistake' ? item.work : { ann: {}, d: [] } }));
+      if (wsView) keep(SK.mount(wsView, item.kind === 'mistake'
+        ? { top: item.top, bottom: item.bottom, mode: 'view', work: item.work, caption: `${item.who}'s work`, answerLabel: `${item.who}'s answer` }
+        : { top: item.top, bottom: item.bottom, mode: 'view', answer: false, work: { ann: {}, d: [] } }));
       const ansKey = item.kind === 'mistake' ? 'ws2' : 'ws';
       let ansInst = null;
       if (wsAns) {
@@ -682,7 +684,7 @@
       if (q.kind === 'sub') return ans(r.ws);
       if (q.kind === 'steps') return r.ws ? M.amountsFrom(q.top, r.ws.ann, M.lengthOf(q.top)).slice().reverse().join(' | ') : '—';
       if (q.kind === 'decide') return `${r.c1 || '—'}; ${r.c2 || '—'}`;
-      if (q.kind === 'mistake') return `${r.c1 ? 'chose a reason' : '—'}; answer ${ans(r.ws2)}`;
+      if (q.kind === 'mistake') return `${ans(r.ws2)}${r.c1 ? ' (reason chosen)' : ' (no reason chosen)'}`;
       return '—';
     }
 
@@ -703,12 +705,12 @@
       const part = (k) => last.parts[k] && last.parts[k][1] ? `<tr><th scope="row">${esc(CAT_LABEL[k])}</th><td>${last.parts[k][0]} of ${last.parts[k][1]}</td></tr>` : '';
       const missed = last.items.filter((x) => !x.correct);
       main.innerHTML = ctx.hero(eyebrow('My Results'), 'My Results', `Regrouping Test · ${shell.formatDate(last.at)}`) +
-        `<section class="card"><p class="score-big">${last.score} of ${last.total} <span class="muted">(${last.pct}%)</span> <span class="badge-m m-${m.key}">${esc(m.label)}</span></p>` +
+        `<section class="card"><p class="score-big"><span class="sr-nowrap">${last.score} of ${last.total}</span> <span class="muted">(${last.pct}%)</span> <span class="badge-m m-${m.key}">${esc(m.label)}</span></p>` +
         `<p class="advice"><b>Next step:</b> ${esc(m.advice)}</p>` +
         `<table class="sr-table"><caption>Each kind of question, scored separately</caption><tbody>${part('final')}${part('steps')}${part('decide')}${part('mistake')}</tbody></table>` +
         `<p class="muted">Final answers are graded on their own. Regroup marks never count against a right answer.</p></section>` +
         (missed.length ? `<section class="card">${head('', 'Questions to look at again', 'student')}<ul class="sr-list">${missed.map((x) =>
-          `<li><b>Question ${Number(x.id.slice(1))}</b> · ${esc(SKILL[x.skill].title)} · ${esc(fmt(x.top))} − ${esc(fmt(x.bottom))}${x.kind === 'sub' || x.kind === 'mistake' ? ` = ${fmt(x.top - x.bottom)}` : ''} <span class="muted">(you wrote: ${esc(x.response)})</span> <a class="btn btn-small" href="#practice/skill-${esc(x.skill)}">Practice this skill</a></li>`).join('')}</ul>` +
+          `<li><b>Question ${Number(x.id.slice(1))}</b> · ${esc(SKILL[x.skill].title)} · ${esc(fmt(x.top))} − ${esc(fmt(x.bottom))}${x.kind === 'sub' || x.kind === 'mistake' ? ` = ${fmt(x.top - x.bottom)}` : ''} <span class="muted">(your answer: ${esc(x.response)})</span> <a class="btn btn-small" href="#practice/skill-${esc(x.skill)}">Practice this skill</a></li>`).join('')}</ul>` +
           `<p class="muted">These links come from the kind of question, not from a guess about the mistake.</p></section>` : '') +
         guidedNote +
         (all.length > 1 ? `<details class="card"><summary>Earlier attempts (${all.length - 1})</summary><ul class="sr-list">${all.slice(0, -1).reverse().map((a) => `<li>${esc(shell.formatDate(a.at))}: ${a.score} of ${a.total} (${a.pct}%)</li>`).join('')}</ul></details>` : '') +

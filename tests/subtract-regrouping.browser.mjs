@@ -254,6 +254,45 @@ try {
     const top = x('.sk-topcell'), ans = x('.sk-anscell'), reg = x('.sk-curcell');
     return { top, ans, reg, col: getComputedStyle(el).getPropertyValue('--sk-col').trim() };`);
   check('Host theme changes the look without breaking column alignment', theme.top.length === 4 && theme.top.every((v, i) => Math.abs(v - theme.ans[i]) <= 1 && Math.abs(v - theme.reg[i]) <= 1) && /3\.8rem/.test(theme.col), theme);
+  // ----- Real input (CDP mouse, touch, keys): clicks and focus are never lost (review SR-D01, D02, D05) -----
+  const pos = (sel) => js(`const e = document.querySelector('${sel}'); e.scrollIntoView({ block: 'center' }); const r = e.getBoundingClientRect(); return { x: r.left + r.width / 2, y: r.top + r.height / 2 };`);
+  const click = async (sel) => { const p = await pos(sel); for (const type of ['mouseMoved', 'mousePressed', 'mouseReleased']) await b.send('Input.dispatchMouseEvent', { type, x: p.x, y: p.y, button: 'left', clickCount: 1 }); await wait(60); };
+  const tap = async (sel) => { const p = await pos(sel); await b.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x: p.x, y: p.y }] }); await b.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] }); await wait(80); };
+  const type = async (text) => { await b.send('Input.insertText', { text }); await wait(40); };
+  const focused = () => js(`const a = document.activeElement; return a ? (a.dataset.k || a.dataset.act || a.className || a.tagName) : null`);
+  await b.viewport(1366, 900, false);
+  await b.load(server.origin + BASE + 'dev/subtract-demo/'); await wait(300);
+  await click('#a [data-k="r1"]'); await type('9'); await click('#a [data-act="check"]');
+  const c1 = await js(`return { fb: (document.querySelector('#a .sk-fb') || {}).textContent || '', ann: JSON.stringify(window.__demo.a.getState().ann) }`);
+  check('Real click: typing a mark then clicking Check commits the mark AND checks (no lost click)', c1.fb.length > 0 && c1.ann === '{"1":[9]}' && (await focused()) === 'check', c1);
+  await click('#a [data-k="r2"]'); await type('2'); await click('#a [data-k="r1"]'); await type('1');
+  const c2 = await js(`return { r1: document.querySelector('#a [data-k="r1"]').value, ann: JSON.stringify(window.__demo.a.getState().ann) }`);
+  check('Real click from one regroup box to the next keeps focus; the next digit is typed there', c2.r1 === '1' && /"2":\[2\]/.test(c2.ann), c2);
+  await b.key('Tab');
+  const tabTo = await focused();
+  check('Tab out of a regroup box moves to the next box (never to the page)', /^r0$/.test(tabTo), tabTo);
+  await click('#a [data-k="r0"]'); await type('15'); await b.key('Enter');
+  check('Enter commits the mark and keeps focus in the box', (await focused()) === 'r0' && await js(`return JSON.stringify(window.__demo.a.getState().ann).includes('"0":[15]')`));
+  await click('#a [data-act="clear"]');
+  check('Clear work moves focus to Undo (not the page)', (await focused()) === 'undo');
+  await b.viewport(390, 844, true); await b.load(server.origin + BASE + 'dev/subtract-demo/'); await wait(300);
+  await tap('#b [data-k="r1"]'); await type('11'); await tap('#b [data-act="check"]');
+  const touch1 = await js(`return { fb: (document.querySelector('#b .sk-fb') || {}).textContent || '', ann: JSON.stringify(window.__demo.b.getState().ann) }`);
+  check('Touch at 390: tap a box, type, tap Check: the mark is kept and Check runs', touch1.fb.length > 0 && touch1.ann === '{"1":[11]}', touch1);
+  // Guided zero chain with real input: 6,003 − 2,847 (Practice Together problem 7). History must keep 10 then 9.
+  await b.viewport(1366, 900, false);
+  await b.load(URL + '#menu'); await js(`localStorage.setItem('${KEY}:guided', JSON.stringify({ v: 1, pos: 6, seed: 0, states: {}, done: {} }))`);
+  await b.load(URL + '#practice/together'); await b.reload(); await wait(300);
+  await click('#sr-tg [data-act="needs"][data-v="no"]');
+  check('A wrong guided choice keeps focus on the pressed button', (await focused()) === 'needs');
+  await click('#sr-tg [data-act="needs"][data-v="yes"]'); await click('#sr-tg [data-act="supplier"][data-v="3"]');
+  await click('#sr-tg [data-k="r3"]'); await type('5'); await click('#sr-tg [data-k="r2"]'); await type('10'); await click('#sr-tg [data-act="check-ex"]');
+  await click('#sr-tg [data-k="r2"]'); await type('9'); await click('#sr-tg [data-k="r1"]'); await type('10'); await click('#sr-tg [data-act="check-ex"]');
+  const z = await js(`const s = JSON.parse(localStorage.getItem('${KEY}:guided')).states['6']; return { ann: JSON.stringify(s.ann), stage: s.guided.stage, hist: (document.querySelector('#sr-tg [data-hist="2"]') || {}).textContent }`);
+  check('Guided zero chain with real clicks: a filled "10" box can be retyped as 9; history keeps 10 then 9 (struck 10 shown)', /"2":\[10,9\]/.test(z.ann) && z.stage === 'exchange' && z.hist === '10', z);
+  await click('#sr-tg [data-k="r1"]'); await type('99'); await click('#sr-tg [data-act="check-ex"]');
+  const z2 = await js(`const s = JSON.parse(localStorage.getItem('${KEY}:guided')).states['6']; return { ann: JSON.stringify(s.ann) }`);
+  check('A wrong exchange keeps every earlier correct value (nothing earlier is removed)', /"2":\[10,9\]/.test(z2.ann) && /"1":\[10\]/.test(z2.ann), z2);
   check('No JavaScript errors', b.errors.length === 0, b.errors);
 } finally {
   b.close();

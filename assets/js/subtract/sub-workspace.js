@@ -4,6 +4,9 @@
  * assets/css/subtract-workspace.css. Modes: 'demo' (step through the standard method), 'guided' (the child decides each
  * step), 'independent' (free regroup marks, answer, Check, hints), 'test' (marks and answer only — no Check, hints or
  * feedback), 'view' (read-only: someone's work, or a solution).
+ * Rendering: a skeleton is built once (grid host, toolbar, coach panel, one live region). A regroup mark, Undo or Clear
+ * patches only the affected cells, so the box or button the child is moving to is never replaced (review SR-D01);
+ * every rebuild names where focus goes next (SR-D05).
  * API, events and state format: docs/supplemental/subtract-regrouping/INTEGRATION.md.
  */
 (function (root) {
@@ -21,7 +24,6 @@
 
   /** Every word the component says. Hosts may replace any of them with options.text. */
   const TEXT = {
-    place: (i) => P[i].name,
     working: (i) => `Working on the ${P[i].name}`,
     needsQ: (i) => `Does the ${P[i].name} column need regrouping?`,
     needsYes: (t, b) => `Yes. ${t} is less than ${b}, so you can't take ${b} away yet.`,
@@ -31,7 +33,7 @@
     supplierQ: 'Which place can give?',
     supplierZero: (k) => `The ${P[k].name} place has 0, so it has nothing to give. Look further left.`,
     supplierFar: (k, best) => `That could work too, but it takes more exchanges than you need. Take from the nearest place that has something: the ${P[best].name}.`,
-    supplierRight: (k) => `The ${P[k].name} can only give to the place next to it, so start there.`,
+    supplierOk: (k) => `Yes. The ${P[k].name} can give.`,
     exchangeQ: (from, to) => `Exchange 1 ${P[from].one} for 10 ${P[to].name}. Write the new ${P[from].name} and the new ${P[to].name} above the top number.`,
     exchangeKept: (from, to, after) => `${M.describe(after)}. The value is still the same.`,
     exchangeNoReduce: (from) => `The ${P[from].name} must give 1 away, so it has 1 less than before.`,
@@ -39,6 +41,7 @@
     exchangeGetter: (to) => `The ${P[to].name} gets 10 more than it had (1 ${P[to + 1].one} = 10 ${P[to].name}).`,
     exchangeEmpty: 'Write both new values above the top number, then check.',
     digitQ: (i, t, b) => `${cap(P[i].name)}: ${t} − ${b} = ? Write the digit in the ${P[i].name} answer box.`,
+    digitOk: (i, t, b, d) => `${cap(P[i].name)}: ${t} − ${b} = ${d}.`,
     digitOriginal: (i, orig, now) => `The ${P[i].name} changed when it gave 1 away. Use ${now}, not the original ${orig}.`,
     digitSwap: (i, t, b, now) => `You can't turn it around to ${b} − ${t}. After the exchange the ${P[i].name} has ${now}: use ${now} − ${b}.`,
     digitWrong: (i, t, b) => `Look again: ${t} − ${b}.`,
@@ -66,12 +69,9 @@
     showSolution: 'Show the full solution',
     solutionTitle: 'Full solution',
     earlierHints: (n) => `Earlier hints (${n})`,
-    undo: '↶ Undo',
-    clear: 'Clear work',
-    check: 'Check',
-    back: '◀ Back a part',
-    next: 'Next part ▶',
-    startOver: 'Start over',
+    earlierLines: (n) => `Earlier lines (${n})`,
+    undo: '↶ Undo', clear: 'Clear work', check: 'Check',
+    back: '◀ Back', next: 'Next ▶', startOver: 'Start over',
     partOf: (i, n) => `Part ${i} of ${n}`,
     topNow: 'Top number now',
     demoStart: (top, bottom) => `${M.fmt(top)} − ${M.fmt(bottom)}. Start with the ones.`,
@@ -83,8 +83,10 @@
     demoEnd: (top, bottom, ans) => `${M.fmt(top)} − ${M.fmt(bottom)} = ${M.fmt(ans)}.`,
     undone: (i, now) => `Undone: ${P[i].name} back to ${now === null ? 'no mark' : now}.`,
     cleared: 'Regroup marks cleared.',
+    restored: 'Regroup marks restored.',
     committed: (i, now, was) => (now === null ? `${cap(P[i].name)} mark removed.` : `${cap(P[i].name)} now ${now}${was !== null ? `, was ${was}` : ''}.`),
     digitsOnly: 'Use digits only.',
+    answerOf: 'Answer',
     yes: 'Yes', no: 'No'
   };
   function chainNames(col) {
@@ -116,7 +118,7 @@
     return true;
   }
   function freshState(top, bottom, mode) {
-    return { v: 1, top, bottom, mode, ann: {}, log: [], d: [], hint: 0, demo: 0, guided: mode === 'guided' ? { col: 0, stage: 'needs', ex: 0 } : null, result: null, done: false };
+    return { v: 1, top, bottom, mode, ann: {}, log: [], d: [], hint: 0, hintCol: null, demo: 0, guided: mode === 'guided' ? { col: 0, stage: 'needs', ex: 0 } : null, result: null, done: false };
   }
 
   // ---------- The component ----------
@@ -140,11 +142,15 @@
     let S = freshState(top, bottom, mode);
     if (o.state && validState(o.state, top, bottom)) S = Object.assign(clone(o.state), { mode });
     if (mode === 'view') { S.ann = clone((o.work && o.work.ann) || {}); S.d = ((o.work && o.work.d) || []).map(String); }
-    let destroyed = false, feedbackHTML = '', marks = {}, solutionInst = null;
+    let destroyed = false, feedbackHTML = '', prevNote = '', marks = {}, solutionInst = null, sayTimer = null;
 
     el.classList.add('sk', 'sk-mode-' + mode);
     if (o.theme) Object.keys(o.theme).forEach((k) => el.style.setProperty(k.startsWith('--') ? k : '--sk-' + k, o.theme[k]));
     el.setAttribute('data-sk', id);
+    // The skeleton, built once. Only its parts are re-rendered; the live region is never replaced (SR-D06).
+    el.innerHTML = `<div class="sk-wrap"><div class="sk-main">${o.caption ? `<p class="sk-caption">${esc(o.caption)}</p>` : ''}<div class="sk-gridhost"></div><div class="sk-toolhost"></div></div>` +
+      `<div class="sk-coach" hidden></div></div><p class="sk-live sk-sr" aria-live="polite" id="${id}-live"></p>`;
+    const gridHost = el.querySelector('.sk-gridhost'), toolHost = el.querySelector('.sk-toolhost'), coachEl = el.querySelector('.sk-coach'), live = el.querySelector('.sk-live');
 
     // ----- Events -----
     function on(name, fn) { (listeners[name] = listeners[name] || []).push(fn); return api; }
@@ -156,11 +162,17 @@
       if (o.on && typeof o.on[name] === 'function') try { o.on[name](d); } catch (e) { /* ignore */ }
     }
     const change = () => emit('change', { state: getState() });
-    const say = (msg) => { const lr = el.querySelector('.sk-live'); if (lr && mode !== 'test') { lr.textContent = ''; lr.textContent = msg; } };
-    const sayAlways = (msg) => { const lr = el.querySelector('.sk-live'); if (lr) { lr.textContent = ''; lr.textContent = msg; } };
+    /** Announce in the one live region: clear it, then set the text a moment later so it is read (SR-D06). */
+    const announce = (msg) => { if (destroyed) return; clearTimeout(sayTimer); live.textContent = ''; sayTimer = setTimeout(() => { if (!destroyed) live.textContent = msg; }, 50); };
+    const say = (msg) => { if (mode !== 'test') announce(msg); };
+    const plainText = (html) => { const d = document.createElement('div'); d.innerHTML = html; return d.textContent; };
+    function focusOn(sel) {
+      const f = sel && el.querySelector(sel);
+      if (f && !f.disabled) { f.focus({ preventScroll: true }); return true; }
+      return false;
+    }
 
-    // ----- Derived amounts -----
-    const current = () => M.amountsFrom(top, S.ann, n);
+    // ----- Demo steps -----
     function demoSteps() {
       const steps = [{ kind: 'start', note: T.demoStart(top, bottom), ann: {}, digits: 0 }];
       const ann = {}; let digits = 0;
@@ -183,12 +195,15 @@
     const DEMO = mode === 'demo' ? demoSteps() : null;
     if (DEMO && S.demo >= DEMO.length) S.demo = DEMO.length - 1;
 
-    // ----- Rendering -----
-    // Grid tracks: minus sign, then one per place (largest first) with a thin comma track after the thousands.
+    // ----- Grid -----
+    // Tracks: minus sign, then one per place (largest first), with a thin comma track after the thousands.
     const colOf = (i) => { const fromLeft = n - 1 - i; return 2 + fromLeft + (n === 4 && i < 3 ? 1 : 0); };
     const tracks = `var(--sk-op) ${n === 4 ? 'var(--sk-col) var(--sk-comma) repeat(3, var(--sk-col))' : `repeat(${n}, var(--sk-col))`}`;
     const commaCol = n === 4 ? 3 : null;
     const cell = (row, col, html, cls, extra) => `<div class="sk-cell ${cls || ''}" style="grid-row:${row};grid-column:${col}"${extra || ''}>${html}</div>`;
+    const shift = mode === 'view' && o.work && o.work.misaligned ? o.work.misaligned : 0;
+    // In a read-only view, leading zeros of the answer are left blank (SR-D13).
+    const viewLead = (() => { if (mode !== 'view') return n; let k = n - 1; while (k > 0 && (!S.d[k] || S.d[k] === '0')) k--; return k + 1; })();
 
     function editable(kind, i) {
       if (mode === 'test' || mode === 'independent') return true;
@@ -199,91 +214,149 @@
       return false;
     }
     function activeInfo() {
-      // Which column is highlighted, and the −1 / +10 chips.
       if (mode === 'demo') { const st = DEMO[S.demo]; return { col: st.col, ex: st.ex || null, supplier: st.kind === 'needs' ? st.supplier : null }; }
       if (mode === 'guided' && S.guided && S.guided.stage !== 'done') {
         const col = plan.columns[S.guided.col];
         return { col: S.guided.col, ex: S.guided.stage === 'exchange' ? col.exchanges[S.guided.ex] : null, supplier: null };
       }
-      if (mode === 'independent' && S.hint > 0 && marks.hintCol !== undefined && marks.hintCol !== null) return { col: marks.hintCol, ex: null, supplier: S.hint >= 2 ? marks.hintSupplier : null };
+      if (mode === 'independent' && S.hint > 0 && S.hint < 5 && S.hintCol !== null && S.hintCol !== undefined) {
+        const col = plan.columns[S.hintCol];
+        return { col: S.hintCol, ex: null, supplier: S.hint >= 2 && col && col.needs ? col.supplier : null };
+      }
       return { col: null, ex: null, supplier: null };
     }
+    const annNow = () => (mode === 'demo' ? DEMO[S.demo].ann : S.ann);
+    // The cells of one column that a regroup mark changes (patched in place, SR-D01).
+    function histCell(i, hist) { const earlier = hist.length >= 2 ? hist[hist.length - 2] : null; return earlier !== null ? `<span class="sk-hist" aria-hidden="true">${earlier}</span>` : ''; }
+    function topLabel(i, hist) {
+      const earlier = hist.length >= 2 ? hist[hist.length - 2] : null, now = hist.length ? hist[hist.length - 1] : null;
+      return `${cap(P[i].name)}: ${orig[i]}${hist.length ? `, crossed out${earlier !== null ? `, was ${earlier}` : ''}, now ${now}` : ''}`;
+    }
+    function ansCell(i) {
+      const c = colOf(i), dv = S.d[i] || '', mk = marks[i];
+      const badge = mk ? `<span class="sk-mark is-${mk}" aria-hidden="true">${mk === 'ok' ? '✓' : '✗'}</span>` : '';
+      if (o.answer === false) return '';
+      if (mode === 'demo') {
+        const st = DEMO[S.demo], shown = i < st.digits && !(i >= viewLeadDemo() && st.digits === n) ? String(plan.columns[i].digit) : '';
+        return cell(8, c, `<span class="sk-ans sk-ans-read">${shown}</span>`, 'sk-anscell', shown ? ` aria-label="${T.answerOf} ${P[i].name} digit ${shown}"` : '');
+      }
+      if (mode === 'view' || !editable('answer', i)) {
+        const shown = mode === 'view' && i >= viewLead ? '' : dv;
+        const who = o.answerLabel || T.answerOf;
+        return cell(8, c, `<span class="sk-ans sk-ans-read${mk ? ' is-' + mk : ''}">${esc(shown)}</span>${badge}`, 'sk-anscell',
+          ` aria-label="${esc(who)}, ${P[i].name} digit${shown ? ' ' + shown : ', empty'}${mk ? (mk === 'ok' ? ', correct' : ', not correct') : ''}"`);
+      }
+      return cell(8, c, `<input class="sk-ans sk-in${mk ? ' is-' + mk : ''}" data-k="a${i}" inputmode="numeric" maxlength="1" autocomplete="off" spellcheck="false" ` +
+        `aria-label="Answer, ${P[i].name} digit${mk === 'no' ? ', marked not correct' : mk === 'ok' ? ', marked correct' : ''}" value="${esc(dv)}">${badge}`, 'sk-anscell');
+    }
+    // Demo: a leading zero in the final answer is not written.
+    const viewLeadDemo = () => { const d = plan.columns.map((c) => c.digit); let k = n - 1; while (k > 0 && d[k] === 0) k--; return k + 1; };
 
     function gridHTML() {
-      const act = activeInfo();
-      const demoStep = mode === 'demo' ? DEMO[S.demo] : null;
-      const ann = demoStep ? demoStep.ann : S.ann;
+      const act = activeInfo(), ann = annNow();
       const showChips = mode === 'demo' || mode === 'guided';
-      let h = '';
+      let decor = '', regroups = '', digits = '', answers = '';
       for (let i = n - 1; i >= 0; i--) {
         const c = colOf(i), hist = ann[i] || [], marked = hist.length > 0;
         const isAct = act.col === i;
         const cls = (isAct ? ' is-active' : '') + (act.ex && act.ex.from === i ? ' is-giver' : '') + (act.ex && act.ex.to === i ? ' is-getter' : '') + (act.supplier === i ? ' is-giver' : '');
-        // Band behind the whole column (decoration).
-        h += `<div class="sk-band${cls}" style="grid-row:1 / 9;grid-column:${c}" aria-hidden="true"></div>`;
-        h += cell(1, c, `${isAct ? '<span class="sk-here" aria-hidden="true">▼</span>' : ''}<abbr class="sk-tag sk-tag-${KEYS[i]}" title="${P[i].name}">${KEYS[i]}</abbr>`, 'sk-tagcell' + cls);
+        decor += `<div class="sk-band${cls}" style="grid-row:1 / 9;grid-column:${c}" aria-hidden="true"></div>`;
+        decor += cell(1, c, `${isAct ? '<span class="sk-here" aria-hidden="true">▼</span>' : ''}<abbr class="sk-tag sk-tag-${KEYS[i]}" title="${P[i].name}">${KEYS[i]}</abbr>`, 'sk-tagcell' + cls);
         if (showChips) {
           const chip = act.ex && act.ex.from === i ? '−1' : act.ex && act.ex.to === i ? '+10' : '';
-          h += cell(2, c, chip ? `<span class="sk-chip">${chip}</span>` : '', 'sk-chipcell');
+          decor += cell(2, c, chip ? `<span class="sk-chip">${chip}</span>` : '', 'sk-chipcell');
         }
-        // One earlier value (struck), then the current value: a box to type in, or a read-only box.
-        const earlier = hist.length >= 2 ? hist[hist.length - 2] : null;
-        h += cell(3, c, earlier !== null ? `<span class="sk-x sk-hist" aria-hidden="true">${earlier}</span>` : '', 'sk-histcell');
+        decor += cell(3, c, histCell(i, hist), 'sk-histcell', ` data-hist="${i}"`);
         const now = marked ? hist[hist.length - 1] : '';
         if (editable('regroup', i) && mode !== 'demo' && mode !== 'view') {
-          h += cell(4, c, `<input class="sk-cur sk-in" data-k="r${i}" inputmode="numeric" maxlength="2" autocomplete="off" spellcheck="false" placeholder=" " ` +
+          regroups += cell(4, c, `<input class="sk-cur sk-in" data-k="r${i}" inputmode="numeric" maxlength="2" autocomplete="off" spellcheck="false" placeholder=" " ` +
             `aria-label="Regrouped ${P[i].name}${mode === 'guided' ? '' : ', optional'}" value="${esc(now)}">`, 'sk-curcell');
         } else {
-          h += cell(4, c, marked ? `<span class="sk-cur sk-cur-read" aria-hidden="true">${now}</span>` : '', 'sk-curcell');
+          regroups += cell(4, c, marked ? `<span class="sk-cur sk-cur-read" aria-hidden="true">${now}</span>` : '', 'sk-curcell', ` data-cur="${i}"`);
         }
-        const label = `${cap(P[i].name)}: ${orig[i]}${marked ? `, crossed out${earlier !== null ? `, was ${earlier}` : ''}, now ${now}` : ''}`;
-        h += cell(5, c, `<span class="sk-d${marked ? ' sk-x' : ''}" aria-hidden="true">${orig[i]}</span>`, 'sk-topcell', ` role="img" aria-label="${esc(label)}"`);
-        // Bottom number: right-aligned (or shifted left when showing someone's misaligned work).
-        const shift = mode === 'view' && o.work && o.work.misaligned ? o.work.misaligned : 0;
-        const bi = i - shift;
-        const bd = bi >= 0 && bi < blen ? String(bottom)[blen - 1 - bi] : '';
-        h += cell(6, c, bd ? `<span class="sk-d">${bd}</span>` : '', 'sk-botcell' + (shift ? ' is-shifted' : ''), bd ? ` aria-label="${P[i].name} ${bd}"` : '');
-        // Answer row (hidden with answer: false, e.g. 'write the regrouped top number' or 'does it need regrouping?').
-        const dv = S.d[i] || '';
-        if (o.answer === false) { /* no answer row */ } else if (mode === 'demo') {
-          const shown = demoStep && i < demoStep.digits ? String(plan.columns[i].digit) : '';
-          h += cell(8, c, `<span class="sk-ans sk-ans-read">${shown}</span>`, 'sk-anscell', shown ? ` aria-label="Answer ${P[i].name} digit ${shown}"` : '');
-        } else if (mode === 'view' || !editable('answer', i)) {
-          const mk = marks[i];
-          h += cell(8, c, `<span class="sk-ans sk-ans-read${mk ? ' is-' + mk : ''}">${esc(dv)}</span>${mk ? `<span class="sk-mark" aria-hidden="true">${mk === 'ok' ? '✓' : '✗'}</span>` : ''}`, 'sk-anscell',
-            ` aria-label="Answer ${P[i].name} digit${dv ? ' ' + dv : ', empty'}${mk ? (mk === 'ok' ? ', correct' : ', not correct') : ''}"`);
-        } else {
-          const mk = marks[i];
-          h += cell(8, c, `<input class="sk-ans sk-in${mk ? ' is-' + mk : ''}" data-k="a${i}" inputmode="numeric" maxlength="1" autocomplete="off" spellcheck="false" ` +
-            `aria-label="Answer, ${P[i].name} digit${mk === 'no' ? ', marked not correct' : mk === 'ok' ? ', marked correct' : ''}" value="${esc(dv)}">${mk ? `<span class="sk-mark" aria-hidden="true">${mk === 'ok' ? '✓' : '✗'}</span>` : ''}`, 'sk-anscell');
-        }
+        digits += cell(5, c, `<span class="sk-d${marked ? ' sk-x' : ''}" aria-hidden="true">${orig[i]}</span>`, 'sk-topcell', ` data-top="${i}" role="img" aria-label="${esc(topLabel(i, hist))}"`);
+        const bi = i - shift, bd = bi >= 0 && bi < blen ? String(bottom)[blen - 1 - bi] : '';
+        digits += cell(6, c, bd ? `<span class="sk-d">${bd}</span>` : '', 'sk-botcell' + (shift ? ' is-shifted' : ''), bd ? ` role="img" aria-label="${P[i].name} ${bd}"` : '');
+        answers += ansCell(i);
       }
-      // Minus sign beside the bottom number; commas; the answer line.
-      h += cell(6, 1, '<span class="sk-op" aria-hidden="true">−</span>', 'sk-opcell');
+      digits += cell(6, 1, '<span class="sk-op" aria-hidden="true">−</span>', 'sk-opcell');
       if (commaCol) {
-        h += cell(5, commaCol, '<span class="sk-comma" aria-hidden="true">,</span>', 'sk-commacell');
-        if (blen === 4 && !(mode === 'view' && o.work && o.work.misaligned)) h += cell(6, commaCol, '<span class="sk-comma" aria-hidden="true">,</span>', 'sk-commacell');
+        digits += cell(5, commaCol, '<span class="sk-comma" aria-hidden="true">,</span>', 'sk-commacell');
+        if (blen === 4 && !shift) digits += cell(6, commaCol, '<span class="sk-comma" aria-hidden="true">,</span>', 'sk-commacell');
       }
-      h += `<div class="sk-rule" style="grid-row:7;grid-column:1 / -1" aria-hidden="true"></div>`;
-      return `<div class="sk-grid${showChips ? ' has-chips' : ''}${o.answer === false ? ' no-answer' : ''}" style="grid-template-columns:${tracks}" role="group" aria-label="${esc(`${M.fmt(top)} minus ${M.fmt(bottom)}, written in columns`)}">${h}</div>`;
+      digits += `<div class="sk-rule" style="grid-row:7;grid-column:1 / -1" aria-hidden="true"></div>`;
+      // DOM order: decoration, then every regroup box, then the digits, then every answer box (Tab goes row by row, SR-D10).
+      return `<div class="sk-grid${showChips ? ' has-chips' : ''}${o.answer === false ? ' no-answer' : ''}" style="grid-template-columns:${tracks}" role="group" aria-label="${esc(`${M.fmt(top)} minus ${M.fmt(bottom)}, written in columns`)}">${decor}${regroups}${digits}${answers}</div>`;
+    }
+    function renderGrid() { gridHost.innerHTML = gridHTML(); }
+    /** Update the cells a regroup mark changes, without replacing any input or button (SR-D01). */
+    function patchMarks() {
+      const ann = annNow();
+      for (let i = 0; i < n; i++) {
+        const hist = ann[i] || [], now = hist.length ? hist[hist.length - 1] : '';
+        const h = gridHost.querySelector(`[data-hist="${i}"]`); if (h) h.innerHTML = histCell(i, hist);
+        const t = gridHost.querySelector(`[data-top="${i}"]`);
+        if (t) { t.setAttribute('aria-label', topLabel(i, hist)); const d = t.querySelector('.sk-d'); if (d) d.classList.toggle('sk-x', hist.length > 0); }
+        const inp = gridHost.querySelector(`[data-k="r${i}"]`);
+        if (inp && inp.value !== String(now)) inp.value = String(now);
+        const ro = gridHost.querySelector(`[data-cur="${i}"]`); if (ro) ro.innerHTML = hist.length ? `<span class="sk-cur sk-cur-read" aria-hidden="true">${now}</span>` : '';
+      }
+      clearMarks();
+      updateTools();
+    }
+    function clearMarks() {
+      if (!Object.keys(marks).length && !feedbackHTML) return;
+      marks = {};
+      gridHost.querySelectorAll('.sk-ans').forEach((x) => x.classList.remove('is-ok', 'is-no'));
+      gridHost.querySelectorAll('.sk-mark').forEach((x) => x.remove());
+      if (mode === 'independent' && feedbackHTML) { feedbackHTML = ''; const fb = coachEl.querySelector('.sk-fb'); if (fb) fb.innerHTML = ''; }
     }
 
+    // ----- Toolbar (independent and test) -----
+    const hintCol = () => M.hints(top, bottom, { d: S.d }).place;
+    const nextIsHint = () => S.hint < 4 || (S.hint === 4 && S.hintCol !== hintCol());
+    function toolsHTML() {
+      if (mode !== 'independent' && mode !== 'test') return '';
+      const undo = `<button type="button" class="sk-btn sk-btn-ghost" data-act="undo"${S.log.length ? '' : ' disabled'}>${esc(T.undo)}</button>`;
+      const clear = `<button type="button" class="sk-btn sk-btn-ghost" data-act="clear"${Object.keys(S.ann).length ? '' : ' disabled'}>${esc(T.clear)}</button>`;
+      let right = '';
+      if (allowHints && S.hint < 5) right += nextIsHint() ? `<button type="button" class="sk-btn sk-btn-ghost" data-act="hint">💡 ${esc(T.hintButton(S.hintCol === hintCol() ? S.hint : 0))}</button>`
+        : allowSolution ? `<button type="button" class="sk-btn sk-btn-outline" data-act="solution">${esc(T.showSolution)}</button>` : '';
+      if (allowCheck) right += `<button type="button" class="sk-btn sk-btn-primary" data-act="check">${esc(T.check)}</button>`;
+      return `<div class="sk-toolbar"><div class="sk-tl">${undo}${clear}</div>${right ? `<div class="sk-tr">${right}</div>` : ''}</div>`;
+    }
+    function renderTools() { toolHost.innerHTML = toolsHTML(); }
+    function updateTools() {
+      const u = toolHost.querySelector('[data-act="undo"]'), c = toolHost.querySelector('[data-act="clear"]');
+      if (u) u.disabled = !S.log.length;
+      if (c) c.disabled = !Object.keys(S.ann).length;
+    }
+
+    // ----- Coach panel -----
     function coachHTML() {
       if (mode === 'demo') {
         const st = DEMO[S.demo];
         const lines = [M.describe(orig)];
         DEMO.slice(0, S.demo + 1).forEach((x) => { if (x.kind === 'exchange') lines.push(M.describe(x.ex.after)); });
-        const list = plan.exchanges.length ? `<p class="sk-topnow-h">${esc(T.topNow)}</p><ol class="sk-topnow">${lines.map((l, k) => `<li${k === lines.length - 1 ? ' class="is-now"' : ''}>${esc(l)}${k === lines.length - 1 ? ' <span aria-hidden="true">◀ now</span>' : ''}</li>`).join('')}</ol>` : '';
-        return `<p class="sk-note">${esc(st.note)}</p>${list}` +
-          `<div class="sk-democtl"><button type="button" class="sk-btn" data-act="back"${S.demo === 0 ? ' disabled' : ''}>${esc(T.back)}</button>` +
-          `<span class="sk-partof" aria-live="off">${esc(T.partOf(S.demo + 1, DEMO.length))}</span>` +
+        const ctl = `<div class="sk-democtl"><button type="button" class="sk-btn" data-act="back"${S.demo === 0 ? ' disabled' : ''}>${esc(T.back)}</button>` +
+          `<span class="sk-partof">${esc(T.partOf(S.demo + 1, DEMO.length))}</span>` +
           `<button type="button" class="sk-btn sk-btn-primary" data-act="next"${S.demo === DEMO.length - 1 ? ' disabled' : ''}>${esc(T.next)}</button>` +
           `<button type="button" class="sk-btn sk-btn-ghost" data-act="restart">${esc(T.startOver)}</button></div>`;
+        let list = '';
+        if (plan.exchanges.length) {
+          const nowLine = lines[lines.length - 1];
+          // Wide: the whole growing list. Narrow: the current line, earlier lines folded (SR-D07).
+          list = `<p class="sk-topnow-h">${esc(T.topNow)}</p><ol class="sk-topnow sk-wide-only">${lines.map((l, k) => `<li${k === lines.length - 1 ? ' class="is-now"' : ''}>${esc(l)}${k === lines.length - 1 ? ' <span aria-hidden="true">◀ now</span>' : ''}</li>`).join('')}</ol>` +
+            `<p class="sk-topnow-cur sk-narrow-only">${esc(nowLine)}</p>` +
+            (lines.length > 1 ? `<details class="sk-older sk-narrow-only"><summary>${esc(T.earlierLines(lines.length - 1))}</summary><ol>${lines.slice(0, -1).map((l) => `<li>${esc(l)}</li>`).join('')}</ol></details>` : '');
+        }
+        return `${ctl}<p class="sk-note">${esc(st.note)}</p>${list}`; // controls first, next to the grid (SR-D07)
       }
       if (mode === 'guided') {
         const g = S.guided;
-        if (g.stage === 'done') return `<div class="sk-fb" role="status">${feedbackHTML}</div><p class="sk-note sk-ok-note"><span aria-hidden="true">✓ </span>${esc(T.guidedDone(top, bottom, top - bottom))}</p>`;
-        const col = plan.columns[g.col], i = g.col, t = col.before[i], b = col.bottomDigit;
+        const prev = prevNote ? `<p class="sk-prev"><span aria-hidden="true">✓ </span>${esc(prevNote)}</p>` : '';
+        if (g.stage === 'done') return `${prev}<p class="sk-note sk-ok-note sk-done" tabindex="-1"><span aria-hidden="true">✓ </span>${esc(T.guidedDone(top, bottom, top - bottom))}</p>`;
+        const col = plan.columns[g.col], i = g.col, b = col.bottomDigit;
         let q = '', ctl = '';
         if (g.stage === 'needs') {
           q = T.needsQ(i);
@@ -301,66 +374,54 @@
           q = T.digitQ(i, col.topNow, b);
           ctl = `<button type="button" class="sk-btn sk-btn-primary" data-act="check-digit">${esc(T.check)}</button>`;
         }
-        return `<p class="sk-working">${esc(T.working(i))}</p><p class="sk-q" id="${id}-q">${esc(q)}</p>${ctl}<div class="sk-fb" role="status">${feedbackHTML}</div>` +
-          (g.stage === 'needs' ? '' : `<p class="sk-sub">${esc(g.stage === 'supplier' ? T.needsYes(t, b) : '')}</p>`);
+        // The last step's ✓ sits above the new question; feedback for this step goes under its button (SR-D11).
+        return `${prev}<p class="sk-working">${esc(T.working(i))}</p><p class="sk-q" id="${id}-q">${esc(q)}</p>${ctl}<div class="sk-fb">${feedbackHTML}</div>`;
       }
       if (mode === 'independent' && (allowHints || allowCheck)) {
         let hintsH = '';
         if (S.hint > 0) {
-          const H = M.hints(top, bottom, { d: S.d }).levels; // the first unfinished column (the hinted one)
-          const shown = Math.min(S.hint, 4);
-          const older = [];
-          for (let k = 1; k < shown; k++) older.push(`<li><b>${esc(T.hintLabel(k))}:</b> ${esc(H[k - 1])}</li>`);
-          hintsH = (older.length ? `<details class="sk-older"><summary>${esc(T.earlierHints(older.length))}</summary><ul>${older.join('')}</ul></details>` : '') +
-            `<p class="sk-hint"><b>${esc(T.hintLabel(shown))}:</b> ${esc(H[shown - 1])}</p>` +
-            (S.hint >= 5 ? `<div class="sk-solution"><p class="sk-solution-h">${esc(T.solutionTitle)}</p><div class="sk-mini" data-sk-mini></div><p class="sk-sub">${esc(H[4])}</p></div>` : '');
+          const H = M.hints(top, bottom, { d: S.d }).levels;
+          if (S.hint >= 5) {
+            hintsH = `<div class="sk-solution"><p class="sk-solution-h" tabindex="-1">${esc(T.solutionTitle)}</p><div class="sk-mini" data-sk-mini></div>` +
+              `<ol class="sk-steps">${M.solutionLines(top, bottom).map((l) => `<li>${esc(l)}</li>`).join('')}</ol></div>`;
+          } else {
+            const shown = S.hint, older = [];
+            for (let k = 1; k < shown; k++) older.push(`<li><b>${esc(T.hintLabel(k))}:</b> ${esc(H[k - 1])}</li>`);
+            hintsH = (older.length ? `<details class="sk-older"><summary>${esc(T.earlierHints(older.length))}</summary><ul>${older.join('')}</ul></details>` : '') +
+              `<p class="sk-hint" tabindex="-1"><b>${esc(T.hintLabel(shown))}:</b> ${esc(H[shown - 1])}</p>`;
+          }
         }
-        return `<div class="sk-fb" role="status">${feedbackHTML}</div>${hintsH}`;
+        return `<div class="sk-fb">${feedbackHTML}</div>${hintsH}`;
       }
       return '';
     }
-
-    const hintColMoved = () => S.hintCol !== undefined && S.hintCol !== M.hints(top, bottom, { d: S.d }).place;
-    function toolbarHTML() {
-      if (mode === 'demo' || mode === 'view' || mode === 'guided') return '';
-      const undo = `<button type="button" class="sk-btn sk-btn-ghost" data-act="undo"${S.log.length ? '' : ' disabled'}>${esc(T.undo)}</button>`;
-      const clear = `<button type="button" class="sk-btn sk-btn-ghost" data-act="clear"${Object.keys(S.ann).length ? '' : ' disabled'}>${esc(T.clear)}</button>`;
-      let right = '';
-      if (allowHints) right += (S.hint < 4 || (S.hint === 4 && hintColMoved())) ? `<button type="button" class="sk-btn sk-btn-ghost" data-act="hint">💡 ${esc(T.hintButton(S.hint))}</button>`
-        : allowSolution && S.hint === 4 ? `<button type="button" class="sk-btn sk-btn-outline" data-act="solution">${esc(T.showSolution)}</button>` : '';
-      if (allowCheck) right += `<button type="button" class="sk-btn sk-btn-primary" data-act="check">${esc(T.check)}</button>`;
-      return `<div class="sk-toolbar"><div class="sk-tl">${undo}${clear}</div>${right ? `<div class="sk-tr">${right}</div>` : ''}</div>`;
-    }
-
-    function render(focusKey) {
-      if (destroyed) return;
-      const coach = coachHTML();
-      el.innerHTML = `<div class="sk-wrap${coach ? ' has-coach' : ''}"><div class="sk-main">${gridHTML()}${toolbarHTML()}</div>` +
-        (coach ? `<div class="sk-coach">${coach}</div>` : '') + `</div><p class="sk-live sk-sr" aria-live="polite" id="${id}-live"></p>`;
+    function renderCoach() {
+      const h = coachHTML();
+      coachEl.innerHTML = h; coachEl.hidden = !h;
+      el.querySelector('.sk-wrap').classList.toggle('has-coach', !!h);
       if (solutionInst) { solutionInst.destroy(); solutionInst = null; }
-      const mini = el.querySelector('[data-sk-mini]');
+      const mini = coachEl.querySelector('[data-sk-mini]');
       if (mini) solutionInst = mount(mini, { top, bottom, mode: 'view', work: { ann: solutionAnn(), d: plan.columns.map((c) => String(c.digit)) } });
-      if (focusKey) { const f = el.querySelector(`[data-k="${focusKey}"], [data-act="${focusKey}"]`); if (f && !f.disabled) f.focus({ preventScroll: true }); }
     }
+    function renderAll() { renderGrid(); renderTools(); renderCoach(); }
     function solutionAnn() {
       const ann = {};
       plan.exchanges.forEach((e) => { (ann[e.from] = ann[e.from] || []).push(e.after[e.from]); (ann[e.to] = ann[e.to] || []).push(e.after[e.to]); });
       return ann;
     }
 
-    // ----- Regroup marks (independent, test, guided exchange) -----
+    // ----- Regroup marks (independent and test): patched in place -----
     function commitRegroup(i, text) {
       const v = M.readAmount(text);
       const hist = S.ann[i] || [];
       const was = hist.length ? hist[hist.length - 1] : null;
-      if (Number.isNaN(v)) { render('r' + i); sayAlways(T.digitsOnly); return; }
+      if (Number.isNaN(v)) { const inp = gridHost.querySelector(`[data-k="r${i}"]`); if (inp) inp.value = was === null ? '' : String(was); announce(T.digitsOnly); return; }
       if (v === was) return;
       S.log.push({ place: i, before: hist.slice() });
       if (v === null) { hist.pop(); if (hist.length) S.ann[i] = hist; else delete S.ann[i]; }
       else S.ann[i] = hist.concat(v);
-      marks = {}; feedbackHTML = '';
-      render(null);
-      if (mode === 'test') sayAlways(T.committed(i, v, was)); else say(T.committed(i, v, was));
+      patchMarks();
+      if (mode === 'test') announce(T.committed(i, v, was)); else say(T.committed(i, v, was));
       emit('step', { kind: 'regroup', place: i, value: v, was });
       change();
     }
@@ -369,18 +430,19 @@
       if (!last) return;
       if (last.clear) S.ann = last.before;
       else if (last.before.length) S.ann[last.place] = last.before; else delete S.ann[last.place];
-      marks = {}; feedbackHTML = '';
-      render('undo');
+      patchMarks();
+      if (!focusOn('[data-act="undo"]')) focusOn('[data-k^="r"]');
       const now = last.clear ? null : (S.ann[last.place] ? S.ann[last.place][S.ann[last.place].length - 1] : null);
-      sayAlways(last.clear ? 'Regroup marks restored.' : T.undone(last.place, now));
+      announce(last.clear ? T.restored : T.undone(last.place, now));
       emit('step', { kind: 'undo' }); change();
     }
     function clearWork() {
       if (!Object.keys(S.ann).length) return;
       S.log.push({ clear: true, before: clone(S.ann) });
-      S.ann = {}; marks = {}; feedbackHTML = '';
-      render('clear');
-      sayAlways(T.cleared);
+      S.ann = {};
+      patchMarks();
+      focusOn('[data-act="undo"]');
+      announce(T.cleared);
       emit('reset', { scope: 'marks' }); change();
     }
 
@@ -390,7 +452,7 @@
       const g = M.gradeFinal(top, bottom, S.d);
       const ev = M.evaluateWork(top, bottom, S.ann);
       const result = { status: g.status, correct: g.correct, value: g.value, marks: ev.status, standardMarks: ev.status === 'valid' ? ev.standard : null, issues: [] };
-      if (mode === 'test' || !allowCheck) return result; // graded silently (the host decides what to show)
+      if (mode === 'test' || !allowCheck) return result; // graded silently: the host decides what to show
       marks = {};
       const msgs = [];
       if (g.status === 'empty') msgs.push(T.empty);
@@ -406,10 +468,8 @@
         result.issues = issues;
         for (let i = 0; i < n; i++) { const v = (S.d[i] || '').trim(); if (v !== '' || i < M.lengthOf(top - bottom)) marks[i] = v === String(plan.columns[i].digit) ? 'ok' : 'no'; }
         const named = issues.filter((x) => x.kind !== 'wrong-digit');
-        const show = (named.length ? named : issues).slice(0, 2);
-        show.forEach((x) => {
-          const f = T.issue[x.kind];
-          const i = x.place;
+        (named.length ? named : issues).slice(0, 2).forEach((x) => {
+          const f = T.issue[x.kind], i = x.place;
           if (x.kind === 'smaller-from-larger') msgs.push(f(i, orig[i], bdig[i]));
           else if (x.kind === 'original-digit') msgs.push(f(i, orig[i]));
           else msgs.push(f(i));
@@ -420,7 +480,8 @@
       feedbackHTML = `<p class="${g.correct ? 'sk-ok-note' : 'sk-no-note'}"><span aria-hidden="true">${g.correct ? '✓ ' : g.status === 'wrong' ? '✗ ' : ''}</span>${msgs.map(esc).join(' ')}</p>`;
       S.result = { status: g.status, correct: g.correct };
       if (g.correct) S.done = true;
-      render(g.correct ? 'check' : null);
+      renderGrid(); renderCoach();
+      focusOn('[data-act="check"]');
       say(msgs.join(' '));
       emit('answer', { status: g.status, correct: g.correct, value: g.value, marks: ev.status, issues: result.issues });
       if (g.correct) emit('complete', { correct: true, hintsUsed: S.hint });
@@ -431,89 +492,122 @@
     // ----- Guided decisions -----
     /** ok: ✓ · false: ✗ (a real mistake) · 'valid': ↺ (mathematically fine, but use the standard step). */
     function guidedFeedback(ok, msg) { const cls = ok === 'valid' ? 'sk-info-note' : ok ? 'sk-ok-note' : 'sk-no-note'; feedbackHTML = `<p class="${cls}"><span aria-hidden="true">${ok === 'valid' ? '↺ ' : ok ? '✓ ' : '✗ '}</span>${esc(msg)}</p>`; }
-    function guidedNext(stage, extra) {
+    /** A correct step: its confirmation moves above the next question; the next stage's controls get focus. */
+    function guidedNext(stage, extra, okMsg) {
+      prevNote = okMsg || ''; feedbackHTML = '';
       Object.assign(S.guided, { stage }, extra || {});
-      render(null);
+      renderGrid(); renderCoach();
       const g = S.guided;
-      if (g.stage === 'done') { say(T.guidedDone(top, bottom, top - bottom)); emit('complete', { correct: true }); }
+      if (g.stage === 'done') { focusOn('.sk-done'); say(`${prevNote} ${T.guidedDone(top, bottom, top - bottom)}`); emit('complete', { correct: true }); }
       else {
-        const f = el.querySelector(g.stage === 'exchange' ? '.sk-in[data-k^="r"]' : g.stage === 'digit' ? `[data-k="a${g.col}"]` : '.sk-choices .sk-btn');
-        if (f) f.focus({ preventScroll: true });
-        say(`${feedbackText()} ${el.querySelector('.sk-q') ? el.querySelector('.sk-q').textContent : ''}`.trim());
+        focusOn(g.stage === 'exchange' ? '[data-k^="r"]' : g.stage === 'digit' ? `[data-k="a${g.col}"]` : '.sk-choices .sk-btn');
+        const q = coachEl.querySelector('.sk-q');
+        say(`${prevNote} ${q ? q.textContent : ''}`.trim());
       }
       change();
     }
-    /** From place k up, nothing is left to write (top amount 0, no bottom digit): the answer starts lower. */
+    /** A wrong (or valid-but-not-standard) answer: feedback under the controls; focus back where the child was. */
+    function guidedStay(focusSel) {
+      renderCoach();
+      if (!focusOn(focusSel)) focusOn('.sk-coach .sk-btn');
+      say(plainText(feedbackHTML));
+      change();
+    }
     const leadingOnly = (k) => plan.columns.slice(k).every((c) => c.topNow === 0 && c.place >= blen);
-    const feedbackText = () => { const d = document.createElement('div'); d.innerHTML = feedbackHTML; return d.textContent; };
     function guidedAct(act, v) {
       const g = S.guided, col = plan.columns[g.col], i = g.col, t = col.before[i], b = col.bottomDigit;
       if (act === 'needs') {
         const yes = v === 'yes';
-        if (yes === col.needs) {
-          guidedFeedback(true, yes ? T.needsYes(t, b) : T.needsNo(t, b));
-          emit('step', { kind: 'needs', column: i, correct: true });
-          return guidedNext(yes ? 'supplier' : 'digit');
-        }
+        if (yes === col.needs) { emit('step', { kind: 'needs', column: i, correct: true }); return guidedNext(yes ? 'supplier' : 'digit', null, yes ? T.needsYes(t, b) : T.needsNo(t, b)); }
         guidedFeedback(yes ? 'valid' : false, yes ? T.needsAltYes(i, t, b) : T.needsWrongNo(i, t, b));
         emit('step', { kind: 'needs', column: i, correct: false, valid: yes });
-      } else if (act === 'supplier') {
+        return guidedStay(`[data-act="needs"][data-v="${v}"]`);
+      }
+      if (act === 'supplier') {
         const k = Number(v), cur = col.before;
-        if (k === col.supplier) {
-          guidedFeedback(true, col.chain ? T.demoSupplier(col) : `Yes. The ${P[k].name} can give.`);
-          emit('step', { kind: 'supplier', column: i, correct: true });
-          return guidedNext('exchange', { ex: 0 });
-        }
-        if (cur[k] === 0) guidedFeedback(false, T.supplierZero(k));
-        else guidedFeedback('valid', T.supplierFar(k, col.supplier));
+        if (k === col.supplier) { emit('step', { kind: 'supplier', column: i, correct: true }); return guidedNext('exchange', { ex: 0 }, col.chain ? T.demoSupplier(col) : T.supplierOk(k)); }
+        if (cur[k] === 0) guidedFeedback(false, T.supplierZero(k)); else guidedFeedback('valid', T.supplierFar(k, col.supplier));
         emit('step', { kind: 'supplier', column: i, correct: false, valid: cur[k] > 0 });
-      } else if (act === 'check-ex') {
+        return guidedStay(`[data-act="supplier"][data-v="${v}"]`);
+      }
+      if (act === 'check-ex') {
         const e = col.exchanges[g.ex];
-        const rv = (j) => { const inp = el.querySelector(`[data-k="r${j}"]`); return inp ? M.readAmount(inp.value) : null; };
+        const rv = (j) => { const inp = gridHost.querySelector(`[data-k="r${j}"]`); return inp ? M.readAmount(inp.value) : null; };
         const giver = rv(e.from), getter = rv(e.to);
-        // Commit what is typed so it is kept, right or wrong.
-        [[e.from, giver], [e.to, getter]].forEach(([j, val]) => {
-          if (val === null || Number.isNaN(val)) return;
-          const h = S.ann[j] || []; if (h[h.length - 1] !== val) S.ann[j] = h.concat(val);
-        });
-        if (giver === null || getter === null || Number.isNaN(giver) || Number.isNaN(getter)) { guidedFeedback(false, T.exchangeEmpty); render('check-ex'); change(); return; }
+        if (giver === null || getter === null || Number.isNaN(giver) || Number.isNaN(getter)) { guidedFeedback(false, T.exchangeEmpty); return guidedStay('[data-act="check-ex"]'); }
         const okG = giver === e.after[e.from], okR = getter === e.after[e.to];
         if (okG && okR) {
-          guidedFeedback(true, T.exchangeKept(e.from, e.to, e.after));
+          // Record this exchange's values (each place keeps its earlier values, so 0 → 10 → 9 shows the struck 10).
+          [[e.from, giver], [e.to, getter]].forEach(([j, val]) => { const h = S.ann[j] || []; if (h[h.length - 1] !== val) S.ann[j] = h.concat(val); });
           emit('step', { kind: 'exchange', column: i, from: e.from, to: e.to, correct: true });
-          return g.ex + 1 < col.exchanges.length ? guidedNext('exchange', { ex: g.ex + 1 }) : guidedNext('digit');
+          return g.ex + 1 < col.exchanges.length ? guidedNext('exchange', { ex: g.ex + 1 }, T.exchangeKept(e.from, e.to, e.after)) : guidedNext('digit', null, T.exchangeKept(e.from, e.to, e.after));
         }
-        // Keep the correct value; take back only the wrong one.
-        [[e.from, okG], [e.to, okR]].forEach(([j, ok]) => { if (!ok && S.ann[j]) { S.ann[j].pop(); if (!S.ann[j].length) delete S.ann[j]; } });
+        // Nothing wrong is recorded and nothing earlier is removed (SR-D02); the right box keeps its value.
         guidedFeedback(false, okR && !okG && giver === e.before[e.from] ? T.exchangeNoReduce(e.from) : !okG ? T.exchangeGiver(e.from) : T.exchangeGetter(e.to));
         emit('step', { kind: 'exchange', column: i, correct: false });
-        render(!okG ? 'r' + e.from : 'r' + e.to); say(feedbackText()); change();
-      } else if (act === 'check-digit') {
-        const inp = el.querySelector(`[data-k="a${i}"]`), dv = inp ? inp.value.trim() : '';
+        renderCoach();
+        const bad = gridHost.querySelector(`[data-k="r${!okG ? e.from : e.to}"]`);
+        if (bad) { bad.focus({ preventScroll: true }); bad.select(); }
+        say(plainText(feedbackHTML)); change();
+        return;
+      }
+      if (act === 'check-digit') {
+        const inp = gridHost.querySelector(`[data-k="a${i}"]`), dv = inp ? inp.value.trim() : '';
         S.d[i] = dv;
-        if (!/^\d$/.test(dv)) { guidedFeedback(false, T.digitEmpty); render('a' + i); say(feedbackText()); change(); return; }
+        if (!/^\d$/.test(dv)) { guidedFeedback(false, T.digitEmpty); return guidedStay(`[data-k="a${i}"]`); }
         const d = Number(dv);
         if (d === col.digit) {
-          guidedFeedback(true, `${cap(P[i].name)}: ${col.topNow} − ${b} = ${d}.`);
           emit('step', { kind: 'digit', column: i, correct: true });
           emit('answer', { status: i === n - 1 ? 'correct' : 'partial', column: i });
-          if (g.col + 1 < n && !leadingOnly(g.col + 1)) return guidedNext('needs', { col: g.col + 1, ex: 0 });
-          if (g.col + 1 < n) guidedFeedback(true, `${cap(P[i].name)}: ${col.topNow} − ${b} = ${d}. ${T.noneLeft(g.col + 1)}`);
-          return guidedNext('done');
+          const ok = T.digitOk(i, col.topNow, b, d);
+          if (g.col + 1 < n && !leadingOnly(g.col + 1)) return guidedNext('needs', { col: g.col + 1, ex: 0 }, ok);
+          return guidedNext('done', null, g.col + 1 < n ? `${ok} ${T.noneLeft(g.col + 1)}` : ok);
         }
         const lent = col.topNow !== orig[i] && !col.needs;
         guidedFeedback(false, lent && d === orig[i] - b ? T.digitOriginal(i, orig[i], col.topNow) : (d === b - t && t < b) ? T.digitSwap(i, t, b, col.topNow) : T.digitWrong(i, col.topNow, b));
         emit('step', { kind: 'digit', column: i, correct: false });
-        render('a' + i); say(feedbackText()); change();
+        renderCoach();
+        if (inp) { inp.focus({ preventScroll: true }); inp.select(); }
+        say(plainText(feedbackHTML)); change();
       }
-      if (act === 'needs' || act === 'supplier') { render(null); say(feedbackText()); change(); }
     }
 
-    // ----- Input handling (one set of listeners on the container; removed by destroy) -----
+    // ----- Hints and the demo -----
+    function showHint(solution) {
+      if (!allowHints) return;
+      const h = M.hints(top, bottom, { d: S.d });
+      if (!solution && S.hint < 5 && S.hintCol !== null && S.hintCol !== undefined && S.hintCol !== h.place) S.hint = 0; // a new column starts again at hint 1
+      if (solution) { if (!allowSolution || S.hint < 4) return; S.hint = 5; }
+      else if (S.hint < 4) S.hint += 1; else return;
+      S.hintCol = h.place;
+      renderGrid(); renderTools(); renderCoach();
+      if (S.hint >= 5) { focusOn('.sk-solution-h'); const box = coachEl.querySelector('.sk-solution'); if (box && box.scrollIntoView) box.scrollIntoView({ block: 'nearest' }); }
+      else if (!focusOn('[data-act="hint"]') && !focusOn('[data-act="solution"]')) focusOn('.sk-hint');
+      say(S.hint >= 5 ? `${T.solutionTitle}. ${M.solutionLines(top, bottom).join(' ')}` : `${T.hintLabel(S.hint)}: ${h.levels[S.hint - 1]}`);
+      emit('hint', { level: S.hint, place: h.place, solution: S.hint >= 5 });
+      change();
+    }
+    function demoMove(act) {
+      if (mode !== 'demo') return;
+      if (act === 'next' && S.demo < DEMO.length - 1) S.demo++;
+      else if (act === 'back' && S.demo > 0) S.demo--;
+      else if (act === 'restart') S.demo = 0;
+      else return;
+      renderGrid(); renderCoach();
+      if (!focusOn(`[data-act="${act === 'restart' ? 'next' : act}"]`)) focusOn(S.demo === 0 ? '[data-act="next"]' : '[data-act="back"]');
+      say(DEMO[S.demo].note);
+      emit('step', { kind: 'demo', index: S.demo, total: DEMO.length, part: DEMO[S.demo].kind });
+      if (S.demo === DEMO.length - 1) emit('complete', { correct: true, demo: true });
+      change();
+    }
+
+    // ----- Input handling: one set of listeners on the element, removed by destroy() -----
     const sig = { signal: ac.signal };
     el.addEventListener('click', (e) => {
-      const b = e.target.closest('[data-act]');
-      if (!b || !el.contains(b) || b.disabled) return;
+      const t = e.target;
+      // A click into a filled box selects it, so typing replaces the value (SR-D02).
+      const b = t.closest && t.closest('[data-act]');
+      if (!b || !el.contains(b) || b.disabled || (solutionInst && b.closest('[data-sk-mini]'))) return;
       const act = b.dataset.act;
       if (act === 'undo') return undo();
       if (act === 'clear') return clearWork();
@@ -537,8 +631,8 @@
       const v = t.value.replace(/\D/g, '').slice(-1);
       t.value = v; S.d[i] = v;
       while (S.d.length && S.d[S.d.length - 1] === '') S.d.pop();
-      if (Object.keys(marks).length && mode === 'independent') { delete marks[i]; t.classList.remove('is-ok', 'is-no'); const m = t.parentNode.querySelector('.sk-mark'); if (m) m.remove(); }
-      if (v && mode !== 'guided') { const nx = el.querySelector(`[data-k="a${i + 1}"]`); if (nx) nx.focus({ preventScroll: true }); }
+      if (mode === 'independent') clearMarks();
+      if (v && mode !== 'guided') { const nx = gridHost.querySelector(`[data-k="a${i + 1}"]`); if (nx) nx.focus({ preventScroll: true }); }
       emit('answer', { status: 'typing', digits: S.d.slice() });
       change();
     }, sig);
@@ -546,7 +640,7 @@
       const t = e.target;
       if (!t.matches || !t.matches('.sk-in')) return;
       const kind = t.dataset.k[0], i = Number(t.dataset.k.slice(1));
-      const go = (k) => { const x = el.querySelector(`[data-k="${k}"]`); if (x) { e.preventDefault(); x.focus({ preventScroll: true }); if (x.select) x.select(); } };
+      const go = (k) => { const x = gridHost.querySelector(`[data-k="${k}"]`); if (x) { e.preventDefault(); x.focus({ preventScroll: true }); if (x.select) x.select(); } };
       if (e.key === 'ArrowLeft') go(kind + (i + 1));
       else if (e.key === 'ArrowRight') go(kind + (i - 1));
       else if (e.key === 'ArrowUp' && kind === 'a') go('r' + i);
@@ -555,76 +649,51 @@
       else if (e.key === 'Enter' && kind === 'r' && mode !== 'guided') { e.preventDefault(); commitRegroup(i, t.value); }
     }, sig);
     el.addEventListener('focusin', (e) => { const t = e.target; if (t.matches && t.matches('.sk-cur.sk-in') && t.select) t.select(); }, sig);
-
-    function showHint(solution) {
-      if (!allowHints) return;
-      const h = M.hints(top, bottom, { d: S.d });
-      if (!solution && S.hint < 5 && S.hintCol !== undefined && S.hintCol !== h.place) S.hint = 0; // a new column: start again at hint 1
-      if (solution) { if (!allowSolution || S.hint < 4) return; S.hint = 5; }
-      else if (S.hint < 4) S.hint += 1; else return;
-      S.hintCol = h.place;
-      marks.hintCol = h.place;
-      const col = h.place !== null ? plan.columns[h.place] : null;
-      marks.hintSupplier = col && col.needs ? col.supplier : null;
-      render(S.hint >= 5 ? null : S.hint < 4 ? 'hint' : 'solution');
-      const box = el.querySelector(S.hint >= 5 ? '.sk-solution' : '.sk-hint');
-      if (box && box.scrollIntoView) box.scrollIntoView({ block: 'nearest' });
-      say(S.hint >= 5 ? `${T.solutionTitle}. ${h.levels[4]}` : `${T.hintLabel(S.hint)}: ${h.levels[S.hint - 1]}`);
-      emit('hint', { level: S.hint, place: h.place, solution: S.hint >= 5 });
-      change();
-    }
-    function demoMove(act) {
-      if (mode !== 'demo') return;
-      if (act === 'next' && S.demo < DEMO.length - 1) S.demo++;
-      else if (act === 'back' && S.demo > 0) S.demo--;
-      else if (act === 'restart') S.demo = 0;
-      else return;
-      render(act === 'restart' ? 'next' : (act === 'next' && S.demo === DEMO.length - 1) ? 'back' : act);
-      say(DEMO[S.demo].note);
-      emit('step', { kind: 'demo', index: S.demo, total: DEMO.length, part: DEMO[S.demo].kind });
-      if (S.demo === DEMO.length - 1) emit('complete', { correct: true, demo: true });
-      change();
-    }
+    // A tap or click into a filled regroup box selects it, so typing replaces the value (maxlength 2 would block it). The
+    // browser places the caret after the pointer event, so select a moment later (review SR-D02).
+    el.addEventListener('pointerup', (e) => { const t = e.target; if (t.matches && t.matches('.sk-cur.sk-in') && t.value) setTimeout(() => { if (document.activeElement === t && t.selectionStart === t.selectionEnd) t.select(); }, 0); }, sig);
 
     // ----- Public API -----
-    function getState() { const s = clone(S); return s; }
+    function getState() { return clone(S); }
     function setState(s) {
       if (!validState(s, top, bottom)) return false;
       S = Object.assign(clone(s), { mode });
       if (mode === 'guided' && !S.guided) S.guided = { col: 0, stage: 'needs', ex: 0 };
       if (DEMO && S.demo >= DEMO.length) S.demo = DEMO.length - 1;
-      marks = {}; feedbackHTML = '';
-      render(null);
+      marks = {}; feedbackHTML = ''; prevNote = '';
+      renderAll();
       return true;
     }
     function reset() {
-      S = freshState(top, bottom, mode); marks = {}; feedbackHTML = '';
-      render(null); sayAlways('Work cleared.'); emit('reset', { scope: 'all' }); change();
+      S = freshState(top, bottom, mode); marks = {}; feedbackHTML = ''; prevNote = '';
+      renderAll(); announce('Work cleared.'); emit('reset', { scope: 'all' }); change();
     }
     function destroy() {
       if (destroyed) return;
       if (solutionInst) solutionInst.destroy();
+      clearTimeout(sayTimer);
       ac.abort();
       destroyed = true;
       Object.keys(listeners).forEach((k) => delete listeners[k]);
       el.innerHTML = '';
       el.classList.remove('sk', 'sk-mode-' + mode);
       el.removeAttribute('data-sk');
+      if (o.theme) Object.keys(o.theme).forEach((k) => el.style.removeProperty(k.startsWith('--') ? k : '--sk-' + k));
     }
     const api = {
       id, mode, top, bottom,
       on, off, getState, setState, check, reset, destroy,
       hint: () => showHint(false), showSolution: () => showHint(true),
-      undo, clearWork, focus: () => { const f = el.querySelector('.sk-in, .sk-btn'); if (f) f.focus(); },
+      undo, clearWork, focus: () => { focusOn('.sk-in, .sk-btn'); },
       result: () => (mode === 'test' || mode === 'independent' ? Object.assign(M.gradeFinal(top, bottom, S.d), { marks: M.evaluateWork(top, bottom, S.ann).status }) : null),
       get destroyed() { return destroyed; }
     };
-    render(null);
+    renderAll();
     return api;
   }
 
   SK.mount = mount;
   SK.validState = validState;
   SK.text = TEXT;
-  SK.version = '1.0.0';
+  SK.version = '1.1.0';
 })(typeof window !== 'undefined' ? window : globalThis);
