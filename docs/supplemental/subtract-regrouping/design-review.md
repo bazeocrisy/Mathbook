@@ -217,3 +217,217 @@ Design agent's notes. Section 1 is written before the build; later sections revi
   - **Check / feedback:** the feedback sentence, e.g. "Not yet. The tens gave 1 to the ones, so use 9 tens, not 0.";
   - **hint:** "Hint 2 of 4: …".
 - **No announcement** for single answer digits. Test mode announces only Undo and Clear work.
+
+## 2. Review of the build (c696fa6)
+
+### How it was inspected
+
+- **Real headless Chrome**, one instance, via `tests/lib/harness.mjs`.
+- **Input:** real CDP mouse, touch and key events. No synthetic `.click()` on the workspace.
+- **Viewports:** 320×640, 390×844, 768×1024, 1024×768, 1366×768, 1920×1080, and 683×384 (200% zoom).
+- **Screens covered:**
+  - Learn steps 1, 2 and 6 (Examples and Your Turn);
+  - Practice Together, Practice on My Own (setup → Start, marks, Undo/Clear, hints 1–4 and the full solution, wrong-answer feedback), and the skills `skill-mistakes` and `skill-decide`;
+  - the test (Q1, Q10 steps, Q12 decide, Q13 mistake, then finish) and the results;
+  - the Parent Guide;
+  - the demo page, including the Sea theme.
+- **Where the evidence is:** scripts and screenshots are in the session scratchpad `design/` folder (`run.mjs` plus `scenes-*.mjs`; images in `shots/`). Below, `shots/x.png (W×H)` is a full-page capture unless it says otherwise.
+- **The branch moved during the review:** HEAD went to 1df0bc5 (SR-M math fixes). That commit doesn't change the render, focus, live-region, history-row CSS or layout code, so SR-D01–D14 still apply. SR-D15 needs a re-check against the new per-column hints.
+
+### What passes
+
+- **No sideways scroll** on any screen at any size, except SR-D04.
+- **The digit grid stays aligned** at every size and under the Sea theme. The minus track, the comma track and right-aligned short bottom numbers are all correct.
+- **Desktop fit at 1366×768:**
+  - Learn demo: grid bottom at y=568, controls at about 533;
+  - guided: Check at y=406–456;
+  - independent practice: Check bottom at y=634, card bottom at 754.
+  - The problem plus its main controls are visible without scrolling. 1920×1080 is also fine.
+- **States without colour:** the crossed-out original (slash), current value (box, bold), answer (below the rule, larger box), and active, giver and getter columns (solid band and ▼, dashed border with −1, solid border with +10) all read correctly in greyscale.
+- **The test** has no Hint, Check or feedback controls. Undo and Clear are present.
+- **No hidden focusable elements** were found on any screen.
+- **Tap targets:** every workspace input and button measures ≥ 44 px. Radio circles are 23 px, but they sit inside full-width labels at least 48 px tall.
+- **Answer boxes:**
+  - typing moves focus left, as in 2-15;
+  - ArrowUp, ArrowDown, ArrowLeft and ArrowRight work;
+  - Backspace on an empty box moves right.
+- **Focus outline:** 3 px in `--sk-focus` with a 2 px offset, clearly visible.
+- **Results, the Parent Guide and the demo page** lay out cleanly. Theme changes don't break alignment.
+
+### Findings
+
+| ID | Sev. | Summary |
+|---|---|---|
+| SR-D01 | critical | A regroup commit rebuilds the whole component: clicks and taps are lost and focus drops to `<body>` |
+| SR-D02 | critical | A filled regroup box can't be retyped, and a wrong exchange erases earlier correct history |
+| SR-D03 | major | Struck earlier values ("10" over 9) are illegible |
+| SR-D04 | major | Step 1's place chart scrolls sideways at 320 and 390 |
+| SR-D05 | major | Focus is lost after many guided, hint and toolbar actions |
+| SR-D06 | major | The live region is recreated on every render, so announcements are unreliable or doubled |
+| SR-D07 | major | On phones and at 200% zoom the controls are far from the grid; the two-pane rule is dead code |
+| SR-D08 | major | Error-analysis work doesn't show the wrong answer under the line |
+| SR-D09 | minor | The grid overflows the Your Turn panel at 320 |
+| SR-D10 | minor | Tab order runs column by column, not row by row |
+| SR-D11 | minor | The previous step's ✓ sits under the new question's Check |
+| SR-D12 | minor | The ✓/✗ marks are tiny and overlap the box border |
+| SR-D13 | minor | Full solution: a leading "0" in the answer and a run-on paragraph |
+| SR-D14 | minor | The "Earlier hints" summary is 32 px tall |
+| SR-D15 | minor | Hints 2–3 repeat themselves when the next column needs no exchange |
+| SR-D16 | minor | The results score cell wraps at 390 |
+
+**SR-D01 · critical: a regroup commit rebuilds the component and drops clicks, taps and focus.**
+- **Cause:** `commitRegroup()` runs on `change` (blur) and calls `render(null)`, which replaces the whole `el.innerHTML`, so the element the child is moving to no longer exists. This affects independent practice, test mode and every host.
+- **Evidence:** `shots/indep-clickloss-1366.png (1366×992)` and `shots/indep-touch-390.png (390×1267)`. The run logs show:
+  - **Click Check right after typing a mark:** no feedback appears (`fb=""`), and focus goes to `BODY`.
+  - **Click from one regroup box to another, then type "1":** focus is on `BODY` and the "1" is lost.
+  - **Tab out of a box, or Enter:** focus goes to `BODY`, and the next Tab starts at the top of the page.
+  - **Touch at 390:** the same happens with tap → Check and with tap → next box.
+  - **Test Q1:** typing a mark, then clicking an answer box, also leaves focus on `BODY`.
+- **Failure scenario:** a child writes 9 above the tens and taps Check. Nothing happens. They tap again and it works, or they tap the next box, type, and see nothing.
+- **Fix:**
+  - Don't rebuild on a commit. Patch only the affected column's history, current and top cells, plus the disabled state of Undo and Clear. Never replace an `<input>` or `<button>` that already exists.
+  - Split `render()` into `renderGrid`, `renderToolbar` and `renderCoach` so `innerHTML` is never used on the container after mount.
+  - As a backstop, after any render, restore focus to the element (by `data-k` or `data-act`) that held focus or was the `relatedTarget` of the blur.
+
+**SR-D02 · critical: a filled regroup box can't be retyped, and a wrong exchange erases earlier correct history.**
+- **Evidence:** a trace on 6,000 − 1,467, guided, Learn step 6:
+  1. After exchange 1, `ann = {2:[10], 3:[7]}`, and the hundreds box is pre-filled with "10" and already focused.
+  2. The child clicks it: selection is `1-1` (no select-all, because focusin doesn't fire again).
+  3. Typing "9" is blocked by `maxlength=2`, so the value stays "10".
+  4. On Check, the wrong-exchange branch runs `S.ann[j].pop()`, which removes the **earlier, correct 10**.
+  5. After the retry the history is `{1:[10], 2:[9]}`, and the finished problem shows no struck 10s (`shots/guided-s5-done-1366.png (1366×768)`, viewport only: the regroup row shows 5, 9, 9, 10 with nothing struck above).
+- **Failure scenario:** in every zero chain (Learn 5–6, Practice Together, hard skills) a child who taps the "10" box and types 9:
+  - sees nothing happen;
+  - is told they're wrong;
+  - watches their earlier correct 10 vanish.
+
+  It breaks "crossed-out earlier values stay visible" and "a retry keeps the correct work". The same `maxlength` trap hits independent and test mode whenever a focused, filled box is clicked again.
+- **Fix:**
+  - On `pointerup` or `click` in `.sk-cur.sk-in`, call `select()` when the selection is collapsed.
+  - Alternatively, drop `maxlength` and, on `input`, replace the value with the newly typed characters when the box already had 2.
+  - In `check-ex`, remember which entries this attempt pushed and pop **only those**. Never pop an entry that existed before the attempt.
+
+**SR-D03 · major: struck earlier values are illegible.**
+- **Cause:**
+  - `.sk-hist` is 0.85rem (15.3 px in Mathbook, 13.6 px on a 16 px host), weight 600 in `--sk-muted`.
+  - A 3 px `--sk-cross` slash crosses both digits, so "10" reads as "1Ø" or a scribble.
+- **Evidence:**
+  - `shots/learn6-3002-exch-320.png (320×1628)`: the hundreds and tens history;
+  - `shots/test-q10-steps-1366.png (1366×939)`: the "6" over 16 is nearly invisible;
+  - `shots/demo-sea-1366.png (1366×1739)`: the "12" over 9.
+- **Failure scenario:** the 3,002 example's key idea (0 → 10 → 9) can't be read on any device.
+- **Fix:**
+  - **Size:** `.sk-hist { font-size: 1.05rem; font-weight: 700; padding: 0 3px }`, with history row height 24 px (20 px on short screens).
+  - **Strike style:** for the history row only, use a horizontal `text-decoration: line-through 2px var(--sk-cross)`. Two digits under a horizontal strike are unambiguous, and the "θ" concern applies only to single top digits. Keep the diagonal slash for top digits, but make it `2px` and draw it in `--sk-muted`, so the digit underneath stays readable.
+
+**SR-D04 · major: Step 1's place chart scrolls sideways at 320 and 390.**
+- **Evidence:** `scrollWidth` is 387 at 320 and 396 at 390. The "Value" column is cut off: `shots/learn1-chart-320.png (320×1264)` and `shots/learn1-chart-390.png (390×1156)`.
+- **Failure scenario:** the very first Learn screen scrolls sideways on phones, and the "value stays the same" column (the point of the step) is hidden.
+- **Fix:**
+  - At 400 px and narrower, use `Th / H / T / O` headers (as `<abbr title>`), `padding: .3rem .25rem`, `min-width: 0`, and `table-layout: fixed; width: 100%`.
+  - Or stack "Value" under the row as a caption line.
+
+**SR-D05 · major: focus is lost after many actions.**
+- **Evidence** (focus becomes `BODY`):
+  - a wrong Yes/No or wrong supplier in guided mode (`shots/guided-s5-wrongsupp-390.png (390×1508)`);
+  - finishing a guided problem;
+  - Show the full solution;
+  - Clear work (the button becomes disabled);
+  - Undo when it empties the log;
+  - Enter commit (SR-D01).
+- **Failure scenario:** a keyboard or switch user answers wrong and has to Tab from the page header back into the problem every time.
+- **Fix:** always pass a focus target to `render()`:
+  - **wrong choice:** the button that was pressed;
+  - **done:** the done message (`tabindex="-1"`), and the host's Next Step after that;
+  - **solution:** the "Full solution" heading (`tabindex="-1"`);
+  - **Clear:** Undo;
+  - **disabled Undo:** the first regroup box.
+
+**SR-D06 · major: the live region is recreated on every render.**
+- **Cause:** `.sk-live` is part of the markup `render()` rebuilds, and `say()` writes to it in the same task. Screen readers often miss announcements in a newly inserted live region.
+- **Doubling:** `.sk-fb role="status"` is re-inserted with its text, so the same feedback may be read twice or not at all. Both regions held the text in every guided and wrong-answer log, e.g. `status: ✗ The tens place has 0…` and `polite: ✗ The tens place has 0…`. The 1df0bc5 "done" view adds another `role="status"` copy.
+- **Failure scenario:** a blind child hears nothing after Check, or hears the feedback twice.
+- **Fix:**
+  - Create `.sk-live` once at mount, outside the subtree that gets re-rendered. Clear it, then set the text about 50 ms later.
+  - Remove `role="status"` from `.sk-fb`; `say()` already announces it.
+
+**SR-D07 · major: on phones and at 200% zoom the controls are far from the grid.**
+- **Evidence:**
+  - **Demo at 320×640:** the grid is at y=465–740 and Next part at about y=1190 (`shots/learn6-3002-exch-320.png`). The child can't see the change and press Next on the same screen.
+  - **Guided at 683×384:** the grid's entry boxes and Check span 405 px, more than the 384 px viewport (`shots/guided-s5-exch-zoom.png (683×1201)`). There is about 300 px of empty space beside the grid.
+  - **Dead rule:** `@container (min-width: 860px)` in `subtract-workspace.css` never applies, because no ancestor declares `container-type`. Two panes depend only on viewport width ≥ 1000.
+- **Fix:**
+  - **Container:** `.sk { container-type: inline-size }`, and switch to two panes at `@container (min-width: 600px)`. This puts the coach beside the grid at 683, at 768 and inside wide cards, and drop the viewport media rule.
+  - **Stacked order:** in demo, put the Back / Part / Next row first, then the sentence, then "Top number now". In guided, show the question and its buttons first.
+  - **Narrow widths:** show only the current "Top number now" line, with earlier lines in a `<details>`.
+
+**SR-D08 · major: error-analysis work doesn't show the wrong answer under the line.**
+- **Cause:** the "someone's work" view is mounted with `answer: false`. Zoe's 3,584 appears only in the sentence.
+- **Evidence:** `shots/test-q13-mistake-390.png (390×1835)` and `shots/skill-mistakes-1366.png (1366×1528)`.
+- **Failure scenario:** the child can't compare column by column to find where it went wrong. The spec requires error analysis shown vertically.
+- **Fix:**
+  - Show the work's answer digits read-only in the answer row, with a visible label ("Zoe's answer") to the left of the row or as the grid caption.
+  - Use `aria-label`s like "Zoe's answer, tens digit 8".
+  - Leave the view's regroup marks as they are.
+
+**SR-D09 · minor: the grid overflows the Your Turn panel at 320.**
+- **Cause:** the 4-digit tracks total about 262 px, but `.wiz-check` gives 252 px. The ones band spills over the panel border.
+- **Evidence:** `shots/guided-s5-exch-320.png (320×1583)`.
+- **Fix:** with SR-D07's container, use `--sk-col: clamp(44px, calc((100cqi - var(--sk-op) - var(--sk-comma) - 12px) / 4), 60px)`. Alternatively, at 360 px and narrower, set `.wiz-check .sk { --sk-col: 52px; --sk-op: 1rem }`.
+
+**SR-D10 · minor: Tab order runs column by column.**
+- **Evidence:** Tab goes r3 → a3 → r2 → a2 → r1 → a1 → r0 → a0 (`indep-keys` log).
+- **Failure scenario:** Tab from the thousands answer jumps up to the hundreds regroup box.
+- **Fix:** emit all regroup cells, then all answer cells, in DOM order. Grid placement is explicit, so the visual layout is unchanged.
+
+**SR-D11 · minor: the previous step's ✓ sits under the new question's Check.**
+- **Evidence:** `shots/guided-s5-exch-1366.png (1366×768)`, viewport only: "✓ The tens and hundreds have 0…" sits under the new question's Check button, so it reads as the result of a Check not yet pressed. In the supplier stage, `.sk-sub` repeats the needs-Yes sentence.
+- **Fix:**
+  - Show the confirmation for the previous step **above** the new question, as a muted "✓ …" line.
+  - Keep `.sk-fb` under the button for the current step only.
+  - Drop the repeated `.sk-sub` line.
+
+**SR-D12 · minor: the ✓/✗ marks are tiny.**
+- **Cause:** the marks are 0.85rem glyphs at bottom-right, partly over the box border.
+- **Evidence:** `shots/indep-wrong-1366.png (1366×992)`.
+- **Fix:** reuse Mathbook's `.mk` badge: a 1.3rem white circle with a 2 px border, top-right, `z-index: 2`, coloured `--sk-ok` / `--sk-no`.
+
+**SR-D13 · minor: full-solution presentation.**
+- **Evidence:** `shots/indep-solution-1366.png (1366×768)`, viewport only:
+  - **Leading zero:** the answer row shows a leading "0" (0,935).
+  - **Run-on text:** the explanation is one long paragraph.
+  - **Focus:** it is lost (SR-D05).
+  - **Scrolling at 390:** opening the solution scrolls the child's grid out of view (grid top at −157).
+- **Fix:**
+  - Leave leading-zero answer boxes blank in `view` mode (1df0bc5 fixed this for guided only).
+  - Render the steps as an ordered list, one exchange or digit per line.
+  - Bring the solution into view with `block: 'nearest'`, as now, and focus its heading.
+
+**SR-D14 · minor: the "Earlier hints" summary is 32 px tall.**
+- **Evidence:** the metrics on `shots/indep-hints-1366.png (1366×768)`.
+- **Fix:** `.sk-older summary { min-height: 44px; display: flex; align-items: center }`.
+
+**SR-D15 · minor: hints 2–3 repeat when the next column needs no exchange.** (Re-check against 1df0bc5.)
+- **Evidence:** for 7,008 − 264 the hints were:
+  1. "Is 8 enough to take away 4?"
+  2. "8 is enough…, so the ones column does not need an exchange."
+  3. "No exchange is needed in the ones."
+  4. "8 − 4 = 4."
+
+  Levels 2–3 add nothing, and the hints never reach the tens, the column that actually needs attention. The math/testing agent should confirm the content.
+- **Fix:** for a column that needs no exchange, collapse it to one hint ("8 − 4 = 4"). Then aim the next hint level at the next column that needs regrouping.
+
+**SR-D16 · minor: the results score cell wraps at 390.**
+- **Evidence:** `shots/results-390.png (390×2100)`: "12 of" breaks onto two lines. The review line also reads "you wrote: chose a reason; answer 427".
+- **Fix:**
+  - Give the score cell `white-space: nowrap`.
+  - Reword the review line, e.g. "Your answer: 427 (reason chosen)".
+
+### Re-verification I need after fixes
+
+- **Scripted runs:** re-run `indep-clickloss`, `indep-touch`, the guided zero-chain trace, and the `learn1-chart`, `guided-*-zoom`, `learn6-*-320` and `test-q13` scenes. The scripts are kept in the scratchpad `design/` folder.
+- **Pass criteria:**
+  - every click, tap, Tab and Enter lands where intended;
+  - history keeps `[10, 9]`;
+  - no `scrollWidth > clientWidth`;
+  - controls sit within one screen of the grid at 320×640 and 683×384.
