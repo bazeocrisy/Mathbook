@@ -57,16 +57,31 @@ try {
 
   // ----- Learn -----
   await go('#see');
-  const l1 = await js(`return { count: document.querySelector('.wiz-count').textContent, tag: document.querySelector('.phase-tag').textContent, chart: !!document.querySelector('.sr-chart') }`);
-  check('Learn step 1 of 9 opens on its Example (place chart before and after one exchange)', l1.count === 'Step 1 of 9' && l1.tag === 'Example' && l1.chart, l1);
+  const l1 = await js(`const parts = []; const say = () => document.querySelector('.sr-say').textContent;
+    parts.push(say()); for (let k = 0; k < 3; k++) { document.querySelector('[data-part="next"]').click(); await new Promise((r) => setTimeout(r, 40)); parts.push(say()); }
+    return { count: document.querySelector('.wiz-count').textContent, tag: document.querySelector('.phase-tag').textContent, blocks: document.querySelectorAll('.sr-blocks2 .blocks-col').length, parts, hi: document.querySelectorAll('.sr-blocks2 .is-hi').length };`);
+  check('Learn step 1 starts small: 49 as blocks, one action per part (4 tens 9 ones → exchange → 3 tens 19 ones → 30 + 19 = 49)', l1.count === 'Step 1 of 9' && l1.tag === 'Example' && l1.blocks === 2 &&
+    l1.parts[0] === '49 has 4 tens and 9 ones.' && /Exchange 1 ten for 10 ones/.test(l1.parts[1]) && /Now there are 3 tens and 19 ones/.test(l1.parts[2]) && /30 \+ 19 = 49/.test(l1.parts[3]), l1);
   await js(`document.querySelector('[data-w="try"]').click()`); await wait(200);
   const yt1 = await js(`${H} const box = document.querySelector('#sr-try'); const W = get('see-wizard'); const it = C.learn[0].yourTurn(M.rng(W.checks.value.seed));
-    const t = box.querySelector('[data-f="t"]'), o = box.querySelector('[data-f="o"]');
-    t.value = String(it.tens); fire(t, 'input'); o.value = String(it.ones + 10); fire(o, 'input'); box.querySelector('input[value="Yes"]').click();
-    box.querySelector('[data-check]').click(); await sleep(50); const f1 = fb(box);
-    t.value = String(it.tens - 1); fire(t, 'input'); box.querySelector('[data-check]').click(); await sleep(50);
-    return { f1, f2: fb(box), next: !document.querySelector('[data-w="next"]').disabled, focus: document.activeElement.className };`);
-  check('Learn 1 Your Turn: a wrong tens gets a specific clue; right → Next Step unlocks', /1 less/.test(yt1.f1) && /value stays the same/.test(yt1.f2) && yt1.next, yt1);
+    const q = () => (box.querySelector('.sr-q1-label') || {}).textContent; const inp = () => box.querySelector('#sr-q1in'); const click = (x) => box.querySelector('[data-x="' + x + '"]').click();
+    const out = { q0: q(), blocksKept: box.querySelectorAll('.sr-blocks2').length, numericOnly: box.querySelectorAll('input[type=radio]').length === 0 };
+    inp().value = String(it.tens); fire(inp(), 'input'); click('check'); await sleep(30);
+    out.mainHidden = Array.from(box.querySelectorAll('.sr-helprow:not(.sr-retry) [data-x]')).filter((x) => x.dataset.x !== 'check').every((x) => x.hidden); out.wrong = fb(box); out.retryRow = Array.from(box.querySelectorAll('.feedback-area [data-x]')).map((x) => x.textContent).join('|');
+    click('hint'); await sleep(20); out.hint = fb(box); out.keptValue = inp().value;
+    inp().value = String(it.tens - 1); fire(inp(), 'input'); click('check'); await sleep(30);
+    out.q1 = q(); out.firstKept = (box.querySelector('.sr-done-line') || {}).textContent;
+    click('show'); await sleep(40);
+    out.shown = (box.querySelector('.sr-shown') || {}).textContent; out.focusDone = document.activeElement.classList.contains('sr-complete'); out.done = (box.querySelector('.feedback-ok') || {}).textContent;
+    out.next = !document.querySelector('[data-w="next"]').disabled; out.helped = get('see-wizard').helped; out.n = it.n; out.t = it.tens; out.o = it.ones;
+    return out;`);
+  check('Learn 1 Your Turn asks one thing at a time ("How many tens are left?"), numbers only, starting blocks kept on screen', yt1.q0 === 'How many tens are left?' && yt1.numericOnly && yt1.blocksKept >= 1, yt1);
+  check('A wrong answer swaps Hint/Show me for one row: Try again · Get a hint · Show me how (never both rows)', yt1.mainHidden, yt1);
+  check('A wrong answer gets concrete feedback naming the amounts, plus Try again · Get a hint · Show me how', new RegExp(yt1.n + ' has ' + yt1.t + ' tens').test(yt1.wrong) && yt1.retryRow === 'Try again|Get a hint|Show me how', yt1);
+  check('Get a hint gives a next step without the answer; the typed entry is kept', /Start with the/.test(yt1.hint) && !new RegExp('\\b' + (yt1.t - 1) + ' tens are left').test(yt1.hint) && yt1.keptValue === String(yt1.t), yt1);
+  check('Right answer → the next single question ("How many ones are there now?"), the first answer kept', yt1.q1 === 'How many ones are there now?' && new RegExp(String(yt1.t - 1)).test(yt1.firstKept), yt1);
+  check('Finishing step 1 moves focus to the completion message (not the page)', yt1.focusDone, yt1);
+  check('Show me explains with the amounts, finishes the step, unlocks Next, and records it as done WITH help', /\+ 10 =/.test(yt1.shown) && /The value is the same/.test(yt1.done) && yt1.next && yt1.helped && yt1.helped.value === true, yt1);
   await b.reload(); await wait(250);
   const kept = await js(`return { phase: document.querySelector('.phase-tag').textContent, next: !document.querySelector('[data-w="next"]').disabled }`);
   check('Learn: phase and completion survive a refresh', kept.phase === 'Your Turn' && kept.next, kept);
@@ -86,7 +101,66 @@ try {
     return { done: (box.querySelector('.sk-ok-note') || {}).textContent || '', next: !document.querySelector('[data-w="next"]').disabled, log };`);
   check('Learn 2 Your Turn: the child decides each step (regroup? which place? new values? digit) and finishes', /You did it!/.test(guided.done) && guided.next, guided);
 
+  // ----- Recovery: finish all of Learn using only Show me; credited as "with help", never as independent -----
+  await b.load(URL + '#menu'); await js(`localStorage.removeItem('${KEY}:see-wizard')`);
+  await b.load(URL + '#see'); await b.reload(); await wait(250);
+  const journey = await js(`${H} const log = [];
+    for (let k = 0; k < 9; k++) {
+      document.querySelector('[data-w="try"]').click(); await sleep(150);
+      const box = document.querySelector('#sr-try');
+      if (box.querySelector('#sr-q1in')) { box.querySelector('[data-x="show"]').click(); await sleep(40); box.querySelector('[data-x="show"]').click(); await sleep(40); }
+      else if (box.querySelector('#sr-yt')) { for (let g = 0; g < 40 && box.querySelector('[data-act="g-show"]'); g++) { box.querySelector('[data-act="g-show"]').click(); await sleep(20); } }
+      else { const sh = box.querySelector('[data-help="show"]'); if (sh) sh.click(); await sleep(60); }
+      const nx = document.querySelector('[data-w="next"]'), fin = document.querySelector('[data-w="finish"]');
+      log.push(C.learn[k].id + ':' + (nx ? !nx.disabled : !fin.classList.contains('is-disabled')));
+      if (nx) { nx.click(); await sleep(150); }
+    }
+    const W = get('see-wizard'); return { log, done: Object.keys(W.done).length, helped: Object.keys(W.helped || {}).length };`);
+  check('A learner can finish every Learn step with Show me (no dead ends)', journey.log.length === 9 && journey.log.every((x) => /:true$/.test(x)) && journey.done === 9, journey);
+  check('Learn finished with Show me is recorded as 9 of 9 WITH help (not independent)', journey.helped === 9, journey);
+  await b.load(URL + '#results'); await b.reload(); await wait(250);
+  check('My Results says "9 of 9 steps done (9 with help)" and shows no test score from it', await js(`return /Learn: 9 of 9 steps done \\(9 with help\\)/.test(document.querySelector('main').innerText) && /No test results yet/.test(document.querySelector('main').innerText)`));
+  // SR-M18: "with help" counts only steps that are also done (damaged data cannot inflate it).
+  await b.load(URL + '#menu'); await js(`const W = JSON.parse(localStorage.getItem('${KEY}:see-wizard')); delete W.done.four; localStorage.setItem('${KEY}:see-wizard', JSON.stringify(W))`);
+  await b.load(URL + '#results'); await b.reload(); await wait(250);
+  { const t = await js(`return document.querySelector("main").innerText`); check('My Results counts "with help" only for steps that are done (8 of 9 → 8 with help)', /Learn: 8 of 9 steps done \(8 with help\)/.test(t), t.slice(0, 400)); }
+  // SR-M17: Try again returns focus to the part that was wrong (Learn decide: the column group, not "Yes").
+  await b.load(URL + '#menu'); await js(`localStorage.setItem('${KEY}:see-wizard', JSON.stringify({ v: 1, step: 6, done: {}, phase: {}, ex: {}, checks: {}, helped: {} }))`);
+  await b.load(URL + '#see'); await b.reload(); await wait(250);
+  await js(`document.querySelector('[data-w="try"]').click()`); await wait(200);
+  const dfx = await js(`${H} const box = document.querySelector('#sr-try'); const W = get('see-wizard'); const it = C.learn[6].yourTurn(M.rng(W.checks.decide.seed));
+    const pick = (grp, val) => { const r = Array.from(box.querySelectorAll('input[type=radio][name$="' + grp + '"]')).find((x) => val(x.value)); r.click(); return r.value; };
+    pick('c1', (v) => v === it.needs); const wrongCol = pick('c2', (v) => v !== it.first);
+    box.querySelector('[data-check]').click(); await sleep(30);
+    box.querySelector('.feedback-area [data-help="retry"]').click(); await sleep(30);
+    const a = document.activeElement; return { name: a.name, value: a.value, wrongCol, first: it.first };`);
+  check('Learn decide: Try again focuses the wrong column choice, not the right "Yes/No"', /c2$/.test(dfx.name) && dfx.value === dfx.wrongCol, dfx);
+  // SR-M17: guided wrong getter (7,405 − 3,168: tens written 1) → Try again focuses the tens box, not the right hundreds box.
+  await b.load(URL + '#menu'); await js(`localStorage.setItem('${KEY}:guided', JSON.stringify({ v: 1, pos: 5, seed: 0, states: {}, done: {} }))`);
+  await b.load(URL + '#practice/together'); await b.reload(); await wait(300);
+  const gfx = await js(`${H} const box = document.querySelector('#sr-tg');
+    for (let k = 0; k < 2; k++) { box.querySelector('[data-act="g-show"]').click(); await sleep(30); } // needs, supplier
+    const set = (j, v) => { const x = box.querySelector('[data-k="r' + j + '"]'); x.value = String(v); fire(x, 'input'); };
+    set(2, 3); set(1, 1); box.querySelector('[data-act="check-ex"]').click(); await sleep(30);
+    box.querySelector('[data-act="g-retry"]').click(); await sleep(30);
+    return { k: document.activeElement.dataset.k, r2: box.querySelector('[data-k="r2"]').value };`);
+  check('Guided: Try again after a wrong getter focuses that box (tens), and the right hundreds stays', gfx.k === 'r1' && gfx.r2 === '3', gfx);
+  // Guided Show me shows the worked step with amounts, and wrong answers offer the retry row.
+  await b.load(URL + '#menu'); await js(`localStorage.setItem('${KEY}:guided', JSON.stringify({ v: 1, pos: 6, seed: 0, states: {}, done: {} }))`);
+  await b.load(URL + '#practice/together'); await b.reload(); await wait(300);
+  const gs = await js(`${H} const box = document.querySelector('#sr-tg'); const out = {};
+    box.querySelector('[data-act="needs"][data-v="no"]').click(); await sleep(30);
+    out.retry = Array.from(box.querySelectorAll('.sk-help .sk-btn')).map((x) => x.textContent).join('|');
+    box.querySelector('[data-act="g-hint"]').click(); await sleep(30); out.hint = (box.querySelector('.sk-coach .sk-hint') || {}).textContent;
+    box.querySelector('[data-act="g-show"]').click(); await sleep(30); out.prev1 = (box.querySelector('.sk-prev') || {}).textContent;
+    for (let k = 0; k < 3; k++) { box.querySelector('[data-act="g-show"]').click(); await sleep(30); } // supplier, exchange 1, exchange 2
+    out.prev3 = (box.querySelector('.sk-prev') || {}).textContent; out.hist = (box.querySelector('[data-hist="2"]') || {}).textContent;
+    return out;`);
+  check('Guided: after a mistake → Try again · Get a hint · Show me how; the hint names the digits', gs.retry === 'Try again|Get a hint|Show me how' && /the top has 3 and the bottom has 7/.test(gs.hint), gs);
+  check('Guided Show me shows each exchange with the amounts and keeps the vertical marks (struck 10 above the 9)', /Shown:/.test(gs.prev1) && /go from 10 to 9/.test(gs.prev3) && gs.hist === '10', gs);
+
   // ----- Practice Together -----
+  await b.load(URL + '#menu'); await js(`localStorage.removeItem('${KEY}:guided')`); await wait(100);
   await go('#practice/together');
   const tg = await js(`return { count: document.querySelector('.wiz-count').textContent, q: document.querySelector('.sk-q').textContent, help: !!document.querySelector('.parent-help') }`);
   check('Practice Together: guided problem 1 of 8 with Parent Help', tg.count === 'Problem 1 of 8' && /ones column need regrouping/.test(tg.q) && tg.help, tg);
@@ -103,6 +177,8 @@ try {
   await js(`document.querySelector('input[name=sz][value="4"]').click(); for (let i = 0; i < 3; i++) document.querySelector('[data-s="next"]').click();`); await wait(150);
   check('Step 4: Start shows 4-digit · Easy · 10 questions', await js(`return /4-digit · Easy · 10 questions/.test(document.querySelector('.sr-setup').innerText)`));
   await js(`document.querySelector('[data-s="start"]').click()`); await wait(400);
+  // Pin the session to seed 1 (first problem 7,289 − 6,417) so the scripted "smaller-from-larger" answer really is wrong.
+  await js(`${H} const B = get('bank-sets'); B.setup.active.seed = 1; localStorage.setItem('${KEY}:bank-sets', JSON.stringify(B));`); await b.reload(); await wait(350);
   const run = await js(`${H} const s = get('bank-sets').setup.active; const items = M.generateSession(Object.assign({ seed: s.seed }, s.setup)).items;
     return { hash: location.hash, count: document.querySelector('.q-count').textContent, n: items.length, four: items.every((q) => String(q.top).length === 4), easy: items.every((q) => M.classify(q.top, q.bottom).difficulty === 'easy'), first: items[0] };`);
   check('Practice on My Own starts: 10 four-digit Easy questions, one at a time', run.hash === '#practice/run' && run.count === 'Question 1 of 10' && run.n === 10 && run.four && run.easy, run);
@@ -115,6 +191,7 @@ try {
     box.querySelector('[data-act="undo"]').click(); log.undo = JSON.stringify(get('bank-sets').setup.active.responses.q1.ws.ann);
     box.querySelector('[data-act="clear"]').click(); log.clear = JSON.stringify(get('bank-sets').setup.active.responses.q1.ws.ann);
     box.querySelector('[data-act="hint"]').click(); log.h1 = box.querySelector('.sk-hint').textContent;
+    log.showNow = !!box.querySelector('[data-act="solution"]'); // Show me is there from the start (no hint gate)
     for (let k = 0; k < 3; k++) box.querySelector('[data-act="hint"]').click();
     log.h4 = !!box.querySelector('[data-act="solution"]'); log.noSolYet = !box.querySelector('.sk-solution');
     box.querySelector('[data-act="solution"]').click(); log.sol = !!box.querySelector('.sk-solution .sk-grid');
@@ -123,8 +200,8 @@ try {
   check('Check with nothing typed asks for an answer (empty is not 0)', /Write your answer/.test(ind.empty), ind.empty);
   check('A smaller-from-larger answer gets that specific feedback; wrong digits are marked; work is kept', /can't take .* and you can't turn it around/.test(ind.wrong) && ind.marked >= 1, ind);
   check('Regroup marks are saved; Undo removes the last one; Clear work removes all marks', ind.marks.length > 2 && ind.undo !== ind.marks && ind.clear === '{}', ind);
-  check('Hints 1–4 step up; the full solution is a separate request and a separate workspace', /^Hint 1 of 4: Look at the \w+ column/.test(ind.h1) && ind.h4 && ind.noSolYet && ind.sol, ind);
-  check('The right answer is accepted and recorded (not first try)', /Correct!/.test(ind.right) && ind.result.correct === true && ind.result.firstTry === false && ind.result.hints === 5, ind.result);
+  check('Hints step up; Show me is available at once (no hint gate) and shows a separate vertical worked answer', /^Hint 1 of 4: Look at the \w+ column/.test(ind.h1) && ind.showNow && ind.h4 && ind.noSolYet && ind.sol, ind);
+  check('After Show me, a right answer is recorded as done WITH help (not on your own, not first try)', /Correct!/.test(ind.right) && ind.result.helped === true && ind.result.firstTry === false, ind.result);
   await b.reload(); await wait(300);
   check('Refresh keeps the question and the typed answer', await js(`${H} const box = document.querySelector('#sr-ws'); return document.querySelector('.q-count').textContent === 'Question 1 of 10' && Array.from(box.querySelectorAll('.sk-ans')).map((x) => x.value).join('') !== ''`));
   await js(`document.querySelector('[data-r="next"]').click()`); await wait(250);
@@ -148,8 +225,8 @@ try {
   // ----- Test -----
   await b.load(URL + '#test'); await wait(250);
   await js(`document.querySelector('[data-new]').click()`); await wait(350);
-  const t1 = await js(`return { count: document.querySelector('.q-count').textContent, hint: !!document.querySelector('main [data-act="hint"], main [data-act="check"], main [data-check]'), undo: !!document.querySelector('main [data-act="undo"]'), banner: document.body.classList.contains('is-testing') }`);
-  check('Test: Question 1 of 15; no hints, no Check; marks (Undo/Clear) allowed', t1.count === 'Question 1 of 15' && !t1.hint && t1.undo && t1.banner, t1);
+  const t1 = await js(`return { count: document.querySelector('.q-count').textContent, hint: !!document.querySelector('main [data-act="hint"], main [data-act="check"], main [data-check], main [data-act="solution"], main [data-help], main [data-act^="g-"]'), undo: !!document.querySelector('main [data-act="undo"]'), banner: document.body.classList.contains('is-testing') }`);
+  check('Test: Question 1 of 15; no Hint, Show me or Check; marks (Undo/Clear) allowed', t1.count === 'Question 1 of 15' && !t1.hint && t1.undo && t1.banner, t1);
   const answerAll = (skipMarks) => js(`${H} const D = get('draft-test'); const items = C.testItems(D.seed); const log = [];
     for (let i = 0; i < items.length; i++) {
       const it = items[i], box = document.querySelector('#sr-tq');
@@ -172,7 +249,7 @@ try {
   const res = await js(`${H} const a = get('attempts'); return { hash: location.hash, text: document.querySelector('main').innerText, a: a && a[a.length - 1] }`);
   check('Results: 15 of 15 (100%) Mastered; final answers, steps, decision and mistakes reported separately', res.hash === '#results' && /15 of 15/.test(res.text) && /Mastered/.test(res.text) &&
     /Final answers\s+\d+ of \d+/.test(res.text) && /Regrouping steps\s+2 of 2/.test(res.text) && /Deciding whether to regroup\s+1 of 1/.test(res.text) && /Finding mistakes\s+2 of 2/.test(res.text) && res.a.pct === 100, res.a && res.a.parts);
-  check('Results keep guided work separate from the test score', /not part of the test score/.test(res.text) && /Learn: 2 of 9 steps done/.test(res.text), res.text.slice(0, 300));
+  check('Results keep guided work separate from the test score', /not part of the test score/.test(res.text) && /Learn: \d of 9 steps done/.test(res.text), res.text.slice(0, 300));
   // A second test: right final answers with no marks at all still count; wrong ones are not diagnosed.
   await b.load(URL + '#test'); await wait(250); await js(`document.querySelector('[data-new]').click()`); await wait(350);
   const r2 = await js(`${H} const D = get('draft-test'); const items = C.testItems(D.seed);

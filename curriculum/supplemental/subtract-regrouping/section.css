@@ -6,6 +6,24 @@
 /* The workspace is a size container, so give it a width inside flex rows. */
 .sr-two > .sr-ws { flex: 1 1 260px; min-width: 0; }
 .sr-nowrap { white-space: nowrap; }
+/* Step 1: tens and ones as blocks, the changed columns marked (outline + chip, not colour alone). */
+.sr-blocks2 { grid-template-columns: repeat(2, minmax(0, 1fr)); max-width: 440px; margin: 0.5rem 0; }
+.sr-blocks2 .blocks-col.is-hi { outline: 4px solid #9a7000; outline-offset: -2px; }
+.sr-chip { display: inline-block; font-size: 0.8rem; font-weight: 800; padding: 0 6px; border-radius: 999px; border: 2px solid #5236c9; color: #5236c9; background: #fff; }
+.sr-swap { display: flex; gap: 0.5rem; align-items: center; font-weight: 800; color: #1f2370; margin: 0.25rem 0; }
+.sr-swap span:not([aria-hidden]) { border: 2px dashed #9a7000; border-radius: 10px; padding: 0.2rem 0.6rem; background: #fff8de; }
+.sr-say { font-weight: 600; }
+.sr-q1 { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem 0.75rem; margin: 0.75rem 0 0.25rem; }
+.sr-q1-label { font-weight: 800; font-size: 1.1rem; color: #1f2370; }
+.sr-helprow { display: flex; flex-wrap: wrap; gap: 0.5rem; }
+.sr-done-line { margin: 0.35rem 0; font-weight: 700; color: #157347; }
+.sr-helped-tag { color: #4f5a7a; font-weight: 600; }
+.sr-shown { border-left: 4px solid #9a7000; padding-left: 0.6rem; margin: 0.5rem 0; }
+.sr-helped { color: #4f5a7a; font-weight: 600; margin: 0.5rem 0 0.25rem; }
+.sr-after-h { font-weight: 800; margin: 0.75rem 0 0; }
+.sr-worked:empty { display: none; }
+.sr-review summary { min-height: 44px; display: flex; align-items: center; cursor: pointer; font-weight: 700; }
+.sr-complete:focus { outline: 3px solid #5236c9; outline-offset: 2px; }
 .sr-short { display: none; text-decoration: none; }
 .sr-chart { border-collapse: collapse; margin: 0.5rem 0; font-size: 1.1rem; }
 .sr-chart th, .sr-chart td { border: 2px solid #cfd5ee; padding: 0.4rem 0.7rem; text-align: center; min-width: 3.2rem; }

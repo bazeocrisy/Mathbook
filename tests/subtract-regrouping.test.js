@@ -35,7 +35,7 @@ test('the spec\'s verified examples and every Learn example', () => {
   assert.equal(4532 - 1768, 2764); assert.equal(level(schoolbook(4532, 1768)), 'medium');
   assert.equal(3002 - 1578, 1424); assert.equal(level(schoolbook(3002, 1578)), 'hard');
   for (const step of C.learn) for (const ex of step.examples) {
-    if (ex.kind === 'value') { const v = ex.from.reduce((s, d, i) => s + d * 10 ** i, 0); assert.ok(ex.note.includes(M.fmt(v)), step.id); continue; }
+    if (ex.kind === 'blocks') { assert.ok(ex.n >= 10 && ex.n <= 99 && Math.floor(ex.n / 10) >= 1, 'step 1 starts with a small two-digit number'); continue; }
     const s = schoolbook(ex.top, ex.bottom);
     assert.equal(s.answer, ex.top - ex.bottom, `${step.id} ${ex.top} − ${ex.bottom}`);
     assert.equal(M.plan(ex.top, ex.bottom).answer, s.answer);

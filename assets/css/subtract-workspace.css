@@ -109,6 +109,7 @@ input.sk-cur:placeholder-shown { border-style: dashed; }
 .sk-q { font-weight: 700; font-size: 1.05rem; }
 .sk-prev { color: var(--sk-muted); font-size: 0.95rem; }
 .sk-fb { margin-top: 0.5rem; }
+.sk-help { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 0.5rem; }
 .sk-fb:empty { display: none; }
 .sk-ok-note { color: var(--sk-ok); font-weight: 700; }
 .sk-no-note { color: var(--sk-no); font-weight: 700; }

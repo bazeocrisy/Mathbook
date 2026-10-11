@@ -28,17 +28,17 @@
     needsQ: (i) => `Does the ${P[i].name} column need regrouping?`,
     needsYes: (t, b) => `Yes. ${t} is less than ${b}, so you can't take ${b} away yet.`,
     needsNo: (t, b) => `No. ${t} is enough to take away ${b}.`,
-    needsWrongNo: (i, t, b) => `Look again: the ${P[i].name} has ${t} and you need to take away ${b}. ${t} is less than ${b}, so you need an exchange first.`,
+    needsWrongNo: (i, t, b) => `Look again at the ${P[i].name}: the top has ${t} and you need to take away ${b}.`,
     needsAltYes: (i, t, b) => `You could exchange, and the value would stay the same, but you don't need to: ${t} is enough to take away ${b}. Choose No.`,
     supplierQ: 'Which place can give?',
     supplierZero: (k) => `The ${P[k].name} place has 0, so it has nothing to give. Look further left.`,
     supplierFar: (k, best) => `That could work too, but it takes more exchanges than you need. Take from the nearest place that has something: the ${P[best].name}.`,
     supplierOk: (k) => `Yes. The ${P[k].name} can give.`,
     exchangeQ: (from, to) => `Exchange 1 ${P[from].one} for 10 ${P[to].name}. Write the new ${P[from].name} and the new ${P[to].name} above the top number.`,
-    exchangeKept: (from, to, after) => `${M.describe(after)}. The value is still the same.`,
-    exchangeNoReduce: (from) => `The ${P[from].name} must give 1 away, so it has 1 less than before.`,
-    exchangeGiver: (from) => `The ${P[from].name} gives 1 away: write 1 less than it had.`,
-    exchangeGetter: (to) => `The ${P[to].name} gets 10 more than it had (1 ${P[to + 1].one} = 10 ${P[to].name}).`,
+    exchangeKept: (from, to, after) => `Now: ${M.describe(after)}. ${valueLine(after)}`,
+    exchangeNoReduce: (from, had) => `The ${P[from].name} still shows ${had}. It gives 1 ${P[from].one} away, so it must go down by 1 (${had} − 1).`,
+    exchangeGiver: (from, had) => `The ${P[from].name} had ${had}. It gives 1 ${P[from].one} away, so there is 1 fewer: ${had} − 1.`,
+    exchangeGetter: (to, had) => `The ${P[to].name} had ${had}. It gets 10 more ${P[to].name} (1 ${P[to + 1].one} = 10 ${P[to].name}): ${had} + 10.`,
     exchangeEmpty: 'Write both new values above the top number, then check.',
     digitQ: (i, t, b) => `${cap(P[i].name)}: ${t} − ${b} = ? Write the digit in the ${P[i].name} answer box.`,
     digitOk: (i, t, b, d) => `${cap(P[i].name)}: ${t} − ${b} = ${d}.`,
@@ -46,8 +46,22 @@
     digitSwap: (i, t, b, now) => `You can't turn it around to ${b} − ${t}. After the exchange the ${P[i].name} has ${now}: use ${now} − ${b}.`,
     digitWrong: (i, t, b) => `Look again: ${t} − ${b}.`,
     digitEmpty: 'Write one digit in the answer box, then check.',
+    help: { hint: '💡 Hint', show: 'Show me', retry: 'Try again', getHint: 'Get a hint', showHow: 'Show me how' },
+    shownPrefix: 'Shown: ',
+    gHint: {
+      needs: (i, t, b) => `Compare the two digits in the ${P[i].name}: the top has ${t} and the bottom has ${b}. Can you take ${b} away from ${t}?`,
+      supplier: (col) => `Look one place to the left of the ${P[col.place].name}. If that place has 0, it has nothing to give: keep looking left.`,
+      exchange: (e) => `The giving place (${P[e.from].name}) goes down by 1. The getting place (${P[e.to].name}) goes up by 10. Start from what each one has now.`,
+      digit: (i, t, b) => `Subtract in the ${P[i].name}: ${t} − ${b}. Count up from ${b} to ${t}.`
+    },
+    gShow: {
+      needs: (i, t, b, yes) => yes ? `The ${P[i].name} has ${t} and we take away ${b}. ${t} is less than ${b}, so the ${P[i].name} needs an exchange.` : `The ${P[i].name} has ${t} and we take away ${b}. ${t} is enough, so no exchange is needed.`,
+      supplier: (col) => col.chain ? `The ${chainNames(col)} ${col.chain === 1 ? 'has' : 'have'} 0, so the ${P[col.supplier].name} gives. We go through each zero, one place at a time.` : `The ${P[col.supplier].name}, just to the left, has something to give.`,
+      exchange: (e) => `Exchange 1 ${P[e.from].one} for 10 ${P[e.to].name}: the ${P[e.from].name} go from ${e.before[e.from]} to ${e.after[e.from]}, and the ${P[e.to].name} from ${e.before[e.to]} to ${e.after[e.to]}. ${valueLine(e.after)}`,
+      digit: (i, t, b, d) => `${cap(P[i].name)}: ${t} − ${b} = ${d}.`
+    },
     noneLeft: (k) => `No ${P[k].name} are left, so the answer starts in the ${P[k - 1].name}.`,
-    guidedDone: (top, bottom, ans) => `You did it! ${M.fmt(top)} − ${M.fmt(bottom)} = ${M.fmt(ans)}.`,
+    guidedDone: (top, bottom, ans, helped) => helped ? `Finished with help: ${M.fmt(top)} − ${M.fmt(bottom)} = ${M.fmt(ans)}. Try a similar problem on your own when you are ready.` : `You did it! ${M.fmt(top)} − ${M.fmt(bottom)} = ${M.fmt(ans)}.`,
     correct: (top, bottom, ans) => `Correct! ${M.fmt(top)} − ${M.fmt(bottom)} = ${M.fmt(ans)}.`,
     correctMarksOff: 'Your answer is right. One regroup mark does not keep the value the same; look at your marks again.',
     altValid: 'Your regroup marks are a different valid way: the value stays the same.',
@@ -59,12 +73,15 @@
       'smaller-from-larger': (i, t, b) => `In the ${P[i].name}, the top has ${t} and the bottom has ${b}. You can't take ${b} from ${t}, and you can't turn it around. Exchange first.`,
       'original-digit': (i, orig) => `The ${P[i].name} gave 1 away, so use its new amount, not the original ${orig}.`,
       misaligned: () => 'Check the places: ones go under ones. It looks like the bottom number moved to the left.',
-      'no-reduce': (i) => `You added 10 to the ${P[i].name}, but the place on its left must give 1 away. Make that place 1 less.`,
-      'zero-ten': () => 'When you exchange through a zero, that place gets 10 and then gives 1 away, so it ends with 9, not 10.',
-      'skip-zero': () => 'Exchanges go to the place next door. Go through each zero, one place at a time.',
-      'wrong-digit': (i) => `Look again at the ${P[i].name} column.`
+      'no-reduce': (i, now, had) => (had > 0
+        ? `You made the ${P[i].name} ${now} (10 more), but the ${P[i + 1] ? P[i + 1].name : 'next place'} still shows ${had}. The place that gives must go down by 1: ${had} − 1.`
+        : `You made the ${P[i].name} ${now} (10 more), but no place gave 1 away. The ${P[i + 1] ? P[i + 1].name : 'next place'} has 0, so it cannot give: go further left and exchange one place at a time.`),
+      'zero-ten': (i) => `The ${P[i].name} got 10 and then gave 1 to the place on its right, so it has 9, not 10.`,
+      'skip-zero': (i, k) => `You took 1 ${P[k].one} straight to the ${P[i].name}. Exchanges go to the place next door: go through each zero, one place at a time.`,
+      'wrong-digit': (i, t, b) => (t < b ? `In the ${P[i].name}, ${t} is less than ${b}: exchange first, then subtract.` : `Look again at the ${P[i].name}: ${t} − ${b}.`)
     },
     hintButton: (n) => (n === 0 ? 'Hint' : `Next hint (${n + 1} of 4)`),
+    shownSolution: 'Here is how to solve it. Read each step, then try writing the answer yourself.',
     hintLabel: (n) => `Hint ${n} of 4`,
     showSolution: 'Show the full solution',
     solutionTitle: 'Full solution',
@@ -78,7 +95,7 @@
     demoNeeds: (i, t, b) => `${cap(P[i].name)}: ${t} is less than ${b}. We need an exchange.`,
     demoSupplier: (col) => col.chain === 0 ? `The ${P[col.place + 1].name} can give.` : `The ${chainNames(col)} ${col.chain === 1 ? 'has' : 'have'} 0, so the ${P[col.supplier].name} gives. We go through each zero, one place at a time.`,
     demoNoNeed: (i, t, b) => `${cap(P[i].name)}: ${t} is enough to take away ${b}. No exchange needed.`,
-    demoExchange: (e) => `Exchange 1 ${P[e.from].one} for 10 ${P[e.to].name}. Now ${M.describe(e.after)}.`,
+    demoExchange: (e) => `Exchange 1 ${P[e.from].one} for 10 ${P[e.to].name}: the ${P[e.from].name} go from ${e.before[e.from]} to ${e.after[e.from]}, and the ${P[e.to].name} from ${e.before[e.to]} to ${e.after[e.to]}. Now ${M.describe(e.after)}. ${valueLine(e.after)}`,
     demoDigit: (i, t, b, d) => `${cap(P[i].name)}: ${t} − ${b} = ${d}.`,
     demoEnd: (top, bottom, ans) => `${M.fmt(top)} − ${M.fmt(bottom)} = ${M.fmt(ans)}.`,
     undone: (i, now) => `Undone: ${P[i].name} back to ${now === null ? 'no mark' : now}.`,
@@ -89,6 +106,11 @@
     answerOf: 'Answer',
     yes: 'Yes', no: 'No'
   };
+  /** "30 + 19 = 49: the value is the same." */
+  function valueLine(amounts) {
+    const parts = []; for (let i = amounts.length - 1; i >= 0; i--) if (amounts[i]) parts.push(M.fmt(amounts[i] * 10 ** i));
+    return `${parts.join(' + ') || '0'} = ${M.fmt(M.value(amounts))}: the value is the same.`;
+  }
   function chainNames(col) {
     const names = [];
     for (let k = col.place + 1; k < col.supplier; k++) names.push(P[k].name);
@@ -112,13 +134,14 @@
     if (!Array.isArray(s.log) || s.log.length > 200) return false;
     if (!Number.isInteger(s.hint) || s.hint < 0 || s.hint > 5) return false;
     if (!Number.isInteger(s.demo) || s.demo < 0 || s.demo > 60) return false;
+    if (s.helped !== undefined && typeof s.helped !== 'boolean') return false;
     if (s.hintCol !== undefined && s.hintCol !== null && !(Number.isInteger(s.hintCol) && s.hintCol >= 0 && s.hintCol < n)) return false;
     if (s.guided !== null && (typeof s.guided !== 'object' || !Number.isInteger(s.guided.col) || s.guided.col < 0 || s.guided.col > n ||
       !['needs', 'supplier', 'exchange', 'digit', 'done'].includes(s.guided.stage) || !Number.isInteger(s.guided.ex) || s.guided.ex < 0 || s.guided.ex > 4)) return false;
     return true;
   }
   function freshState(top, bottom, mode) {
-    return { v: 1, top, bottom, mode, ann: {}, log: [], d: [], hint: 0, hintCol: null, demo: 0, guided: mode === 'guided' ? { col: 0, stage: 'needs', ex: 0 } : null, result: null, done: false };
+    return { v: 1, top, bottom, mode, ann: {}, log: [], d: [], hint: 0, hintCol: null, demo: 0, guided: mode === 'guided' ? { col: 0, stage: 'needs', ex: 0 } : null, result: null, done: false, helped: false };
   }
 
   // ---------- The component ----------
@@ -133,6 +156,8 @@
     const allowHints = mode === 'independent' && o.hints !== false;
     const allowCheck = mode === 'independent' && o.feedback !== false;
     const allowSolution = allowHints && o.solution !== false;
+    // Guided steps get Hint / Show me too (off with hints: false). Never in test, demo or view.
+    const guidedHelp = mode === 'guided' && o.hints !== false;
     const T = Object.assign({}, TEXT, o.text || {}, { issue: Object.assign({}, TEXT.issue, (o.text && o.text.issue) || {}) });
     const id = 'sk' + (++counter);
     const n = M.lengthOf(top), orig = M.digitsOf(top, n), bdig = M.digitsOf(bottom, n), blen = M.lengthOf(bottom);
@@ -142,6 +167,7 @@
     let S = freshState(top, bottom, mode);
     if (o.state && validState(o.state, top, bottom)) S = Object.assign(clone(o.state), { mode });
     if (mode === 'view') { S.ann = clone((o.work && o.work.ann) || {}); S.d = ((o.work && o.work.d) || []).map(String); }
+    let gHintText = '', retryRow = false;
     let destroyed = false, feedbackHTML = '', prevNote = '', marks = {}, solutionInst = null, sayTimer = null;
 
     el.classList.add('sk', 'sk-mode-' + mode);
@@ -320,8 +346,9 @@
       const undo = `<button type="button" class="sk-btn sk-btn-ghost" data-act="undo"${S.log.length ? '' : ' disabled'}>${esc(T.undo)}</button>`;
       const clear = `<button type="button" class="sk-btn sk-btn-ghost" data-act="clear"${Object.keys(S.ann).length ? '' : ' disabled'}>${esc(T.clear)}</button>`;
       let right = '';
-      if (allowHints && S.hint < 5) right += nextIsHint() ? `<button type="button" class="sk-btn sk-btn-ghost" data-act="hint">💡 ${esc(T.hintButton(S.hintCol === hintCol() ? S.hint : 0))}</button>`
-        : allowSolution ? `<button type="button" class="sk-btn sk-btn-outline" data-act="solution">${esc(T.showSolution)}</button>` : '';
+      // Hint and Show me are always next to Check; Show me needs no earlier hints (it is never a gate).
+      if (allowHints && nextIsHint()) right += `<button type="button" class="sk-btn sk-btn-ghost" data-act="hint">💡 ${esc(T.hintButton(S.hintCol === hintCol() ? S.hint : 0))}</button>`;
+      if (allowSolution && S.hint < 5) right += `<button type="button" class="sk-btn sk-btn-ghost" data-act="solution">${esc(T.help.show)}</button>`;
       if (allowCheck) right += `<button type="button" class="sk-btn sk-btn-primary" data-act="check">${esc(T.check)}</button>`;
       return `<div class="sk-toolbar"><div class="sk-tl">${undo}${clear}</div>${right ? `<div class="sk-tr">${right}</div>` : ''}</div>`;
     }
@@ -330,6 +357,7 @@
       const u = toolHost.querySelector('[data-act="undo"]'), c = toolHost.querySelector('[data-act="clear"]');
       if (u) u.disabled = !S.log.length;
       if (c) c.disabled = !Object.keys(S.ann).length;
+      toolHost.querySelectorAll('[data-act="hint"], [data-act="solution"]').forEach((b) => { b.hidden = retryRow; });
     }
 
     // ----- Coach panel -----
@@ -355,7 +383,7 @@
       if (mode === 'guided') {
         const g = S.guided;
         const prev = prevNote ? `<p class="sk-prev"><span aria-hidden="true">✓ </span>${esc(prevNote)}</p>` : '';
-        if (g.stage === 'done') return `${prev}<p class="sk-note sk-ok-note sk-done" tabindex="-1"><span aria-hidden="true">✓ </span>${esc(T.guidedDone(top, bottom, top - bottom))}</p>`;
+        if (g.stage === 'done') return `${prev}<p class="sk-note sk-ok-note sk-done" tabindex="-1"><span aria-hidden="true">✓ </span>${esc(T.guidedDone(top, bottom, top - bottom, !!S.helped))}</p>`;
         const col = plan.columns[g.col], i = g.col, b = col.bottomDigit;
         let q = '', ctl = '';
         if (g.stage === 'needs') {
@@ -375,14 +403,19 @@
           ctl = `<button type="button" class="sk-btn sk-btn-primary" data-act="check-digit">${esc(T.check)}</button>`;
         }
         // The last step's ✓ sits above the new question; feedback for this step goes under its button (SR-D11).
-        return `${prev}<p class="sk-working">${esc(T.working(i))}</p><p class="sk-q" id="${id}-q">${esc(q)}</p>${ctl}<div class="sk-fb">${feedbackHTML}</div>`;
+        // Help sits right by the answer; after a mistake: Try again · Get a hint · Show me how.
+        const help = !guidedHelp ? '' : retryRow
+          ? `<div class="sk-help"><button type="button" class="sk-btn sk-btn-ghost" data-act="g-retry">${esc(T.help.retry)}</button><button type="button" class="sk-btn sk-btn-ghost" data-act="g-hint">${esc(T.help.getHint)}</button><button type="button" class="sk-btn sk-btn-ghost" data-act="g-show">${esc(T.help.showHow)}</button></div>`
+          : `<div class="sk-help"><button type="button" class="sk-btn sk-btn-ghost" data-act="g-hint">${esc(T.help.hint)}</button><button type="button" class="sk-btn sk-btn-ghost" data-act="g-show">${esc(T.help.show)}</button></div>`;
+        return `${prev}<p class="sk-working">${esc(T.working(i))}</p><p class="sk-q" id="${id}-q">${esc(q)}</p>${ctl}<div class="sk-fb">${feedbackHTML}</div>${help}${gHintText ? `<p class="sk-hint" tabindex="-1">${esc(gHintText)}</p>` : ''}`;
       }
       if (mode === 'independent' && (allowHints || allowCheck)) {
+        const retry = retryRow ? `<div class="sk-help"><button type="button" class="sk-btn sk-btn-ghost" data-act="i-retry">${esc(T.help.retry)}</button>${allowHints ? `<button type="button" class="sk-btn sk-btn-ghost" data-act="hint">${esc(T.help.getHint)}</button>` : ''}${allowSolution && S.hint < 5 ? `<button type="button" class="sk-btn sk-btn-ghost" data-act="solution">${esc(T.help.showHow)}</button>` : ''}</div>` : '';
         let hintsH = '';
         if (S.hint > 0) {
           const H = M.hints(top, bottom, { d: S.d }).levels;
           if (S.hint >= 5) {
-            hintsH = `<div class="sk-solution"><p class="sk-solution-h" tabindex="-1">${esc(T.solutionTitle)}</p><div class="sk-mini" data-sk-mini></div>` +
+            hintsH = `<div class="sk-solution"><p class="sk-solution-h" tabindex="-1">${esc(T.solutionTitle)}</p><p class="sk-sub">${esc(T.shownSolution)}</p><div class="sk-mini" data-sk-mini></div>` +
               `<ol class="sk-steps">${M.solutionLines(top, bottom).map((l) => `<li>${esc(l)}</li>`).join('')}</ol></div>`;
           } else {
             const shown = S.hint, older = [];
@@ -391,7 +424,7 @@
               `<p class="sk-hint" tabindex="-1"><b>${esc(T.hintLabel(shown))}:</b> ${esc(H[shown - 1])}</p>`;
           }
         }
-        return `<div class="sk-fb">${feedbackHTML}</div>${hintsH}`;
+        return `<div class="sk-fb">${feedbackHTML}</div>${retry}${hintsH}`;
       }
       return '';
     }
@@ -468,23 +501,28 @@
         result.issues = issues;
         for (let i = 0; i < n; i++) { const v = (S.d[i] || '').trim(); if (v !== '' || i < M.lengthOf(top - bottom)) marks[i] = v === String(plan.columns[i].digit) ? 'ok' : 'no'; }
         const named = issues.filter((x) => x.kind !== 'wrong-digit');
+        const cur = M.amountsFrom(top, S.ann, n);
         (named.length ? named : issues).slice(0, 2).forEach((x) => {
           const f = T.issue[x.kind], i = x.place;
           if (x.kind === 'smaller-from-larger') msgs.push(f(i, orig[i], bdig[i]));
           else if (x.kind === 'original-digit') msgs.push(f(i, orig[i]));
+          else if (x.kind === 'no-reduce') msgs.push(f(i, cur[i], i + 1 < n ? cur[i + 1] : 0));
+          else if (x.kind === 'skip-zero') { const ev2 = M.evaluateWork(top, bottom, S.ann); msgs.push(f(i, ev2.supplier !== undefined ? ev2.supplier : Math.min(n - 1, i + 2))); }
+          else if (x.kind === 'wrong-digit') { const amt = M.evaluateWork(top, bottom, S.ann).status === 'valid' && M.checkAmounts(top, bottom, cur).ok ? cur[i] : plan.columns[i].topNow; msgs.push(f(i, amt, bdig[i])); }
           else msgs.push(f(i));
         });
         if (ev.status === 'valid' && !ev.standard) msgs.push(T.altValid);
         msgs.push(T.tryAgain);
       }
+      retryRow = g.status === 'wrong';
       feedbackHTML = `<p class="${g.correct ? 'sk-ok-note' : 'sk-no-note'}"><span aria-hidden="true">${g.correct ? '✓ ' : g.status === 'wrong' ? '✗ ' : ''}</span>${msgs.map(esc).join(' ')}</p>`;
       S.result = { status: g.status, correct: g.correct };
       if (g.correct) S.done = true;
-      renderGrid(); renderCoach();
+      renderGrid(); renderCoach(); updateTools();
       focusOn('[data-act="check"]');
       say(msgs.join(' '));
-      emit('answer', { status: g.status, correct: g.correct, value: g.value, marks: ev.status, issues: result.issues });
-      if (g.correct) emit('complete', { correct: true, hintsUsed: S.hint });
+      emit('answer', { status: g.status, correct: g.correct, value: g.value, marks: ev.status, issues: result.issues, helped: !!S.helped });
+      if (g.correct) emit('complete', { correct: true, hintsUsed: S.hint, helped: !!S.helped });
       change();
       return result;
     }
@@ -494,11 +532,11 @@
     function guidedFeedback(ok, msg) { const cls = ok === 'valid' ? 'sk-info-note' : ok ? 'sk-ok-note' : 'sk-no-note'; feedbackHTML = `<p class="${cls}"><span aria-hidden="true">${ok === 'valid' ? '↺ ' : ok ? '✓ ' : '✗ '}</span>${esc(msg)}</p>`; }
     /** A correct step: its confirmation moves above the next question; the next stage's controls get focus. */
     function guidedNext(stage, extra, okMsg) {
-      prevNote = okMsg || ''; feedbackHTML = '';
+      prevNote = okMsg || ''; feedbackHTML = ''; gHintText = ''; retryRow = false;
       Object.assign(S.guided, { stage }, extra || {});
       renderGrid(); renderCoach();
       const g = S.guided;
-      if (g.stage === 'done') { focusOn('.sk-done'); say(`${prevNote} ${T.guidedDone(top, bottom, top - bottom)}`); emit('complete', { correct: true }); }
+      if (g.stage === 'done') { focusOn('.sk-done'); say(`${prevNote} ${T.guidedDone(top, bottom, top - bottom, !!S.helped)}`); emit('complete', { correct: true, helped: !!S.helped }); }
       else {
         focusOn(g.stage === 'exchange' ? '[data-k^="r"]' : g.stage === 'digit' ? `[data-k="a${g.col}"]` : '.sk-choices .sk-btn');
         const q = coachEl.querySelector('.sk-q');
@@ -508,10 +546,45 @@
     }
     /** A wrong (or valid-but-not-standard) answer: feedback under the controls; focus back where the child was. */
     function guidedStay(focusSel) {
+      retryRow = /sk-no-note/.test(feedbackHTML);
       renderCoach();
       if (!focusOn(focusSel)) focusOn('.sk-coach .sk-btn');
       say(plainText(feedbackHTML));
       change();
+    }
+    /** Guided help: a clue for this step, or show this step (it is done for the child, explained, and marked as helped). */
+    function guidedHelpAct(act) {
+      const g = S.guided, col = plan.columns[g.col], i = g.col, t = col.before[i], b = col.bottomDigit;
+      if (act === 'g-retry') {
+        feedbackHTML = ''; retryRow = false; renderCoach();
+        let exSel = '[data-k^="r"]';
+        if (g.stage === 'exchange') { const e = col.exchanges[g.ex], inp = gridHost.querySelector(`[data-k="r${e.from}"]`), v = inp ? M.readAmount(inp.value) : null; exSel = `[data-k="r${v === e.after[e.from] ? e.to : e.from}"]`; }
+        focusOn(g.stage === 'exchange' ? exSel : g.stage === 'digit' ? `[data-k="a${i}"]` : '.sk-choices .sk-btn');
+        return;
+      }
+      if (act === 'g-hint') {
+        gHintText = g.stage === 'needs' ? T.gHint.needs(i, t, b) : g.stage === 'supplier' ? T.gHint.supplier(col) : g.stage === 'exchange' ? T.gHint.exchange(col.exchanges[g.ex]) : T.gHint.digit(i, col.topNow, b);
+        renderCoach(); focusOn('.sk-coach .sk-hint'); say(gHintText);
+        emit('hint', { level: 1, place: i, stage: g.stage }); change();
+        return;
+      }
+      if (act !== 'g-show') return;
+      S.helped = true;
+      emit('hint', { level: 5, place: i, stage: g.stage, shown: true });
+      if (g.stage === 'needs') return guidedNext(col.needs ? 'supplier' : 'digit', null, T.shownPrefix + T.gShow.needs(i, t, b, col.needs));
+      if (g.stage === 'supplier') return guidedNext('exchange', { ex: 0 }, T.shownPrefix + T.gShow.supplier(col));
+      if (g.stage === 'exchange') {
+        const e = col.exchanges[g.ex];
+        [[e.from, e.after[e.from]], [e.to, e.after[e.to]]].forEach(([j, val]) => { const h = S.ann[j] || []; if (h[h.length - 1] !== val) S.ann[j] = h.concat(val); });
+        const msg = T.shownPrefix + T.gShow.exchange(e);
+        return g.ex + 1 < col.exchanges.length ? guidedNext('exchange', { ex: g.ex + 1 }, msg) : guidedNext('digit', null, msg);
+      }
+      if (g.stage === 'digit') {
+        S.d[i] = String(col.digit);
+        const msg = T.shownPrefix + T.gShow.digit(i, col.topNow, b, col.digit);
+        if (g.col + 1 < n && !leadingOnly(g.col + 1)) return guidedNext('needs', { col: g.col + 1, ex: 0 }, msg);
+        return guidedNext('done', null, g.col + 1 < n ? `${msg} ${T.noneLeft(g.col + 1)}` : msg);
+      }
     }
     const leadingOnly = (k) => plan.columns.slice(k).every((c) => c.topNow === 0 && c.place >= blen);
     function guidedAct(act, v) {
@@ -534,7 +607,7 @@
         const e = col.exchanges[g.ex];
         const rv = (j) => { const inp = gridHost.querySelector(`[data-k="r${j}"]`); return inp ? M.readAmount(inp.value) : null; };
         const giver = rv(e.from), getter = rv(e.to);
-        if (giver === null || getter === null || Number.isNaN(giver) || Number.isNaN(getter)) { guidedFeedback(false, T.exchangeEmpty); return guidedStay('[data-act="check-ex"]'); }
+        if (giver === null || getter === null || Number.isNaN(giver) || Number.isNaN(getter)) { guidedFeedback('valid', T.exchangeEmpty); return guidedStay('[data-act="check-ex"]'); }
         const okG = giver === e.after[e.from], okR = getter === e.after[e.to];
         if (okG && okR) {
           // Record this exchange's values (each place keeps its earlier values, so 0 → 10 → 9 shows the struck 10).
@@ -543,9 +616,9 @@
           return g.ex + 1 < col.exchanges.length ? guidedNext('exchange', { ex: g.ex + 1 }, T.exchangeKept(e.from, e.to, e.after)) : guidedNext('digit', null, T.exchangeKept(e.from, e.to, e.after));
         }
         // Nothing wrong is recorded and nothing earlier is removed (SR-D02); the right box keeps its value.
-        guidedFeedback(false, okR && !okG && giver === e.before[e.from] ? T.exchangeNoReduce(e.from) : !okG ? T.exchangeGiver(e.from) : T.exchangeGetter(e.to));
+        guidedFeedback(false, okR && !okG && giver === e.before[e.from] ? T.exchangeNoReduce(e.from, e.before[e.from]) : !okG ? T.exchangeGiver(e.from, e.before[e.from]) : T.exchangeGetter(e.to, e.before[e.to]));
         emit('step', { kind: 'exchange', column: i, correct: false });
-        renderCoach();
+        retryRow = true; renderCoach();
         const bad = gridHost.querySelector(`[data-k="r${!okG ? e.from : e.to}"]`);
         if (bad) { bad.focus({ preventScroll: true }); bad.select(); }
         say(plainText(feedbackHTML)); change();
@@ -554,7 +627,7 @@
       if (act === 'check-digit') {
         const inp = gridHost.querySelector(`[data-k="a${i}"]`), dv = inp ? inp.value.trim() : '';
         S.d[i] = dv;
-        if (!/^\d$/.test(dv)) { guidedFeedback(false, T.digitEmpty); return guidedStay(`[data-k="a${i}"]`); }
+        if (!/^\d$/.test(dv)) { guidedFeedback('valid', T.digitEmpty); return guidedStay(`[data-k="a${i}"]`); }
         const d = Number(dv);
         if (d === col.digit) {
           emit('step', { kind: 'digit', column: i, correct: true });
@@ -566,7 +639,7 @@
         const lent = col.topNow !== orig[i] && !col.needs;
         guidedFeedback(false, lent && d === orig[i] - b ? T.digitOriginal(i, orig[i], col.topNow) : (d === b - t && t < b) ? T.digitSwap(i, t, b, col.topNow) : T.digitWrong(i, col.topNow, b));
         emit('step', { kind: 'digit', column: i, correct: false });
-        renderCoach();
+        retryRow = true; renderCoach();
         if (inp) { inp.focus({ preventScroll: true }); inp.select(); }
         say(plainText(feedbackHTML)); change();
       }
@@ -577,14 +650,16 @@
       if (!allowHints) return;
       const h = M.hints(top, bottom, { d: S.d });
       if (!solution && S.hint < 5 && S.hintCol !== null && S.hintCol !== undefined && S.hintCol !== h.place) S.hint = 0; // a new column starts again at hint 1
-      if (solution) { if (!allowSolution || S.hint < 4) return; S.hint = 5; }
+      if (solution) { if (!allowSolution) return; S.hint = 5; S.helped = true; }
       else if (S.hint < 4) S.hint += 1; else return;
       S.hintCol = h.place;
-      renderGrid(); renderTools(); renderCoach();
-      if (S.hint >= 5) { focusOn('.sk-solution-h'); const box = coachEl.querySelector('.sk-solution'); if (box && box.scrollIntoView) box.scrollIntoView({ block: 'nearest' }); }
+      if (!solution) retryRow = false;
+      renderGrid(); renderTools(); renderCoach(); updateTools();
+      // Bring just the worked answer's heading into view (a small scroll on phones), so the child sees it opened while their own answer row stays on screen (SR-D28).
+      if (S.hint >= 5) { retryRow = false; updateTools(); focusOn('.sk-solution-h'); const hh = coachEl.querySelector('.sk-solution-h'); if (hh && hh.scrollIntoView) hh.scrollIntoView({ block: 'nearest' }); }
       else if (!focusOn('[data-act="hint"]') && !focusOn('[data-act="solution"]')) focusOn('.sk-hint');
       say(S.hint >= 5 ? `${T.solutionTitle}. ${M.solutionLines(top, bottom).join(' ')}` : `${T.hintLabel(S.hint)}: ${h.levels[S.hint - 1]}`);
-      emit('hint', { level: S.hint, place: h.place, solution: S.hint >= 5 });
+      emit('hint', { level: S.hint, place: h.place, solution: S.hint >= 5, shown: S.hint >= 5 });
       change();
     }
     function demoMove(act) {
@@ -615,6 +690,8 @@
       if (act === 'hint') return showHint(false);
       if (act === 'solution') return showHint(true);
       if (act === 'next' || act === 'back' || act === 'restart') return demoMove(act);
+      if (mode === 'guided' && /^g-/.test(act)) return guidedHelpAct(act);
+      if (act === 'i-retry') { feedbackHTML = ''; retryRow = false; renderCoach(); updateTools(); const wrong = gridHost.querySelectorAll('.sk-ans.is-no'); if (wrong.length) wrong[wrong.length - 1].focus({ preventScroll: true }); else focusOn('[data-k^="a"]'); return; }
       if (mode === 'guided') return guidedAct(act, b.dataset.v);
     }, sig);
     el.addEventListener('change', (e) => {
@@ -656,6 +733,7 @@
     // ----- Public API -----
     function getState() { return clone(S); }
     function setState(s) {
+      gHintText = ''; retryRow = false;
       if (!validState(s, top, bottom)) return false;
       S = Object.assign(clone(s), { mode });
       if (mode === 'guided' && !S.guided) S.guided = { col: 0, stage: 'needs', ex: 0 };
@@ -689,6 +767,7 @@
       hint: live1(() => showHint(false)), showSolution: live1(() => showHint(true)),
       undo: live1(undo), clearWork: live1(clearWork), focus: live1(() => { focusOn('.sk-in, .sk-btn'); }),
       result: () => destroyed ? null : (mode === 'test' || mode === 'independent' ? Object.assign(M.gradeFinal(top, bottom, S.d), { marks: M.evaluateWork(top, bottom, S.ann).status }) : null),
+      get helped() { return !!S.helped; },
       get destroyed() { return destroyed; }
     };
     renderAll();
