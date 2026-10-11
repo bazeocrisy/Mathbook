@@ -264,7 +264,7 @@
     subQ({ id: 'p3', a: 6957, b: 615, skill: 'sub43', hint: 'Line up the ones.' }),
     subQ({ id: 'p4', a: 3486, b: 254, skill: 'sub43', hint: 'Line up the ones.' }),
     subQ({ id: 'p5', a: 5798, b: 2463, skill: 'sub44', hint: 'Four places, right to left.' }),
-    subQ({ id: 'p6', a: 8647, b: 3205, skill: 'sub44', hint: '0 tens: 4 − 0 = 4.' }),
+    subQ({ id: 'p6', a: 8647, b: 3205, skill: 'sub44', hint: 'Taking away 0 leaves the top digit.' }),
     subQ({ id: 'p7', a: 7586, b: 2546, skill: 'zeros', hint: 'Write a 0 when a place has nothing left.' }),
     subQ({ id: 'p8', a: 26875, b: 4630, skill: 'sub5', hint: 'Line up the ones; bring down the ten thousands.' }),
     wordQ({ id: 'p9', total: 2496, part: 274, skill: 'left', seed: 9, label: 'Miles left:', hint: 'Whole minus the part they drove.', story: 'The Lee family is driving 2,496 miles. They drove 274 miles the first day. How many miles are left?' }),
@@ -294,7 +294,7 @@
     subQ({ id: 'o8', a: 47596, b: 3284, skill: 'sub5' }),
     wordQ({ id: 'o9', total: 3785, part: 562, skill: 'left', seed: 29, label: 'Meters left:', story: 'A river trail is 3,785 meters long. Kim has paddled 562 meters. How many meters are left?' }),
     wordQ({ id: 'o10', total: 5896, part: 2473, skill: 'part', seed: 30, label: 'The desks ($):', story: 'A school spent $5,896 on desks and chairs. The chairs cost $2,473. How much did the desks cost?' }),
-    missingQ({ id: 'o11', a: 6947, b: 3512, blanks: { top: ['H'], bottom: ['T', 'O'], result: ['Th'] } }),
+    missingQ({ id: 'o11', a: 6947, b: 3512, blanks: { top: ['H'], bottom: ['Th', 'T'], result: ['O'] } }),
     increaseQ({ id: 'o12', title: 'Car Wash', vals: [1423, 3645, 5856] }),
     togetherQ({ id: 'o13', total: 9786, part: 6451, story: 'A show sold 9,786 tickets in two weeks. It sold 6,451 in the first week. How many tickets did it sell in the second week?' }),
     lineupQ({ id: 'o14', who: 'Sam', pron: 'He', a: 5987, b: 352, seed: 34 })
@@ -311,7 +311,7 @@
     subQ({ id: 't8', a: 38769, b: 5415, skill: 'sub5' }),
     wordQ({ id: 't9', total: 1598, part: 476, skill: 'left', label: 'Meters left:', story: 'A bike race is 1,598 meters. Pia has ridden 476 meters. How many meters are left?' }),
     wordQ({ id: 't10', total: 4968, part: 1725, skill: 'part', label: 'The fence ($):', story: 'A farm spent $4,968 on a fence and a gate. The gate cost $1,725. How much did the fence cost?' }),
-    missingQ({ id: 't11', a: 5786, b: 3452, blanks: { top: ['O'], bottom: ['H', 'T'], result: ['Th'] } }),
+    missingQ({ id: 't11', a: 5786, b: 3452, blanks: { top: ['Th'], bottom: ['H', 'O'], result: ['T'] } }),
     increaseQ({ id: 't12', title: 'Book Fair', vals: [1204, 3457, 5689] }),
     togetherQ({ id: 't13', total: 7659, part: 4325, story: 'A zoo had 7,659 visitors on two days. 4,325 came on the first day. How many visitors came on the second day?' }),
     lineupQ({ id: 't14', who: 'Jen', pron: 'She', a: 7958, b: 634 })

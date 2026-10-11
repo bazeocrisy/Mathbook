@@ -35,13 +35,13 @@ const GUIDED = {
 };
 const PRACTICE = {
   o1: [643], o2: [422], o3: [4423], o4: [9223], o5: [3243], o6: [3331], o7: [3050], o8: [44312],
-  o9: ['3,785 − 562 = ?', 3223], o10: ['5,896 − 2,473 = ?', 3423], o11: [{ 'top:H': 9, 'bottom:T': 1, 'bottom:O': 2, 'result:Th': 3 }],
+  o9: ['3,785 − 562 = ?', 3223], o10: ['5,896 − 2,473 = ?', 3423], o11: [{ 'top:H': 9, 'bottom:Th': 3, 'bottom:T': 1, 'result:O': 5 }],
   o12: [2222, 2211, 'Year 1 to Year 2'], o13: [3335], o14: ['left', 5635]
 };
 const TEST = {
   t1: [[433], 'sub3'], t2: [[451], 'sub3'], t3: [[5423], 'sub43'], t4: [[7332], 'sub43'], t5: [[3427], 'sub44'], t6: [[5243], 'sub44'], t7: [[5030], 'zeros'],
   t8: [[33354], 'sub5'], t9: [['1,598 − 476 = ?', 1122], 'left'], t10: [['4,968 − 1,725 = ?', 3243], 'part'],
-  t11: [[{ 'top:O': 6, 'bottom:H': 4, 'bottom:T': 5, 'result:Th': 2 }], 'missing'], t12: [[2253, 2232, 'Year 1 to Year 2'], 'increase'],
+  t11: [[{ 'top:Th': 5, 'bottom:H': 4, 'bottom:O': 2, 'result:T': 3 }], 'missing'], t12: [[2253, 2232, 'Year 1 to Year 2'], 'increase'],
   t13: [[3334], 'together'], t14: [['left', 7324], 'lineup']
 };
 /** Every pair of numbers a lesson question subtracts. */
@@ -132,4 +132,16 @@ test('line-up items: the picture does not say what went wrong', () => {
     const h = globalThis.Mathbook.fig.html(q.figure);
     assert.doesNotMatch(h, /line up|lined up|don.t line/i, q.id);
   }
+});
+
+test('review fixes L215-01…03', () => {
+  // L215-01: the p6 hint does not give a digit of the answer.
+  assert.ok(!/= 4/.test(L.guided.find((q) => q.id === 'p6').hint));
+  // L215-02: an empty missing-digit box is named.
+  const Q = globalThis.Mathbook.Q, q = L.guided.find((x) => x.id === 'p11');
+  const r = { b: { 'b:top:T': '5', 'b:bottom:H': '2', 'b:bottom:O': '', 'b:result:Th': '2' } };
+  assert.equal(Q.emptyTip(q, r), 'Write the missing ones digit of the bottom number.');
+  // L215-03: the authored missing-digit items do not always hide the answer's thousands digit.
+  const res = L.guided.concat(L.bank, L._testItems).filter((x) => x.blanks).map((x) => x.blanks.result[0]);
+  assert.ok(new Set(res).size >= 3, res.join(','));
 });

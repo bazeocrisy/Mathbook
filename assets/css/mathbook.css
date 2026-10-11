@@ -628,6 +628,12 @@ a.btn.is-disabled { background: #eceef5; color: #545a75; pointer-events: none; }
   .wiz-actions .btn { flex: 1 1 auto; }
   .stage-learn .wiz-locked-note { text-align: center; }
 }
+/* Very small phones: a little less padding so a 6-column answer row keeps full-size boxes (review L215-04). */
+@media (max-width: 360px) {
+  .stage.stage-learn { padding-left: 0.5rem; padding-right: 0.5rem; }
+  .stage-learn .wiz-card { padding: 0.65rem; }
+  .wiz-check { padding: 0.6rem; }
+}
 .stage-learn .builder-top .q-build { grid-template-columns: repeat(auto-fit, minmax(min(100%, 7.5rem), 1fr)); }
 .stage-learn .builder-top { gap: 0.6rem; }
 @media (min-width: 900px) { .stage-learn .builder-top .q-build { grid-template-columns: repeat(4, minmax(0, 1fr)); } }

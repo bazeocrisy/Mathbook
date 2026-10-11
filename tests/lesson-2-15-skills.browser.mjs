@@ -207,6 +207,27 @@ try {
   }
   await b.viewport(1366, 768, false);
 
+  // ----- L215-04: a 5-digit Learn 2 Your Turn at 320 px keeps answer boxes at least 44 px wide -----
+  await b.viewport(320, 640); await b.load(URL + '#menu');
+  await js(`const L = Mathbook.lessons['2-15']; const st = L.seeIt.steps; let q;
+    for (let s = 1; s < 500; s++) { q = st[1].check(Mathbook.pv.rng(s)); if (q.rows[0] >= 10000) break; }
+    localStorage.setItem(L.storageKey + ':see-wizard', JSON.stringify({ checks: { [st[1].id]: { q } }, step: 1, done: { [st[0].id]: true }, phase: { [st[1].id]: 'try' } }));`);
+  await b.load(URL + '#see'); await b.reload(); await wait(250);
+  const box = await js(`const bx = Array.from(document.querySelectorAll('.wiz-check .vc-in')).map((e) => e.getBoundingClientRect());
+    return { n: bx.length, minW: Math.round(Math.min(...bx.map((r) => r.width))), sw: document.documentElement.scrollWidth, cw: document.documentElement.clientWidth };`);
+  check('Learn 2 at 320 px: a 5-digit answer row has boxes at least 44 px wide, no sideways scroll (L215-04)', box.n === 5 && box.minW >= 44 && box.sw <= box.cw, box);
+  // L215-02: an empty missing-digit box is named in the feedback.
+  await b.viewport(1366, 768, false);
+  await b.load(URL + '#menu');
+  await js(`const L = Mathbook.lessons['2-15']; const st = L.seeIt.steps; const q = L.guided.find((x) => x.id === 'p11');
+    localStorage.setItem(L.storageKey + ':see-wizard', JSON.stringify({ checks: { [st[3].id]: { q } }, step: 3, done: Object.fromEntries(st.slice(0, 3).map((x) => [x.id, true])), phase: { [st[3].id]: 'try' } }));`);
+  await b.load(URL + '#see'); await b.reload(); await wait(250);
+  const empt = await js(`const set = (k, v) => { const i = document.querySelector('.wiz-check [data-k="' + k + '"]'); i.value = v; i.dispatchEvent(new Event('input', { bubbles: true })); };
+    set('b:top:T', '5'); set('b:bottom:H', '2'); set('b:result:Th', '2');
+    document.querySelector('[data-wiz="check"]').click(); await new Promise((r) => setTimeout(r, 150));
+    return (document.querySelector('.wiz-check .feedback:not([hidden])') || {}).innerText || '';`);
+  check('Missing digits: leaving one box empty names that box (L215-02)', /Write the missing ones digit of the bottom number/.test(empt), empt);
+
   // ----- Reset Lesson Progress erases skill practice too, and nothing else -----
   await b.load(URL + '#teach'); await b.reload(); await wait(200);
   await js(`document.querySelector('#clear').click(); await new Promise((r) => setTimeout(r, 50)); document.querySelector('#clear-yes').click();`); await wait(250);
