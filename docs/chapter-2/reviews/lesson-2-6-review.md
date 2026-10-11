@@ -178,3 +178,14 @@ The shared changes are limited:
 **Layout:** a viewport sweep at 320/390/768/1024/1366/1920 of every Learn slide and Your Turn, all 11 Practice Together items, all 14 On My Own items, all 13 test items, the menu, the Parent Guide and Results found no sideways scroll, no target under 48 px and no input under 44 px (`r26/vp2.out`, 193 screenshots). No JavaScript errors and no missing files.
 
 No headless `mathbook-chrome-*` Chrome processes are left (count 0). The owner's normal Chrome was not touched. Node, Windows 11, 2026-10-10.
+
+### Re-verification of N-1/N-2 (commit 3c0763f)
+
+I checked these in the app only (390×844, headless Chrome, with real typing into the boxes). Script: `r26/n12.mjs`, output `r26/n12.out`. I edited no app, lesson, engine or test file. The full browser regression was run by the coordinator, not by me.
+
+| Finding | Status | Evidence |
+|---|---|---|
+| N-1 | verified | A partly filled stacked answer now names the missing box:<br>• Learn step 3 with only the hundreds partial sum typed: "Write the tens partial sum." With all three partial sums typed but no sum: "Write the sum." Learn 'tries' stays 0, so these checks do not use up a try.<br>• PT2 with the tens partial sum empty: "Write the tens partial sum." With the sum empty: "Write the sum."<br>• PT10 with the tens label empty: "Write what you add in the tens: the values with + between them."<br>A completely empty control still says "Write an answer first." |
+| N-2 | verified | PT10 with the ones on the hundreds line: "Look again at the hundreds: write the values of the hundreds digits." With digits on the tens line ("5 + 1"): "Look again at the tens: write the values of the tens digits." The right labels give "✓ Correct!". |
+
+**Test mode:** I answered all 13 test items (stacked items without their sum or a label, row items without the Sum box). No feedback, hint, check button, empty-box tip or answer appeared on any question. The only text match was the words "hundreds partial sum" inside a T10 answer choice, which is expected. No JavaScript errors.
