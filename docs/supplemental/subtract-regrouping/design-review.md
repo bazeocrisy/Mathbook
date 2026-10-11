@@ -625,3 +625,36 @@ Design agent's notes. Section 1 is written before the build; later sections revi
 - **Must fix:** SR-D18–D20.
 - **Recommended:** SR-D21–D27.
 - **Re-check:** I'll re-run `scenes-help.mjs` and `scenes-misc.mjs` after the fixes.
+
+## 6. Re-check at 7470cbb
+
+**Method:**
+- I re-ran `scenes-help.mjs` and `scenes-misc.mjs` with real CDP input in one headless Chrome, at 320, 390, 768×1024, 1024×768, 1366×768, 1920×1080 and 683×384.
+- Two scene fixes on my side: the Step 1 number is now read from the prompt text, and the live-region and solution-position checks were added.
+- No JS errors, no sideways scroll and no overflow on any screen. The 64-screen Learn sweep is clean again.
+
+**Result:** all of SR-D18–D27 pass, except SR-D26's part position, which is kept by decision. SR-D23's own goal is met but raises a new issue (SR-D28).
+
+| ID | Result | Evidence at 7470cbb |
+|---|---|---|
+| SR-D18 | **pass** | After Next, `#sr-part-live` (polite, persistent) holds the part's sentence, e.g. "The tens go from 4 to 3. The ones go from 9 to 19. Now there are 3 tens and 19 ones.", at all 7 sizes. Focus stays on Next. |
+| SR-D19 | **pass** | After a wrong answer, one help set shows: Step 1 and forms show Check Answer · Try again · Get a hint · Show me how; independent practice shows Undo · Clear work · Check · Try again · Get a hint · Show me how. The toolbar's Hint and Show me come back after Try again. |
+| SR-D20 | **pass** | Step 1 completion focuses `.sr-complete` ("✓ Now there are … The value is the same.") at 320, 390 and 1366, including after Show me how. Next Step is enabled. |
+| SR-D21 | **pass** | A guided problem finished with Show me ends "✓ Finished with help: 8,000 − 49 = 7,951. Try a similar problem on your own when you are ready." Practice Together reads the same. |
+| SR-D22 | **pass** | Decide Show me now quotes only the digits on screen, up to the first column that needs an exchange. Examples: "ones: 9 is enough for 0. Tens: 2 is less than 6, so yes, the tens column needs an exchange first.", and the no-regroup case lists every column pair. |
+| SR-D23 | **pass, see SR-D28** | Show me no longer scrolls the child's problem away (`scrollY` 0 at 390, grid top at 437). |
+| SR-D24 | **pass** | Try again focuses `a0`, "Answer, ones digit, marked not correct", at all sizes. |
+| SR-D25 | **pass** | Guided: "✗ Look again at the ones: the top has 0 and you need to take away 2." Get a hint asks the question, and Show me gives the conclusion. Decide forms now point too ("Check each column, starting with the ones …"). |
+| SR-D26 | **pass, one part kept by decision** | **Fixed:** "Exchange 1 ten for 10 ones in 91." has no stray space, and the text uses `tens()`/`ones()` for singular and plural. **Kept:** the part position still resets on refresh but stays when you leave and return. Accepted: it is a short 4-part demo, and the step and phase are saved. |
+| SR-D27 | **pass** | The "See the worked answer" summary is 44 px tall. |
+
+**New finding**
+
+**SR-D28 · major: independent Show me on phones looks as if nothing happened.**
+- **Evidence:** `indep-showfirst-390.png (390×1878)`. After Show me, focus moves to the "Full solution" heading with `preventScroll`, but the heading starts at y=857 on an 844 px screen. At 320 it is at 675 of 640. The only visible change is Hint and Show me vanishing from the toolbar.
+- **Failure scenario:** a child on a phone taps Show me, sees the buttons disappear and nothing else, and thinks the help is broken or gone. A screen reader does announce the solution, so this is a problem for sighted users only.
+- **Fix:**
+  - After focusing, call `heading.scrollIntoView({ block: 'nearest' })` on the **heading only**. That scrolls just enough (about 60 px at 390) to show the heading and its first line at the bottom of the screen, while the child's answer row stays visible.
+  - Optionally add a short visible note under the toolbar, "Full solution below ↓", while the solution is open.
+
+**Still open:** SR-D28 only.
