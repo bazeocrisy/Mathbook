@@ -124,3 +124,20 @@ No JavaScript errors or missing files. No `mathbook-chrome` processes are left; 
 - Headless Chrome via `tests/lib/harness.mjs` (local static server at `/Mathbook/`). Viewports were simulated. No physical device.
 - Windows 11, 2026-10-11.
 - The working tree has only this report as a new file. Nothing was committed.
+
+### Re-verification at cf4bab9
+
+I re-checked commit `cf4bab9` with light runs only, one at a time in the foreground:
+- `r29/rv.mjs` (output `r29/rv.out`) in headless Chrome at 320 px, with screenshots `r29/shots/rv-*.png`;
+- a Node comparison of the old and new `place-value.js`.
+
+I edited no app, lesson, engine or test file.
+
+| Finding | Status | Evidence |
+|---|---|---|
+| L29-01 | verified | With `minGap: 24`, the counting-up marks no longer collide at 320 px. Measured label positions (left–right px): Learn 3 "248" 35–67, "250" 92–124, "300" 149–181, "563" 253–285. Learn 4 "153" 36–66, "160" 93–123, "200" 149–181, "400" 253–285. Learn 6 "268" 35–67, "270" 92–124, "300" 149–181, "541" 254–284. There is no overlap in any of them, no sideways scroll, and the "+2 / +50 / +263" bubbles sit apart (`rv-learn3-hops-320.png`, `rv-learn4-hops-320.png`, `rv-learn6-hops-320.png`). **Other lessons are unchanged:** I rendered the components fixture's two open lines (37 → 40 → 85; 224 → 230 → 300 → 333) and 2-8's closed "255 apart" line with the old (`da1e0a7`) and the new `place-value.js`. The HTML is identical byte for byte. Only 2-9 passes `minGap`, and no other lesson uses an open line. |
+| L29-02 | verified | New O13 "418 + 265 = 683. Which must also be true? Choose all." The keys are 683 − 418 = 265 and 683 − 265 = 418 (418 + 265 = 683 ✓). Both distractors are false. The format is the same as T12, with new numbers. In the app, On My Own shows "of 13" and the blurb says "All 13 practice questions". The `related` skill now has 4 practice questions (O1, O2, O3, O13). |
+| L29-03 | verified | The P3, P4, P7 and P8 hints now end with "Then add your jumps." / "… and add your jumps." / "Count up and add your jumps." |
+| L29-04 | verified | O6–O9 and T6–T9 now read "… = ___. Use addition to find it." with no printed addition equation. Seen in the app for O9 and T6–T9, and in the source for all eight (`noEq: true`). Learn and Practice Together keep the equation. |
+
+No JavaScript errors and no new findings. No `mathbook-chrome` processes are left; I left other projects' headless Chrome alone.
