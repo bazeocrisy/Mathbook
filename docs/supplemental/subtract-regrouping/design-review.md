@@ -486,3 +486,142 @@ Design agent's notes. Section 1 is written before the build; later sections revi
 - **390 and 320:** still stacked (`.sk` 296 and 251 px), with the grid inside the card and no overlap.
 
 **Status:** all design findings SR-D01 to SR-D17 are closed.
+
+## 5. Review of the help and recovery revision (9912a66)
+
+### How it was inspected
+
+- **Real headless Chrome**, one instance, with real CDP mouse, touch and keys.
+- **Viewports:** 320×640, 390×844, 768×1024, 1024×768, 1366×768, 1920×1080 and 683×384.
+- **Screens covered:**
+  - Step 1 Example (all four parts and both examples);
+  - Step 1 Your Turn: wrong answer, Try again, Get a hint, Show me how, refresh mid-question, completion;
+  - Learn 2–9, Example and Your Turn, swept at 320, 390, 1366 and zoom;
+  - guided Show me through a whole zero-chain problem, and guided wrong → Try again / Get a hint;
+  - Learn 7, 8 and 9 (decide, mistake, check): wrong answer, and Hint then Show me;
+  - Practice Together through Show me;
+  - independent practice: Show me first, a wrong Check then Try again, and a 10-question session with help on every other question;
+  - the decide and mistakes skills;
+  - test review;
+  - reset.
+- **Where the evidence is:** scripts are `scenes-help.mjs` and `scenes-misc.mjs`; screenshots are in the scratchpad `shots/`. Image sizes are omitted below unless they matter.
+
+### What passes
+
+- **No layout faults:** no sideways scroll, no element past the viewport edge and no JS errors on any of the 64 swept screens or in any flow.
+- **Step 1 Example:**
+  - 49 and then 72 are shown as tens rods and ones cubes, one action per part (4 parts).
+  - Changed columns get a 4 px outline plus −1/+10 chips, so they don't depend on colour.
+  - The sentences are short and concrete: "The tens go from 4 to 3. The ones go from 9 to 19. Now there are 3 tens and 19 ones."
+  - It reads well at every size (`s1ex-p3-390.png`).
+- **Step 1 Your Turn:**
+  - one numeric question at a time;
+  - the starting blocks stay on screen;
+  - feedback is concrete ("54 has 5 tens. When 1 ten is exchanged for 10 ones, there is 1 fewer ten, not 1 more.");
+  - after Show me, the worked line appears under its question with "(shown)";
+  - the question position survives a refresh.
+- **Help everywhere it should be:** 💡 Hint and Show me sit next to the answer on every Learn Your Turn (1–9), in Practice Together, in independent practice (Show me needs no earlier hints) and in the decide and mistakes skills. The test still has no help controls; they render only alongside Check, which test mode leaves out.
+- **No dead ends:**
+  - Next Step / Finish unlocks immediately after completion or Show me, with no refresh.
+  - "Done with help. … Try a similar problem" is offered but is not a gate.
+  - Independent practice moves on after Show me.
+- **"With help" is recorded and visible:**
+  - `see-wizard.helped`;
+  - My Results: "Learn: 1 of 9 steps done (1 with help)";
+  - the practice summary: "5 of 10 solved on your own · 5 on the first try · 5 with help", with each item labelled "done with help" or "✓ on your own".
+- **Guided Show me:**
+  - does exactly one step, updates the vertical marks (crossed-out digits, new values, struck 10s) and explains with the amounts;
+  - focus moves to the next control: the supplier choice, the next regroup box, the answer box, then the "✓ …" done message.
+- **Guided wrong answer:**
+  - the retry row (Try again · Get a hint · Show me how) **replaces** the normal help row;
+  - Try again focuses the first choice;
+  - Get a hint focuses the hint text.
+- **Vertical work:** mistake and check Show me add a vertical "Worked answer" plus numbered steps. Test review has "See the worked answer" with a vertical worked answer and steps.
+- **Reset:** confirms first, then clears every section key, including the "with help" records, and returns to the menu.
+- **Desktop 1366×768:** in guided mode the grid, Check, Hint and Show me are all above the fold (`g6-show-1366.png`).
+
+### Findings
+
+| ID | Sev. | Summary |
+|---|---|---|
+| SR-D18 | major | Step 1 Example parts are not announced to screen readers |
+| SR-D19 | major | After a wrong Check, form items, Step 1 and independent practice show two sets of help buttons |
+| SR-D20 | major | Focus drops to `<body>` when Step 1 Your Turn is completed |
+| SR-D21 | minor | "✓ You did it!" after a problem finished entirely with Show me |
+| SR-D22 | minor | The decide Show me explanation uses amounts the visible grid doesn't show |
+| SR-D23 | minor | Independent Show me on phones moves the child's own problem out of view |
+| SR-D24 | minor | Independent "Try again" focuses the thousands box, not the first wrong digit from the ones |
+| SR-D25 | minor | Guided wrong-answer feedback already gives the conclusion, so "Get a hint" is weaker than the feedback |
+| SR-D26 | minor | Step 1 details: part position, two navigation rows, grammar, a stray space |
+| SR-D27 | minor | Test review "See the worked answer" summaries are 28 px tall |
+
+**SR-D18 · major: Step 1 Example parts are not announced.**
+- **Cause:**
+  - Back and Next replace `.sr-example` with new HTML, and focus stays on the button.
+  - Only the handler attached at first draw adds `aria-live` to `.sr-say`, and it does so after the new text is already present.
+  - The handlers attached by `bindParts()` don't add it at all.
+- **Evidence:** after two Next presses, `.sr-say` has `aria-live = null` at all 7 sizes (`s1ex-p3-*`).
+- **Failure scenario:** a screen-reader user presses Next and hears only "Next, button". The new sentence ("The tens go from 4 to 3…") and the changed blocks are never read.
+- **Fix:**
+  - Keep one persistent polite live region outside `.sr-example` (for example a `.sk-sr` paragraph in the card) and write each part's sentence into it after the redraw.
+  - Give the blocks figure an `aria-label` per part, e.g. "3 tens and 19 ones".
+
+**SR-D19 · major: two sets of help buttons after a wrong Check.**
+- **Evidence:** after a wrong Check, Step 1 Your Turn and the Learn 7–9 / skill form items show six help-related buttons, and form items with an answer workspace add Undo and Clear for eight in all. Independent practice shows eight in its toolbar and coach (`s1try-wrong-1366.png`, `l8-mistake-wrong-390.png`, `indep-wrongretry-390.png`):
+  - the original row: Check Answer · 💡 Hint · Show me;
+  - the retry row added below the feedback: Try again · Get a hint · Show me how.
+- **Failure scenario:**
+  - A child sees two hint buttons and two show buttons with different names, and doesn't know which to press.
+  - "Try again" only focuses the input, which the child could already do.
+  - It contradicts "simple navigation"; guided mode already does this correctly.
+- **Fix:**
+  - Do as guided mode does: after a wrong Check, **replace** the Hint / Show me buttons with the retry row, keeping Check Answer next to the input.
+  - Restore the normal row on Try again or when the child edits an answer.
+  - In independent practice, hide the toolbar's Hint and Show me while the retry row is visible.
+
+**SR-D20 · major: focus drops to `<body>` when Step 1 Your Turn is completed.**
+- **Cause:** `draw('.feedback-ok')` focuses a `<div>` without `tabindex`, so focus falls to `<body>`.
+- **Evidence:** at 320, 390 and 1366 (`misc-s1try-done-*`) and after "Show me how" → completion (`s1try-wrong-390`).
+- **Failure scenario:** a keyboard user finishes Step 1 and has to Tab from the page header to reach Next Step.
+- **Fix:** add `tabindex="-1"` to the completion message and focus it, or focus Next Step.
+
+**SR-D21 · minor: "✓ You did it!" after a problem finished entirely with Show me.**
+- **Evidence:** `g6-show-all-390.png`. Every step was revealed, yet the done line reads "✓ You did it! 6,007 − 2,049 = 3,958." directly above "Done with help…".
+- **Failure scenario:** the message tells the child the work was independent, contradicting the recorded status. A parent can't tell independent success from help at a glance.
+- **Fix:** when `S.helped`, use neutral wording, e.g. "Finished with help: 6,007 − 2,049 = 3,958. Try one on your own next." The same applies in Practice Together.
+
+**SR-D22 · minor: the decide Show me explanation uses amounts the grid doesn't show.**
+- **Evidence:** `l7-decide-show-390.png`, 8,140 − 474. Show me says "tens: 3 is less than 7 → exchange", which is correct after the ones exchange. But the grid above has no marks and still shows 4 tens, and decide items get no worked vertical.
+- **Failure scenario:** the child compares "3" with the 4 on screen and is confused. This is the "using an original digit" trap seen from the other side.
+- **Fix:** for decide, also show the worked vertical with exchange marks, as mistake and check do, or add the marks to the item's view grid when Show me is pressed.
+
+**SR-D23 · minor: independent Show me on phones moves the child's own problem out of view.**
+- **Evidence:** after Show me, the child's grid top is at −163 at 390 and −366 at 320 (`indep-showfirst-*`). The solution says "Read each step, then try writing the answer yourself."
+- **Failure scenario:** the child has to scroll back up and find their own boxes.
+- **Fix:** add a "Back to my problem ↑" button under the solution that scrolls the child's grid into view and focuses the ones answer box.
+
+**SR-D24 · minor: independent "Try again" focuses the thousands box.**
+- **Evidence:** `focusRetry = a3` (thousands) at every size.
+- **Failure scenario:** the method runs from the ones, so the child is sent to the wrong end of the problem.
+- **Fix:** focus the lowest place marked ✗, or the ones box if none is marked.
+
+**SR-D25 · minor: guided wrong-answer feedback already gives the conclusion.**
+- **Evidence:** `g6-wrong-retry-390.png`. The feedback "Look again: the ones has 0 and you need to take away 2. 0 is less than 2, so you need an exchange first." already answers the question. The "Get a hint" that follows ("Can you take 2 away from 0?") is weaker.
+- **Failure scenario:** the help ladder runs backwards. Try again becomes "press the other button".
+- **Fix:** wrong feedback states the facts only ("The ones has 0 and we take away 2."). The hint asks the guiding question, and Show me gives the conclusion. The math/testing agent should check the wording.
+
+**SR-D26 · minor: Step 1 details.**
+- **Part position:** it is kept in memory (`exPart`). It resets to Part 1 on refresh but stays when you leave and return. Store it with `W.ex`, or reset it consistently.
+- **Two navigation rows:** Back / Part x of 4 / Next and Previous example / Example x of 2 / Next example sit together (`s1ex-p3-390.png`). Make "Next ▶" on the last part go to Example 2, and show the example row only on the last part.
+- **Grammar:** "Now there are 1 tens and 14 ones" (n = 24, `misc-s1try-done-1366`). Use ten/tens and is/are; the guided text already does.
+- **Stray space:** the prompt reads "in 54 ." with a space before the full stop.
+
+**SR-D27 · minor: the test review summary is 28 px tall.**
+- **Evidence:** "See the worked answer" summaries measure 28 px at 390 (`misc-testreview-390`).
+- **Fix:** `.sr-review summary { min-height: 44px; display: flex; align-items: center }`.
+
+### What closing this needs
+
+- **Must fix:** SR-D18–D20.
+- **Recommended:** SR-D21–D27.
+- **Re-check:** I'll re-run `scenes-help.mjs` and `scenes-misc.mjs` after the fixes.
