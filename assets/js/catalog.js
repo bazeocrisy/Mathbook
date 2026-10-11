@@ -23,10 +23,17 @@
   /** A short, honest progress note for one lesson ('' when nothing has been saved). */
   function progress(l) {
     // The main (first) test decides the score and "done"; a short extra test (2-2's Check-Up) never marks a lesson done.
-    const attempts = (get(l.key + 'attempts') || []).filter((a) => !a.testId || a.testId === l.tests[0][0]);
+    const all = get(l.key + 'attempts') || [];
+    const attempts = all.filter((a) => !a.testId || a.testId === l.tests[0][0]);
     if (attempts.length) {
       const best = attempts.reduce((m, a) => Math.max(m, a.pct || 0), 0);
       return { kind: best >= 90 ? 'done' : 'test', text: `Best test score: ${best}%` };
+    }
+    // Only another test taken so far: name it and show its best score, never as "done".
+    const other = l.tests.find(([id]) => all.some((a) => a.testId === id));
+    if (other) {
+      const best = all.filter((a) => a.testId === other[0]).reduce((m, a) => Math.max(m, a.pct || 0), 0);
+      return { kind: 'test', text: `${other[1]}: ${best}%` };
     }
     const w = get(l.key + 'see-wizard');
     const done = w && w.done ? Object.keys(w.done).length : 0;

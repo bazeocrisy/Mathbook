@@ -117,7 +117,17 @@ try {
   // ----- The Math Lessons list: only the main Rounding Test decides the score (review L22F-05) -----
   await b.load(server.origin + BASE + 'math/'); await wait(250);
   const note = await js(`const c = Array.from(document.querySelectorAll('.choice-card')).find((a) => /Round Multi-Digit/.test(a.textContent)); const p = c.querySelector('.choice-progress'); return p ? { text: p.textContent, cls: p.className } : null;`);
-  check('Lesson list: a Check-Up score alone does not show "Best test score" or "done" for 2-2', note && !/Best test score/.test(note.text) && !/is-done/.test(note.cls), note);
+  check('Lesson list: a Check-Up score alone shows "Rounding Check-Up: 75%", not "Best test score" or "done" (L22F-05, L22F-06)', note && note.text === 'Rounding Check-Up: 75%' && !/is-done/.test(note.cls), note);
+  // 2-1 with only its second test (Math Words) taken: named score, not done; then the Math Test decides.
+  await js(`localStorage.setItem('mathbook:v2:lesson-2-1:attempts', JSON.stringify([{ id: 1, testId: 'vocab', pct: 100, score: 10, total: 10 }]));`);
+  await b.reload(); await wait(250);
+  const n21 = await js(`const c = Array.from(document.querySelectorAll('.choice-card')).find((a) => /Represent 4-Digit/.test(a.textContent)); const p = c.querySelector('.choice-progress'); return p ? { text: p.textContent, cls: p.className } : null;`);
+  check('Lesson list: 2-1 with only the Math Words Test shows "Math Words Test: 100%", not done', n21 && n21.text === 'Math Words Test: 100%' && !/is-done/.test(n21.cls), n21);
+  await js(`localStorage.setItem('mathbook:v2:lesson-2-1:attempts', JSON.stringify([{ id: 1, testId: 'vocab', pct: 100 }, { id: 2, testId: 'math', pct: 90 }]));`);
+  await b.reload(); await wait(250);
+  const m21 = await js(`const c = Array.from(document.querySelectorAll('.choice-card')).find((a) => /Represent 4-Digit/.test(a.textContent)); const p = c.querySelector('.choice-progress'); return { text: p.textContent, cls: p.className };`);
+  check('Lesson list: 2-1 with the Math Test at 90% shows "Best test score: 90%" as done', m21.text === 'Best test score: 90%' && /is-done/.test(m21.cls), m21);
+  await js(`localStorage.removeItem('mathbook:v2:lesson-2-1:attempts');`);
 
   // ----- Home counts a two-part question only when both parts are answered (review L22F-04) -----
   await b.load(URL + '#test'); await b.reload(); await wait(200);

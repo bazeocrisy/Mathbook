@@ -123,3 +123,38 @@ Scripts and screenshots are under `C:\Users\BAZEOC~1\AppData\Local\Temp\claude\C
 - Windows 11 Pro 10.0.26200; Node v26.5.0; headless Google Chrome 155.0.8059.39 driven over CDP through `tests/lib/harness.mjs`, served under `/Mathbook/` as on GitHub Pages.
 - Textbook pages extracted with `node tools/extract-textbook-pages.mjs` (pp. 37–42 read from `docs/textbook-references/chapter-2/pages/`).
 - Browser suites run one at a time. Every browser and server was closed in `finally`. No `mathbook-chrome-*` process was left running (checked after each run).
+
+### Re-verification (commit c0cd053)
+
+Re-checked `git show c0cd053 -- curriculum assets index.html tests` with my own key script (`r22/keys.cjs`, `r22/dump.cjs`) and a new browser script (`r22/rv.mjs`). I re-ran every suite one at a time:
+
+| Suite | Result |
+|---|---|
+| `npm test` | 89/89 |
+| Check-Up | 25/25 |
+| 2-2 | 96/96 |
+| 2-1 + Home | 198/198 |
+| lessons (2-3, 2-4, 2-5) | 349/349 |
+| 2-3 skills | 71/71 |
+| 2-4 skills | 62/62 |
+| 2-5 skills | 68/68 |
+| Number Words | 64/64 |
+| components | 52/52 |
+
+No `mathbook-chrome-*` process was left running.
+
+**Result: L22F-01 to L22F-05 verified. One new minor finding (L22F-06).**
+
+| ID | Status | Evidence |
+|---|---|---|
+| L22F-01 | verified | **p1:** 36 is between 30 and 40, halfway 35, so it rounds to 40. The parent tip now says 36. <br>**t10:** "Leo says 65 rounded to the nearest ten is 60…"; the key is "No" and 70 (65 is halfway and rounds up). <br>**t11:** "Which round to 600 pages (nearest hundred)?" with 549 → 500, 550 → 600 ✓ (halfway), 582 ✓, 600 ✓, 637 ✓, 651 → 700. <br>**Overlap:** no number taught in the Check-Up practice is in the Rounding Test, and no practice number is in the Check-Up test. The only overlaps left are within practice (p4/PR1 485, p5/PR4 418) and the p12 budget $45, which is not rounded. <br>The new unit test enforces both directions. |
+| L22F-02 | verified | **t9:** "Round 68 to the nearest hundred, then explain why." The key is 0, 50, 100, 100 with "It is past the halfway mark". <br>In the app at 320×568, the parts read "What two hundreds is 68 between?" and then "Which hundred does 68 round to?", with the line labelled 0 \| 100 \| 50 (Question 9 of 12). There is no sideways scroll (scroll width 320 = client width 320). <br>Screenshot: `r22/shots/rv-320-t9.png`. |
+| L22F-03 | verified | **t12:** $26, $18, $13. The estimate is 30 + 20 + 10 = 60 and the exact total is 57, so "Yes" with $3 left. <br>**p12:** $14, $23, $11. The estimate is 40 and the exact total is 48, which is more than 45, so "No". <br>**PR2:** 628 rounds to 600 and is still a distractor. The key is still {681, 742, 715}. <br>**t11:** 637 is not a book number. <br>My scan against book items 1–12 (including the item-11 and item-12 amounts) and every Probe choice finds no book number in any practice, test or Check-Up item. The only match left is TR3's target 50, which is not a rounded number. <br>The unit test now covers prices, Check-Up items and select-all choices. |
+| L22F-04 | verified | **Check-Up, select-all part only on Q1:** Home says "Rounding Check-Up: **0** of 4 answered". Continue is still shown, because the work counts as started. <br>**Check-Up, both parts of Q1:** Home says "1 of 4", and the test menu says "Unfinished: 1 of 4 answered so far". The two now agree. <br>**Set 2, select-all part only:** Home says "Practice on my own: 0 of 4 answered". <br>**2-1 regression check:** the Math Test with 6 answered includes chart and build types, and Home and the menu both say "6 of 10". |
+| L22F-05 | verified, see L22F-06 | **2-2:** <br>• Check-Up 100% alone: the card shows no score and no "done". <br>• Then the Rounding Test at 75%: "Best test score: 75%" (`is-test`). <br>• A further Check-Up at 100%: still 75%. <br>**2-1:** <br>• Math Test at 50%: "Best test score: 50%". <br>• Math Test at 100%: "Best test score: 100%" (`is-done`). <br>• A saved attempt with no `testId` (older data) still counts: "Best test score: 70%". |
+
+#### New finding
+
+| ID | Severity | Where | What I saw | Required fix |
+|---|---|---|---|---|
+| L22F-06 | minor (shared `catalog.js` `progress()`) | Math Lessons list note, when only a lesson's second test has been taken | The new filter drops every attempt that is not from the main test, and the code then falls through to the Learn and "Started" checks. A finished test leaves no draft, set or guided data behind, so the card shows **no note at all**. <br>**Seen:** with fresh storage, Check-Up at 100% gave a blank 2-2 card. With fresh storage, 2-1's Math Words Test at 100% gave a blank 2-1 card. Before c0cd053, the 2-1 case showed "Best test score: 100%", so this is a regression for 2-1. The parent can no longer see from the list that the child has done any work in that lesson. | When there are attempts but none from the main test, still show a note without the "done" style. For example, show "Started" (`is-started`), or name the test: "Rounding Check-Up: 100%" / "Math Words Test: 100%" (`is-test`). Extend the browser check that covers L22F-05 to assert this note, for 2-2 (Check-Up only) and for 2-1 (vocab only). |
