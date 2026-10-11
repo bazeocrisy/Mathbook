@@ -18,7 +18,7 @@ function check(name, ok, detail) {
 const win = {};
 new Function('window', fs.readFileSync(path.join(ROOT, 'assets/js/catalog.js'), 'utf8'))(win);
 const wanted = process.argv.slice(2);
-const LESSONS = win.Mathbook.catalog.lessons.filter((l) => !['2-1', '2-2'].includes(l.id))
+const LESSONS = win.Mathbook.catalog.lessons.concat(win.Mathbook.catalog.activities || []).filter((l) => !['2-1', '2-2'].includes(l.id))
   .filter((l) => fs.existsSync(path.join(ROOT, l.path, 'lesson.js')))
   .filter((l) => !wanted.length || wanted.includes(l.id));
 

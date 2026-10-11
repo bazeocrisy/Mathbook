@@ -23,7 +23,7 @@
     <section class="hero">
       <p class="eyebrow">Spelling and numeracy</p>
       <h1>Number Words</h1>
-      <p class="lead">Read It, Say It, Spell It, Write It. Learn to spell number words in four phases. Lesson 2-1 is open at any time — this program supports it but is not required first.</p>
+      <p class="lead">Read It, Say It, Spell It, Write It. Learn to spell number words in four phases, then read and write bigger numbers in words. Lesson 2-1 is open at any time — this program supports it but is not required first.</p>
     </section>
 
     <section class="card" id="phases" aria-labelledby="phases-title">
@@ -39,6 +39,7 @@
         <li><b>Look, Cover, Write, Check:</b> study the word, cover it, write it from memory, and compare.</li>
         <li><b>Practice:</b> varied spelling activities with hints and second tries.</li>
         <li><b>Test:</b> 10 typed spellings, no hints. Mastery is 9 or more correct.</li>
+        <li><b>Phase 4</b> works like a math lesson: Learn (an example, then your turn), Practice Together, practice on your own, and a 12-question test. Capitals, spaces, hyphens, the comma after "thousand" and an extra "and" do not change the answer.</li>
       </ol>
       <p id="convention" class="muted"></p>
     </section>
@@ -57,8 +58,9 @@
         var words = ph.words ? ph.words.map(function (w) { return typeof w === 'string' ? w : w.word; }) : [];
         var examples = ph.examples ? ph.examples.map(function (n) { return pv.fmt(n) + ' — ' + pv.numberToWords(n); }) : [];
         if (ph.status === 'ready') {
-          return '<a class="lesson-row" href="' + ph.href + '"><div class="lesson-main"><span class="lesson-num">' + ph.id + '</span><div><h3 style="margin:0;font-size:1.15rem">Phase ' + ph.id + ' · ' + esc(ph.title) + '</h3>' +
-            '<p>' + words.map(esc).join(', ') + '</p></div></div><span class="btn btn-primary" aria-hidden="true">Open →</span></a>';
+          return '<a class="lesson-row" href="' + ph.href + '"><div class="lesson-main"><span class="lesson-num">' + ph.id + '</span><div><h3 style="margin:0;font-size:1.15rem">Phase ' + ph.id + ' · ' + esc(ph.title) + (ph.range ? ' (' + esc(ph.range) + ')' : '') + '</h3>' +
+            (words.length ? '<p>' + words.map(esc).join(', ') + '</p>' : '') + (examples.length ? '<p><b>Examples:</b> ' + examples.map(esc).join('; ') + '</p>' : '') + (ph.blurb ? '<p>' + esc(ph.blurb) + '</p>' : '') +
+            '</div></div><span class="btn btn-primary" aria-hidden="true">Open →</span></a>';
         }
         return '<div class="lesson-row is-locked" aria-label="Phase ' + ph.id + ': ' + esc(ph.title) + ', coming later, not available yet"><div class="lesson-main"><span class="lesson-num">' + ph.id + '</span><div>' +
           '<h3 style="margin:0;font-size:1.15rem;color:#3d4260">Phase ' + ph.id + ' · ' + esc(ph.title) + ' <span class="soon">Coming later · outline only</span></h3>' +

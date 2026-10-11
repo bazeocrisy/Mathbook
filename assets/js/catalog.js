@@ -28,6 +28,12 @@
 
   const lessons = CHAPTER_2.map((l) => Object.assign({ chapter: 2, path: `curriculum/chapter-2/lesson-${l.id}/`, key: `mathbook:v2:lesson-${l.id}:` }, l));
 
+  // Other activities built on the lesson engine. They are not in the Math Lessons list, but Home's Continue button and
+  // the journey test (tests/lessons.browser.mjs) use them like lessons. label: how Home names it.
+  const activities = [
+    { id: 'nw-4', label: 'Number Words · Phase 4', title: 'Hundreds and Thousands', path: 'number-words/phase-4/', key: 'mathbook:v2:number-words:phase-4:', steps: 5, tests: [['words', 'Number Words Test']] }
+  ];
+
   function get(key) { try { return JSON.parse(root.localStorage.getItem(key) || 'null'); } catch (e) { return null; } }
 
   /** A short, honest progress note for one lesson ('' when nothing has been saved). */
@@ -65,5 +71,5 @@
     }).join('');
   }
 
-  MB.catalog = { lessons, progress, renderLessonList };
+  MB.catalog = { lessons, activities, progress, renderLessonList };
 })(typeof window !== 'undefined' ? window : globalThis);
