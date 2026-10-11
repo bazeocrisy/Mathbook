@@ -48,6 +48,14 @@
   /** Partial sums: hundreds, tens, ones, sum (column: the problem as a stack). o: { id, a, b, column?, prompt?, hint? } */
   function partialQ(o) {
     const { a, b } = o, P = partials(a, b);
+    if (o.column) {
+      return {
+        id: o.id, type: 'vcalc', op: '+', rows: [a, b], input: 'rows', skill: o.skill || 'partial',
+        prompt: o.prompt || `Add ${plus([a, b])} with partial sums in a column.`,
+        hint: o.hint || 'Add the hundreds first. Then the tens. Then the ones. Then add those three answers.',
+        explanation: partialText(a, b)
+      };
+    }
     return {
       id: o.id, type: 'parts', skill: o.skill || 'partial',
       prompt: o.prompt || `Add ${plus([a, b])} with partial sums${o.column ? ' in a column' : ''}.`,
@@ -146,11 +154,11 @@
     const n = Math.ceil(need / pack);
     return {
       id: o.id, type: 'parts', skill: 'apply',
-      prompt: `${o.who} needs ${fmt(need)} ${o.item}. ${cap(o.item)} come in ${o.unit} of ${fmt(pack)}. How many ${o.unit} should ${o.pron} buy?`,
+      prompt: `${o.who} needs ${fmt(need)} ${o.item}. ${cap(o.item)} come in ${o.unit} of ${fmt(pack)}. How many ${o.unit} should ${o.pron} buy? Keep adding ${fmt(pack)} until there are enough.`,
+      // Review L210-01: no box label gives the count away; the child adds on and decides when it is enough.
       parts: [
-        { kind: 'num', label: `${n - 1} ${o.unit} =`, answer: pack * (n - 1) },
-        { kind: 'num', label: `${n} ${o.unit} =`, answer: pack * n },
-        { kind: 'num', label: `${cap(o.unit)} to buy:`, answer: n, fromStory: true }
+        { kind: 'num', label: `${cap(o.unit)} to buy:`, answer: n },
+        { kind: 'num', label: `That many ${o.unit} hold:`, answer: pack * n }
       ],
       hint: o.hint || `Keep adding ${fmt(pack)} until you have at least ${fmt(need)}.`,
       explanation: `${Array.from({ length: n - 1 }, () => fmt(pack)).join(' + ')} = ${fmt(pack * (n - 1))}, not enough. ${Array.from({ length: n }, () => fmt(pack)).join(' + ')} = ${fmt(pack * n)}, at least ${fmt(need)}. So ${n} ${o.unit}.`

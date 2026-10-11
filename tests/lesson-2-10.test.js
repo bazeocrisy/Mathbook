@@ -12,23 +12,23 @@ require('../curriculum/chapter-2/lesson-2-10/lesson.js');
 
 const { pv, Q } = globalThis.Mathbook;
 const L = globalThis.Mathbook.lessons['2-10'];
-const keyOf = (q) => (q.type === 'chain' ? ['adjust', q.a, q.b, q.a + q.b] : q.parts.map((p) => (Array.isArray(p.answer) ? p.answer.slice().sort() : p.answer)));
+const keyOf = (q) => (q.type === 'chain' ? ['adjust', q.a, q.b, q.a + q.b] : q.type === 'vcalc' ? ['column'].concat(Q.correctResponse(q).p, Q.correctResponse(q).s).map((x) => (x === 'column' ? x : pv.parseWholeNumber(x))) : q.parts.map((p) => (Array.isArray(p.answer) ? p.answer.slice().sort() : p.answer)));
 const YES = (p, k) => `Yes. ${p} added ${k} extra, so ${p.toLowerCase()} takes ${k} away.`;
 const BOTH = 'Yes. Both strategies work and give the same sum.';
 
 const GUIDED = {
-  p1: [700, 80, 7, 787], p2: [783], p3: [700, 140, 12, 852], p4: ['adjust', 299, 456, 755], p5: [BOTH, 784], p6: [YES('He', 4), 913],
-  p7: [['300 + 400 + 50 + 70 + 6 + 1', '355 + 472'], 827], p8: [496], p9: [500, 750, 3], p10: ['500', 693], p11: [337, 483]
+  p1: [700, 80, 7, 787], p2: [783], p3: ['column', 700, 140, 12, 852], p4: ['adjust', 299, 456, 755], p5: [BOTH, 784], p6: [YES('He', 4), 913],
+  p7: [['300 + 400 + 50 + 70 + 6 + 1', '355 + 472'], 827], p8: [496], p9: [3, 750], p10: ['500', 693], p11: [337, 483]
 };
 const PRACTICE = {
   o1: [888], o2: [675], o3: [793], o4: [899], o5: ['No. He added 2 extra, so he must take 2 away.', 903],
-  o6: [['200 + 500 + 60 + 10 + 3 + 8', '261 + 520'], 781], o7: [684], o8: [625], o9: [823], o10: [450, 600, 4], o11: ['600', 745], o12: [377, 495],
-  o13: [700, 120, 14, 834], o14: ['adjust', 197, 548, 745]
+  o6: [['200 + 500 + 60 + 10 + 3 + 8', '261 + 520'], 781], o7: [684], o8: [625], o9: [823], o10: [4, 600], o11: ['600', 745], o12: [377, 495],
+  o13: ['column', 700, 120, 14, 834], o14: ['adjust', 197, 548, 745]
 };
 const TEST = {
-  t1: [[788], 'add'], t2: [[875], 'add'], t3: [[823], 'add'], t4: [[700, 110, 12, 822], 'partial'], t5: [['adjust', 398, 267, 665], 'adjust'],
+  t1: [[788], 'add'], t2: [[875], 'add'], t3: [[823], 'add'], t4: [['column', 700, 110, 12, 822], 'partial'], t5: [['adjust', 398, 267, 665], 'adjust'],
   t6: [[YES('She', 1), 726], 'strategy'], t7: [[['400 + 300 + 20 + 50 + 7 + 2', '430 + 349'], 779], 'strategy'], t8: [[BOTH, 613], 'strategy'],
-  t9: [[574], 'apply'], t10: [[600, 900, 3], 'apply'], t11: [['400', 812], 'apply'], t12: [[385, 512], 'apply']
+  t9: [[574], 'apply'], t10: [[3, 900], 'apply'], t11: [['400', 812], 'apply'], t12: [[385, 512], 'apply']
 };
 
 test('Practice Together and On My Own match the hand-checked key', () => {
@@ -81,11 +81,20 @@ test('Learn generators follow the spec and never print an answer', () => {
     const [s1, s2, s3, s4, s5] = L.seeIt.steps.map((s) => s.check(pv.rng(seed)));
     const [h1, t1, o1] = s1.parts.map((p) => p.answer);
     assert.ok(t1 < 100 && o1 >= 10 && s1.parts[3].answer <= 999, 'step 1: tens under 100, ones 10 or more (C-8)');
-    assert.ok(s2.parts[1].answer >= 100 && s2.parts[3].answer <= 999, 'step 2: tens 100 or more');
+    { const p = Q.correctResponse(s2).p.map(pv.parseWholeNumber); assert.ok(s2.type === 'vcalc' && p[1] >= 100 && s2.rows[0] + s2.rows[1] <= 999, 'step 2: tens 100 or more, in the stacked control'); }
     assert.ok(s3.a + s3.b <= 999 && (s3.b % 10 >= 7 || s3.b % 100 >= 98));
     const m = s4.prompt.match(/adds ([\d,]+) \+ ([\d,]+)\. \w+ adds (\d) to/);
     const [a, b, k] = m.slice(1).map(Number);
     assert.ok(a + b + 2 * k <= 999 && k >= 1 && k <= 3, 'step 4 (C-7)');
     assert.ok(s5.parts[1].answer <= 999 && Number(s5.parts[0].answer) % 50 === 0);
   }
+});
+
+test('review fixes: packs items print no answer (L210-01); column items use the stacked control (L210-02)', () => {
+  for (const q of L.guided.concat(L.bank, L._testItems).filter((x) => x.parts && /should .* buy/.test(x.prompt))) {
+    const text = q.prompt + ' ' + q.parts.map((p) => p.label).join(' ');
+    for (const p of q.parts) assert.ok(!(text.match(/\d[\d,]*/g) || []).map((s) => Number(s.replace(/,/g, ''))).includes(p.answer), `${q.id}: ${p.answer} not printed`);
+    assert.ok(!q.parts.some((p) => p.fromStory), `${q.id}: no exemption`);
+  }
+  for (const id of ['p3', 'o13', 't4']) assert.equal(L.guided.concat(L.bank, L._testItems).find((q) => q.id === id).type, 'vcalc', id);
 });

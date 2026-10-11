@@ -570,7 +570,12 @@
           save();
           draw();
           // A new phase or step: start at the top with focus on its heading.
-          if (['try', 'example', 'prev-step', 'next', 'next-nc'].includes(act)) { root.scrollTo(0, 0); main.querySelector('.wiz-h').focus({ preventScroll: true }); return; }
+          if (['try', 'example', 'prev-step', 'next', 'next-nc'].includes(act)) {
+            // On a short screen (e.g. 200% zoom) bring the card itself to the top so the question is in view (review L210-03).
+            const card = main.querySelector('.wiz-card');
+            if (card && root.innerHeight < 560) card.scrollIntoView({ block: 'start' }); else root.scrollTo(0, 0);
+            main.querySelector('.wiz-h').focus({ preventScroll: true }); return;
+          }
           const focusTarget = main.querySelector('[data-wiz="next"]:not([disabled]), a[data-wiz="finish"]:not(.is-disabled), [data-wiz="again"], [data-wiz="new"], .wiz-check input:not([disabled]), .wiz-check button:not([disabled])');
           if (focusTarget) focusTarget.focus();
         }));
