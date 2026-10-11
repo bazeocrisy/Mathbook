@@ -778,3 +778,52 @@ I re-ran the three evidence scenarios in one foreground browser, with real CDP c
 | SR-M19 | **Pass** | 3,002 − 1,578 with the marks stopped at hundreds 10, and 5 written in the hundreds → "Look again at the hundreds: 9 − 5", not "10 − 5". The SR-M13 case (3,076 − 2,141) still says "thousands: 2 − 2". |
 
 All findings SR-M01 … SR-M19 are now closed.
+
+## Show me player verification (361e6db)
+
+**Scope:** Show me as a step-by-step player in step 1 (blocks), in the Learn form questions (decide, mistakes, check), in independent practice, and the guided "Completed with help" text.
+
+**How I tested:**
+- One headless browser, in the foreground, with real CDP clicks and typing.
+- Script: `sm.mjs` (scratchpad, not committed). No page errors. Unit tests: 19/19.
+- When I checked afterwards, one headless Chrome from my own run was still running (its own profile, `mathbook-chrome-VHP4Hf`; its parent had already exited). I stopped it by PID. No other project's Chrome was touched.
+
+**Raw result:** 12 of 15 checks passed. The 3 failures were mistakes in my script, re-read by hand:
+- On the check item I reversed digit order twice; the values were right both mid-play and at the end.
+- My "3 steps with help" expectation was wrong, because my setup rewrote the Learn record for each step. The page correctly showed the 1 step left in it.
+
+### Results: clean pass, no new findings
+
+**1. The player shows each exchange in order, before the answer it feeds.** I checked 227 problems: 2-, 3- and 4-digit, easy, medium and hard, 40 chains through two zeros, plus 3,002 − 1,578, 6,003 − 2,847, 1,000 − 857, 9,000 − 1, 5,000 − 4,999 and 4,005 − 4,005. I stepped through all 2,455 parts and read the grid each time.
+- Each exchange part changes exactly the giving and getting places, to the right values.
+- The exchanges appear in exactly the order of my own column method.
+- Every exchange appears before the answer digit of the column it feeds.
+- The final answer row is right, with no leading zeros.
+- There were 0 mismatches.
+
+**2. Nothing is filled until the end, and the end is right.**
+- **Independent practice** (Practice One Skill "zeros next to each other", real clicks):
+  - I first typed a wrong answer and a mark of 99, then pressed Show me.
+  - Mid-play, my digits and mark are unchanged (on screen and saved), and no result is recorded.
+  - At the last part, the answer holds the right digits and the marks equal the standard exchanges. The item says "Completed with help" and is recorded `correct: true, helped: true, firstTry: false`.
+- **Learn check item:** mid-play my wrong reason and wrong digits stay. At the end, the right reason and the right answer are filled, "Completed with help" is shown, and the step is done + helped with Finish enabled.
+- **Learn decide:** mid-play only my "No" is selected. At the end, Yes and the right column are selected, the step is done + helped, and Next is enabled.
+- **Step 1:** mid-play nothing is filled and Next stays locked. At Part 4 of 4 the tens (t − 1) and ones (o + 10) fill, "Completed with help" appears, the step is done + helped, and Next is enabled.
+- **Guided:** Show me through 6,003 − 2,847 ends with "Completed with help: 6,003 − 2,847 = 3,156."
+
+**3. Help is recorded as help.**
+- **Practice summary** (1 item by Show me, 1 on my own): "1 of 6 solved on your own · 1 on the first try · 1 with help". Item 1 reads "completed with help", and the saved attempt has correct 1, helped 1.
+- **My Results** counts Learn as "(n completed with help)" and gives no test result for help.
+- **Practice Together:** New problems clears `helped`.
+- **Test:** 14 of 15 with exactly one deliberately wrong final, so earlier help did not change it.
+
+**4. Saved progress.**
+- **A refresh mid-play** resumes the same part on all three surfaces:
+  - independent: the hundreds 10 → 9 exchange;
+  - Learn form: the player is restored;
+  - step 1: Part 2 of 4.
+- **A refresh after the end** keeps "Completed with help", the filled answers and the steps.
+- **Forged values are rejected** with no page error: `sp: 'x'`, `sd: 'yes'`, `sp: 99` with `sd: 1`, and in the workspace `show: 999` with `shownDone: 'true'`. No player or completed state appears, and the bad responses and states are dropped.
+- **Reset** clears every section key, and no "completed with help" remains.
+
+**5. Test isolation.** Before submission the test has no Hint, Show me, player, worked area or help controls. After Finish, the missed item opens a vertical worked answer with its steps.
