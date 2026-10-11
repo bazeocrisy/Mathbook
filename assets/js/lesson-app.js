@@ -548,7 +548,8 @@
           qEl.querySelectorAll('input, select, button').forEach((x) => { x.disabled = true; });
           // Chapter 2 controls: ✓ on every box when right, ✗ on the wrong boxes after a miss (Try Again clears them).
           if (c.response !== undefined) Q.applyMarks(qEl, c.q, c.response);
-        } else Q.bind(qEl, c.q, (r) => { c.response = r; save(); });
+        // Focus stays on the step heading (the answer-row control would otherwise jump to its ones box, review L214-01).
+        } else Q.bind(qEl, c.q, (r) => { c.response = r; save(); }, { autofocus: false });
         main.querySelectorAll('[data-wiz]').forEach((b) => b.addEventListener('click', (e) => {
           const act = b.dataset.wiz;
           if (act === 'finish') { if (!W.done[step.id]) e.preventDefault(); return; }

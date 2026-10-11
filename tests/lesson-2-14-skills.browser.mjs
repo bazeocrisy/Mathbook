@@ -194,15 +194,16 @@ try {
   check('Home: completing both counts 2 of 14', /Adding Test: 2 of 14 answered/.test(h1), h1);
 
   // ----- Desktop Learn: a tall Your Turn (partial sums) keeps the question and Check Answer on screen (shared wizard scroll) -----
-  for (const [w, h] of [[1366, 768], [1024, 768]]) {
+  for (const [w, h, k] of [[1366, 768, 1], [1024, 768, 1], [1366, 768, 2], [390, 844, 3]]) {
     await b.viewport(w, h, false); await b.load(URL + '#menu');
     await js(`const L = Mathbook.lessons['2-14']; const st = L.seeIt.steps;
-      localStorage.setItem(L.storageKey + ':see-wizard', JSON.stringify({ checks: {}, step: 1, done: { [st[0].id]: true }, phase: { [st[1].id]: 'example' } }));`);
+      localStorage.setItem(L.storageKey + ':see-wizard', JSON.stringify({ checks: {}, step: ${k}, done: Object.fromEntries(st.slice(0, ${k}).map((x) => [x.id, true])), phase: { [st[${k}].id]: 'example' } }));`);
     await b.load(URL + '#see'); await b.reload(); await wait(200);
     await js(`document.querySelector('[data-wiz="try"]').click();`); await wait(300);
     const v = await js(`const q = document.querySelector('.wiz-check .q-prompt').getBoundingClientRect(), c = document.querySelector('[data-wiz="check"]').getBoundingClientRect();
-      return { qTop: Math.round(q.top), cb: Math.round(c.bottom), vh: innerHeight, focus: document.activeElement.className };`);
-    check(`Learn step 2 Your Turn @${w}x${h}: question and Check Answer on screen`, v.qTop >= 0 && v.cb <= v.vh && /wiz-h/.test(v.focus), v);
+      const cs = Array.from(document.querySelectorAll('.wiz-check .vc-carry')).map((e) => e.getBoundingClientRect());
+      return { qTop: Math.round(q.top), cb: Math.round(c.bottom), vh: innerHeight, focus: document.activeElement.className, carry: cs.length ? Math.round(Math.min(...cs.map((r) => Math.min(r.width, r.height)))) : null };`);
+    check(`Learn step ${k + 1} Your Turn @${w}x${h}: question and Check Answer on screen, focus on the heading (L214-01), regroup boxes at least 44 px (L214-03)`, v.qTop >= 0 && v.cb <= v.vh && /wiz-h/.test(v.focus) && (v.carry === null || v.carry >= 44), v);
   }
   await b.viewport(1366, 768, false);
 

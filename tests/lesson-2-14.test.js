@@ -107,3 +107,15 @@ test('Learn generators follow the spec and never print an answer', () => {
   }
   assert.deepEqual(Object.keys(kinds).sort(), ['0', '1', '2', 's5fewer', 's5useful']);
 });
+
+test('review fixes L214-02, L214-04', () => {
+  // L214-02: "fewer than" never uses two equal numbers (the choices would repeat).
+  for (let seed = 1; seed <= 3000; seed++) {
+    const q = L.seeIt.steps[4].check(pv.rng(seed));
+    for (const p of q.parts) if (p.choices) assert.equal(new Set(p.choices).size, p.choices.length, `seed ${seed}`);
+  }
+  // L214-04: Learn 5 teaches packs and "more than both together" before they are practised and tested.
+  const slides = L.seeIt.steps[4].slides.join(' ');
+  assert.match(slides, /Packs:.*Buy <b>3 packs<\/b>/);
+  assert.match(slides, /Two steps:.*Step 1: together, 132 \+ 215 = <b>347<\/b>\. Step 2: use 347\. Wednesday: 347 \+ 104 = <b>451<\/b>/);
+});

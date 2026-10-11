@@ -242,7 +242,7 @@
           story: `A zoo had ${fmt(a)} visitors on Friday and ${fmt(b)} on Saturday. On Friday, ${fmt(extra)} visitors bought hats. How many visitors came on both days?` });
       }
       const small = pv.randInt(r, 1000, 6000), diff = pv.randInt(r, 1000, 3000);
-      if (small + diff > 9999 || !ok(small, diff, small + diff)) continue;
+      if (small === diff || small + diff > 9999 || !ok(small, diff, small + diff)) continue;
       const other = n === 'Ava' ? 'Ben' : 'Ava';
       return fewerQ({ id: 'learn-5', small, diff, big: other, r, label: `${other}'s points:`,
         story: `${n} scored ${fmt(diff)} fewer points than ${other}. ${n} scored ${fmt(small)}. How many points did ${other} score?` });
@@ -303,6 +303,9 @@
           say('We need 2,180 and 3,465. The 450 hat buyers are already counted on Friday. 2,180 + 3,465 = <b>5,645</b>.'),
         say('Ben scored 1,375 fewer points than Ava. Ben scored 4,250. Ava scored <b>more</b>, so add: 4,250 + 1,375 = <b>5,625</b>.') +
           fig({ fig: 'bar', kind: 'cmp', long: '?', short: 4250, gap: 1375, sizes: [5625, 4250] }),
+        say('<b>Packs:</b> juice boxes come in packs of 150. A class needs 400. 150 (1 pack), 300 (2 packs): not enough. 450 (3 packs) covers 400. Buy <b>3 packs</b>; 450 − 400 = <b>50</b> extra.'),
+        say('<b>Two steps:</b> a library lent 132 books on Monday and 215 on Tuesday. On Wednesday it lent 104 more than Monday and Tuesday together.') +
+          say('We know Monday and Tuesday. Step 1: together, 132 + 215 = <b>347</b>. Step 2: use 347. Wednesday: 347 + 104 = <b>451</b>.'),
         say('Which strategy? 3,000 + 2,999: decompose or adjust. 4,786 + 3,659: the algorithm. Any strategy that keeps the places straight is fine.')
       ],
       check: noLeak(storyCheck)
