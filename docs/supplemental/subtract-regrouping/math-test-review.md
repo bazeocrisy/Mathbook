@@ -643,3 +643,126 @@ Never print an expression that equals the child's wrong digit.
 - **Two major text-accuracy findings** in the new concrete feedback: SR-M12 (0 − 1) and SR-M13 (repeating the child's wrong subtraction).
 - **Three minor findings:** SR-M14, SR-M15 and SR-M16.
 - Phase B (browser: recovering from wrong answers with real input, finishing Learn with Show me without independent credit, refresh, reset and saved progress) waits for the coordinator's go-ahead.
+
+## Phase B (browser): help and recovery, at cb49748 (code at 55e26c6)
+
+**Scope:** the revision since Phase A (`7470cbb` and `55e26c6`).
+
+**How I tested:**
+- One headless browser, in the foreground, closed afterwards; no other Chrome was touched.
+- Real CDP mouse clicks (`Input.dispatchMouseEvent`) and typing (`Input.insertText`, Tab) for every answer, help button and navigation step. The 15 test answers were the exception: they were filled by script, with values from my oracle.
+- Script: `pb.mjs` (scratchpad, not committed).
+- Unit tests: 19/19. No page errors.
+
+**Raw result:** 18 of 21 checks passed. Two of the three failures were my own script's mistakes (explained below). The third, together with three focus observations, led to the findings.
+
+### 1. Recovering from wrong answers
+
+| Surface | Wrong answer → retry row | Right entries kept | Try again focuses | Corrected answer |
+|---|---|---|---|---|
+| Step 1 (exchange): wrong tens, then wrong ones | ✗ with a specific clue ("…1 fewer ten"; "(10 ones, not 1)") and **Try again · Get a hint · Show me how**; the main Hint/Show me are hidden meanwhile | the first answer moves to a ✓ line | the number box ✓ | accepted; "Now there are 6 tens and 10 ones. 60 + 10 = 70."; Next Step unlocks at once; done, **not** helped |
+| Learn decide (step 7): wrong Yes/No, then wrong column | ✗ and the retry row | the right "Yes" stays selected | the first radio ("Yes"), not the column group (SR-M17) | accepted; done, not helped |
+| Learn check item (step 9): wrong subtraction | ✗ and the retry row | the right reason stays selected | a regroup box (`r3`) above the top number, not an answer digit (SR-M17) | accepted; done, not helped |
+| Practice Together, 7,405 − 3,168: wrong getter (tens 1) | ✗ "The tens had 0. It gets 10 more tens (1 hundred = 10 tens): 0 + 10." and the retry row | the right hundreds (3) is kept | the hundreds box `r2` (correct), not the wrong tens `r1` (SR-M17) | accepted ("✓ Now: 7 thousands, 3 hundreds, 10 tens, 5 ones. 7,000 + 300 + 100 + 5 = 7,405…"); finished on my own, done, not helped |
+| Independent practice (4-digit Hard): wrong tens digit | ✗ "Look again at the tens: 13 − 6." and the retry row; toolbar Hint/Show me hidden meanwhile | other digits kept | the wrong digit box `a1` ✓ | "Correct!"; `correct: true`, `firstTry: false`, not helped |
+
+Two failed checks were my script's fault:
+- **Step 1:** my "hint shows no number" test treated "becomes **10** ones" as the answer, because the ones started at 0 and so the answer was also 10. Everything else in that check passed.
+- **Guided:** the check failed only on the focus target, which is SR-M17 below.
+
+### 2. Finishing Learn with Show me only
+
+- **All 9 steps** were finished pressing only Show me: twice in step 1, through every guided stage, and once on each form step.
+  - Each step unlocked Next/Finish at once.
+  - Each was saved as `done` **and** `helped`.
+  - Guided problems end with "Finished with help: 489 − 97 = 392. Try a similar problem on your own when you are ready."
+- **After a refresh,** My Results says **"Learn: 9 of 9 steps done (9 with help)."** and there is still no test result, so help gave no test credit.
+- **A refresh in the middle of a guided step** (after two Show me presses) restores the stage, and the saved state keeps `helped: true`.
+- **Practice summary** (Practice One Skill, 6 items: 3 answered on my own, 3 after Show me): "3 of 6 solved on your own · 3 on the first try · 3 with help".
+  - The list says "✓ on your own" for 3 items and "done with help" for 3.
+  - The saved attempt has `correct: 3, helped: 3`.
+
+### 3. Saved progress, forged values and Reset
+
+- **Forged values are rejected.** I wrote these into localStorage:
+  - `helped: { value: 'yes', bogus: true, … }`;
+  - Together `helped: { 0: 1, 9: true, x: true }`;
+  - a run result with `helped: 'no'`.
+
+  The sanitizers dropped the bad entries: the bad run result was removed and the good one kept. There were no page errors. One gap: SR-M18.
+- **"New problems"** in Practice Together now clears `helped` (SR-M15).
+- **Reset:**
+  - removes every section key;
+  - My Results then says "Learn: 0 of 9 steps done." and "Practice Together: 0 of 8 problems done.", with no "with help";
+  - Lesson 2-15 and Number Words records are kept.
+
+### 4. Test isolation
+
+- **Before submission** the test has:
+  - no Hint, Show me, Check, Try again or guided-help controls;
+  - no worked area.
+- **A wrong typed answer** gets no feedback, marks or retry row.
+- **Score:** with two deliberate wrong finals (t1, t8), the score is 13 of 15 with exactly t1 and t8 missed. The Learn and practice help used earlier didn't change it.
+- **After Finish,** each missed final has "See the worked answer". It opens a vertical worked answer (SubtractKit view mode) with the exchange steps and "So 35 − 18 = 17." There were 2 for 2 missed items, and none appear before submission.
+
+### 5. SR-M12 … SR-M16 in the browser
+
+| ID | Result | Evidence |
+|---|---|---|
+| SR-M12 | **Pass** | 3,002 − 1,578 with ones 12 only: "…but no place gave 1 away. The tens has 0, so it cannot give: go further left and exchange one place at a time." No "0 − 1". |
+| SR-M13 | **Pass** for the reported case | 3,076 − 2,141, unmarked, thousands written 1: "Look again at the thousands: 2 − 2." (the right amount, not the child's 3 − 2). An edge case remains: SR-M19. |
+| SR-M14 | **Pass** | "Now: 6 thousands, 4 hundreds, 7 tens, 13 ones. 6,000 + 400 + 70 + 13 = 6,483: the value is the same." |
+| SR-M15 | **Pass** | After a Show-me-only problem ("Finished with help"), "New problems" sets `helped` to `{}`, and My Results shows "Practice Together: 0 of 8 problems done." |
+| SR-M16 | **Pass** | Neither the wrong Yes/No feedback nor the wrong column feedback names the column. Hint and feedback now point to checking the columns from the ones. |
+
+### New findings
+
+#### SR-M17 (minor): Try again puts focus on the first box, not the wrong one, in three places
+
+**Evidence** (real clicks; `document.activeElement` after Try again):
+- **Learn decide, wrong column (Yes was right):** focus goes to the "Yes" radio.
+- **Learn check item, wrong digits:** focus goes to the thousands regroup box `r3` above the top number.
+- **Guided exchange, wrong tens:** focus goes to the hundreds box `r2`, which was right.
+
+The form `help('retry')` focuses `box.querySelector('input:not([disabled])')`, and guided `g-retry` focuses `[data-k^="r"]`. Step 1 and independent practice do it right (the input, or the wrong `.sk-ans.is-no`). Note that the guided wrong-exchange path itself already focuses the wrong box before Try again is pressed.
+
+**Failure scenario.** A keyboard or screen-reader user presses Try again and lands on a part that was right, so they may change it or have to search for the wrong part.
+
+**Fix:**
+- **guided:** focus the wrong box, using the same `!okG ? e.from : e.to` the check uses;
+- **decide:** focus the first wrong group (the checked or first radio of c1 if wrong, else c2);
+- **check / mistake:** focus the first wrong answer digit when the final is wrong, else the reason group.
+
+#### SR-M18 (minor): "with help" counts steps or problems that aren't done
+
+**Evidence.**
+- The sanitizer keeps `helped` keys for any valid step id or problem index, and My Results counts `Object.keys(W.helped)` without checking `done`.
+- Forged data with `done: { value, one }` and `helped: { one, four }` shows "Learn: 2 of 9 steps done (2 with help)". The true count is 1, since step "four" isn't done.
+- Together with `done: {0}` and `helped: {1}` shows "1 of 8 problems done (1 with help)", but the done problem was solved alone.
+
+The app itself always sets both together, so only damaged or older data triggers this.
+
+**Fix:** count only keys that are also done, either in SAN (`helped` keys must be `done`) or in `helpN`.
+
+#### SR-M19 (minor): the SR-M13 fix still repeats the child's subtraction when their marks keep the value but stop partway
+
+**Evidence.** On 3,002 − 1,578 the child marks thousands 2 and hundreds 10, but doesn't pass the exchange on, so the value is kept and the marks count as valid. They write 10 − 5 = 5 in the hundreds. The message is "Look again at the hundreds: 10 − 5." That is their own (wrong) subtraction; the right one is 9 − 5.
+
+The new rule uses the child's amount whenever the marks are `valid` and `cur[i] ≥ b`, but valid marks don't have to be finished.
+
+**Failure scenario.** A child who stops a zero chain halfway is told to check the same wrong subtraction.
+
+**Fix:** use the child's amount only when the marks are valid **and** cover every column (`M.checkAmounts(top, bottom, cur).ok`); otherwise use `plan.columns[i].topNow`.
+
+### Phase B result
+
+- All the requested behaviour works with real input:
+  - recovery on every help surface;
+  - Learn finished with Show me only, recorded as help and never as independent or test credit;
+  - the practice summary split;
+  - refresh mid-step and after finishing;
+  - Reset;
+  - forged values;
+  - test isolation and worked answers after submission;
+  - SR-M12…M16 fixed (M13 for the reported case).
+- **New, all minor:** SR-M17 (Try again focus), SR-M18 (help counts not tied to done, damaged data only) and SR-M19 (an edge case left by the SR-M13 fix).
