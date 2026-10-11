@@ -295,7 +295,7 @@
   function boxHTML(ctx, k, val, label, cls, extra) {
     if (ctx.mode === 'review') {
       const shown = blankStr(val) ? '—' : String(val).trim();
-      const m = ctx.bad ? !ctx.bad.has(k) : undefined;
+      const m = ctx.bad && !(ctx.none && ctx.none.has(k)) ? !ctx.bad.has(k) : undefined;
       return `<span class="cell is-read ${cls || ''}${m === true ? ' mk-ok' : m === false ? ' mk-no' : ''}" data-k="${esc(k)}">${esc(shown)}${markBadge(m)}</span>`;
     }
     const attrs = /\bis-text\b/.test(cls || '') ? 'type="text" inputmode="text" autocomplete="off" spellcheck="false"' : INPUT_ATTRS;
@@ -478,6 +478,7 @@
     el.querySelectorAll('input[data-k]').forEach((inp) => {
       const k = inp.dataset.k;
       if (k.startsWith('c:')) return; // regroup marks are never graded
+      if ((res.none || []).includes(k)) return; // left-out tree parts and their rows (2-7 B-01) are not graded
       const wrong = bad.has(k);
       if (!wrong && (!res.ok || !inp.value.trim())) return; // an empty leading box that is right stays unmarked
       const box = inp.closest('.cell') || inp.parentElement;
@@ -560,13 +561,17 @@
       S.trees.forEach((T, wi) => {
         let prev = -1;
         const two = S.trees.length > 1;
+        // skip: not graded (the part is empty or 0). dim: drawn greyed, only for a 0 part or an empty part with a typed
+        // part after it; a row still waiting for its part looks normal and follows on from the row above (review L27-01).
+        const lastTyped = R.t[wi].reduce((m, v, k) => (blankStr(v) ? m : k), -1);
         R.t[wi].forEach((v, k) => {
           const skip = partOff(T, v);
+          const dim = skip && (!blankStr(v) || k < lastTyped);
           S.rows.push({
             cells: [prev < 0 ? q.a : { echo: stepId(wi, prev) }, MINUS, T.given ? Number(T.given[k]) : { echo: `t:${wi}:${k}` }, '=', { in: stepId(wi, k), label: `${two ? `Way ${wi + 1}, s` : 'S'}tep ${k + 1} answer` }],
-            true: true, step: true, way: wi, skip, name: `${two ? `way ${wi + 1}, ` : ''}step ${k + 1}`
+            true: true, step: true, way: wi, skip, dim, name: `${two ? `way ${wi + 1}, ` : ''}step ${k + 1}`
           });
-          if (!skip) prev = k;
+          if (!dim) prev = k;
         });
         S.finals.push({ in: finalId(wi), way: wi, label: (q.final && q.final.label) || `So ${pv.fmt(q.a)} − ${pv.fmt(q.b)} =`, answer: q.a - q.b });
       });
@@ -773,7 +778,11 @@
         fail([k], m);
       }
     });
-    return { ok: bad.size === 0 && !msg, bad: Array.from(bad), msg };
+    // Boxes that are left out (empty or 0 tree parts, and their step rows): never marked ✓ or ✗.
+    const none = [];
+    S.trees.forEach((T, ti) => { if (!T.given) R.t[ti].forEach((v, k) => { if (partOff(T, v)) none.push(`t:${ti}:${k}`); }); });
+    S.rows.forEach((row) => { if (row.skip) row.cells.forEach((c) => { if (c && typeof c === 'object' && c.in) none.push('v:' + c.in); }); });
+    return { ok: bad.size === 0 && !msg, bad: Array.from(bad), msg, none };
   }
 
   /** Place-value parts of n (non-zero places), split or merged to fit min..max parts. */
@@ -956,7 +965,8 @@
 
   function chainBody(q, R, mode, key) {
     const S = chainSpec(q, R);
-    const ctx = { mode, bad: mode === 'review' ? new Set(chainCheck(q, R).bad) : null };
+    const res = mode === 'review' ? chainCheck(q, R) : null;
+    const ctx = { mode, bad: res ? new Set(res.bad) : null, none: res ? new Set(res.none) : null };
     const two = S.trees.length > 1;
     const steps = q.preset === 'steps';
     const treeHTML = (ti) => {
@@ -1009,7 +1019,7 @@
     const nRows = rows.length;
     return rows.map((row, ri) => {
       const eq = row.cells.indexOf('=');
-      const rowLabel = (row.label || row.tag || (nRows > 1 ? `Step ${ri + 1} of ${nRows}` : 'Equation')) + (row.skip ? ' (not used: its part is empty or 0)' : '');
+      const rowLabel = (row.label || row.tag || (nRows > 1 ? `Step ${ri + 1} of ${nRows}` : 'Equation')) + (row.dim ? ' (not used: its part is empty or 0)' : '');
       const words = (self) => row.cells.map((c) => {
         if (typeof c === 'number') return pv.fmt(c);
         if (c === '?') return 'question mark';
@@ -1029,9 +1039,10 @@
       const L = eq < 0 ? row.cells : row.cells.slice(0, eq);
       const Rr = eq < 0 ? [] : row.cells.slice(eq);
       const operands = L.filter((c) => typeof c !== 'string' || c === '?').length;
-      return `<div class="ch-row${operands > 3 ? ' is-long' : ''}${operands > 2 ? ' is-three' : ''}${row.skip ? ' is-skip' : ''}" role="group" aria-label="${esc(rowLabel)}">` +
+      return `<div class="ch-row${operands > 3 ? ' is-long' : ''}${operands > 2 ? ' is-three' : ''}${row.dim ? ' is-skip' : ''}" role="group" aria-label="${esc(rowLabel)}">` +
         (row.tag ? `<span class="ch-tag">${esc(row.tag)}</span>` : '') +
-        `<span class="ch-l">${L.map(draw).join('')}</span><span class="ch-r">${Rr.map(draw).join('')}</span></div>`;
+        `<span class="ch-l">${L.map(draw).join('')}</span><span class="ch-r">${Rr.map(draw).join('')}</span>` +
+        (row.skip && ctx.mode === 'review' ? '<span class="ch-skipnote" aria-hidden="true">not used</span>' : '') + `</div>`;
     }).join('');
   }
 
@@ -1277,7 +1288,7 @@
   function emptyTip(q, r) {
     if (!CHECK[q.type] || !/\d/.test(JSON.stringify(r === undefined ? null : r))) return '';
     const m = CHECK[q.type](q, r).msg;
-    return /^Write /.test(m) ? m : 'Fill in every box, then check.';
+    return /^(Way \d+: )?Write /.test(m) ? m : 'Fill in every box, then check.';
   }
   function check(q, r) {
     if (CHECK[q.type]) return CHECK[q.type](q, r);

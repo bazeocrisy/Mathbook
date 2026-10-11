@@ -102,6 +102,26 @@ test('B-01: empty or 0 parts are left out (spec §13 unit tests)', () => {
   assert.ok(!fromStart.ok && /Check 316 − 30\./.test(fromStart.msg), fromStart.msg);
 });
 
+test('review fixes L27-01…04: rows wait for their parts; left-out boxes get no marks; "Way n" tips; keys not first', () => {
+  const pt4 = L.guided.find((q) => q.id === 'pt4'); // 634 − 287, two ways
+  const blank = Q.render(pt4, 'k', { mode: 'guided' });
+  assert.ok(!/is-skip/.test(blank), 'L27-01: nothing is greyed before any part is typed');
+  assert.equal((blank.match(/class="ch-c ch-num">634</g) || []).length, 2, 'L27-01: only the first row of each way starts from 634');
+  const o4 = L.bank.find((q) => q.id === 'o4'); // 728 − 460
+  const zero = R({ r0: '328', r1: '268', f: '268' }, [['400', '60', '0']]);
+  const res = Q.check(o4, zero);
+  assert.ok(res.ok);
+  assert.deepEqual(res.none.sort(), ['t:0:2', 'v:r2'], 'L27-02: the 0 part and its row are left out');
+  const rv = Q.reviewHTML(o4, zero);
+  assert.ok(/data-k="t:0:2">0<\/span>/.test(rv) && /data-k="v:r2">—<\/span>/.test(rv), 'L27-02: no ✓ on left-out boxes');
+  assert.ok(/not used/.test(rv));
+  const mid = R({ r0: '328', f: '268' }, [['400', '', '60']]);
+  assert.ok(/ch-row is-skip/.test(Q.render(o4, 'k', { mode: 'guided', response: mid })), 'an empty part before a typed one is greyed');
+  const pt1 = L.guided.find((q) => q.id === 'pt1');
+  assert.equal(Q.emptyTip(pt1, R({}, [['200', '50', '8'], ['', '', '']])), 'Way 2: Write at least 2 parts that add to 258.', 'L27-03');
+  for (const id of ['o3b', 'o4b']) { const p = L.bank.find((q) => q.id === id).parts[0]; assert.notEqual(p.choices.indexOf(p.answer), 0, `L27-04 ${id}`); }
+});
+
 test('subtract two ways: both right with different trees; the same tree twice is not two ways', () => {
   const t7 = L._testItems.find((q) => q.id === 't7'); // 743 − 258
   assert.ok(Q.grade(t7, R({ r0: '543', r1: '493', r2: '485', f: '485', w1r0: '500', w1r1: '485', f1: '485' }, [['200', '50', '8'], ['243', '15']])));
