@@ -1058,11 +1058,15 @@
         if (q.notes === 'input') {
           const got = parseNote(R.n[k]);
           const want = pp.vals.slice().sort((x, y) => x - y).join(',');
-          if (!got || got.slice().sort((x, y) => x - y).join(',') !== want) fail(`n:${k}`, `Look again at the ${PLACE_NAMES[pp.place]}: write the value of each ${PLACE_NAMES[pp.place].replace(/s$/, '')} digit.`);
+          // An empty box is named ("Write …") so a partly filled answer says which box is missing.
+          if (blankStr(R.n[k])) fail(`n:${k}`, `Write what you add in the ${PLACE_NAMES[pp.place]}: the values with + between them.`);
+          else if (!got || got.slice().sort((x, y) => x - y).join(',') !== want) fail(`n:${k}`, `Look again at the ${PLACE_NAMES[pp.place]}: write the values of the ${PLACE_NAMES[pp.place]} digits.`);
         }
-        if (pv.parseWholeNumber(R.p[k]) !== pp.v) fail(`p:${k}`, `Look again at the ${PLACE_NAMES[pp.place]} partial sum.`);
+        if (blankStr(R.p[k])) fail(`p:${k}`, `Write the ${PLACE_NAMES[pp.place]} partial sum.`);
+        else if (pv.parseWholeNumber(R.p[k]) !== pp.v) fail(`p:${k}`, `Look again at the ${PLACE_NAMES[pp.place]} partial sum.`);
       });
-      if (pv.parseWholeNumber(R.s) !== I.answer) fail('s', 'Add the partial sums again.');
+      if (blankStr(R.s)) fail('s', 'Write the sum.');
+      else if (pv.parseWholeNumber(R.s) !== I.answer) fail('s', 'Add the partial sums again.');
     } else {
       const s = String(I.answer);
       for (let i = I.cols - 1; i >= 0; i--) {

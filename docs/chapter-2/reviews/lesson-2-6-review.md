@@ -137,3 +137,44 @@ The math, answer keys, grading and child flows are right everywhere. The finding
 - Textbook pages read from `C:\Users\bazeocrisy\Projects\Mathbook\docs\textbook-references\chapter-2\pages\`.
 - Windows 11, 2026-10-10. No headless Chrome processes were left over (tasklist count 0). The owner's normal Chrome was not touched.
 - The working tree has only this report as a new file. Nothing was committed.
+
+### Re-verification at 5645088
+
+I re-checked commit `5645088` (review fixes for L26-01…L26-05) with the same harness, headless Chrome and simulated viewports. I edited no app, lesson, engine or test file. New scripts: `r26/tip.cjs`, `r26/rv.mjs` (output `r26/rv.out`) and `r26/vp2.mjs` (output `r26/vp2.out`). Screenshots are in `r26/shots/rv/`. `npm test`: 101/101 pass.
+
+| Finding | Status | Evidence |
+|---|---|---|
+| L26-01 | verified | I typed answers in the real app and went Home **without** pressing Next, so the save on input is what counts (`r26/rv.out`):<br>• Test T1 with only the partial sums and the sum typed: Home "0 of 13", test menu "0 of 13". The draft's `answered` is `[]`.<br>• Typing the six place values (still on Question 1): Home "1 of 13", `answered` `["t1"]`.<br>• T13 with its sums typed but the labels blank is not counted (still 1).<br>• On My Own (a parts item done, a 3-addend row missing its Sum, a stack missing its sum): Home "Practice on my own: 1 of 14 answered", `answered` `["o11"]`.<br>Older saves without `answered` fall back to the old count, and the 2-5 Home cases still pass (`browser.test.mjs`). |
+| L26-02 | verified | The stacked control now tags each line Hundreds / Tens / Ones: Learn 3, PT2, PT10, PT11, O8, O12 and the test, at all six widths. The tags are beside the printed labels, or beside the label boxes in O8/T13/PT10 (`r26/shots/rv/320x568-pt10.png`, `320x568-pt11.png`, `1366x768-own-o8.png`). The F11 blanks are now dotted and transparent. They are still box-shaped, but clearly lighter than the dashed answer boxes.<br>The new guided **PT10** (Gia 257 + 318 → 500, 60, 15 → 575 ✓) gives the typed-label format a Practice Together item with a hint and a Parent Help tip. Grading:<br>• labels in place order with the two values swapped ("300 + 200", "10 + 50") → "✓ Correct!";<br>• ones written on the hundreds line → "Not yet. Look again at the hundreds: …" (see N-2). |
+| L26-03 | verified | New PT11 (156 + 302 + 227 stacked → 600, 70, 15 → 685 ✓, guided, with the hint "302 has 0 tens") and O14 (125 + 340 + 218 in a row → 600, 70, 13 → 683 ✓). I recomputed both. Neither repeats a demo or book pair. Practice Together is now 11 and On My Own 14, and "Practice this skill" for `three` has 2 questions (skill suite 67/67). The spec §16 records the additions. |
+| L26-04 | verified for the row control; stacked is only partly fixed (N-1) | PT7 with only the "0" box empty: "Write a whole number in every box of the tens line. If a place has nothing in it, write 0." In Learn step 2 with the tens and ones lines empty: "Write a whole number in every box of the tens line." This replaces the old message, and Learn 'tries' stays 0, so a partly filled answer does not use up a try. A completely empty control still says "Write an answer first." |
+| L26-05 | verified | Row and stacked explanations now say the idea once: "Add the hundreds, the tens and the ones, then add the partial sums: 500 + 60 + 14 = 574." Stories keep their lead ("The same number twice: 176 + 176. Add …"). The answer line still lists each place line. |
+
+**New findings (both minor)**
+
+| ID | Severity | Where | What I saw | Required fix |
+|---|---|---|---|---|
+| N-1 | minor | `Q.emptyTip` for vcalc `input: 'rows'` (stacked) in Learn 3/6 and Practice Together | A partly filled **stacked** answer says only "Fill in every box, then check." It does not name the line, unlike the row control: in PT2 with the tens partial sum empty, in PT2 and Learn 3 with the sum empty, and in PT10 with the tens label empty (`r26/tip.cjs`, `r26/rv.out`). `vcCheck` gives "Look again at …" for an empty box, so `emptyTip` falls through to the generic text. Better than before, but not "the first missing line" as described. | In `vcCheck`, report an empty partial, label or sum box as "Write the tens partial sum." / "Write what you add on the tens line." / "Write the sum.", for example. Or have `emptyTip` name the first blank `n:`/`p:`/`s` key for vcalc. |
+| N-2 | minor (shared engine text, now seen in guided PT10) | vcalc label feedback | A wrong typed label gives "Look again at the hundreds: write the value of each **hundred digit**." On the tens line it says "each ten digit", and on the ones line "each one digit". This comes from the place name with the final "s" removed. Before PT10, the text was never shown to a child (O8/T13 have no feedback). | Use "the hundreds digits" / "the tens digits" / "the ones digits", e.g. "Look again at the hundreds line: write what each hundreds digit is worth, like 300 + 200." |
+
+**Regression** (browser suites run one at a time):
+- `lessons.browser.mjs 2-6`: 122/122.
+- `lesson-2-6-skills.browser.mjs`: 67/67, including the new Home checks.
+- `browser.test.mjs` (2-1 + home): 198/198.
+- `lessons.browser.mjs 2-3 2-4 2-5`: 349/349.
+- `lesson-2-2`: 96/96.
+- `lesson-2-2-checkup`: 27/27.
+- 2-3, 2-4 and 2-5 skills: 71/71, 62/62 and 68/68.
+- Number Words: 64/64.
+- Components: 52/52.
+
+In the first chained run, `browser.test.mjs` printed no result and left a headless Chrome behind. That run overlapped with my own viewport sweep. Run alone it passed 198/198, and I closed the leftover headless Chrome.
+
+The shared changes are limited:
+- The empty tip only applies to the chain and vcalc models.
+- The `.vc-ptag` tags only appear with `input: 'rows'`, which only 2-6 uses.
+- The `answered` lists are additions to the saved data.
+
+**Layout:** a viewport sweep at 320/390/768/1024/1366/1920 of every Learn slide and Your Turn, all 11 Practice Together items, all 14 On My Own items, all 13 test items, the menu, the Parent Guide and Results found no sideways scroll, no target under 48 px and no input under 44 px (`r26/vp2.out`, 193 screenshots). No JavaScript errors and no missing files.
+
+No headless `mathbook-chrome-*` Chrome processes are left (count 0). The owner's normal Chrome was not touched. Node, Windows 11, 2026-10-10.

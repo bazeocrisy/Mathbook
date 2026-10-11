@@ -136,6 +136,17 @@ test('review fixes: stacked lines are tagged by place; a missing 0 box is named;
   assert.ok(!Q.isAnswered(pt7, r));
   assert.match(Q.emptyTip(pt7, r), /every box of the tens line\. If a place has nothing in it, write 0\./, 'L26-04');
   assert.equal(Q.emptyTip(pt7, Q.emptyResponse(pt7)), '', 'nothing typed: the plain "write an answer" message');
+  // Re-verification N-1, N-2: the stacked control names an empty box too, and says "hundreds digits".
+  const pt2 = L.guided.find((x) => x.id === 'pt2');
+  const r2 = Q.correctResponse(pt2); r2.p[1] = '';
+  assert.equal(Q.emptyTip(pt2, r2), 'Write the tens partial sum.');
+  const r3 = Q.correctResponse(pt2); r3.s = '';
+  assert.equal(Q.emptyTip(pt2, r3), 'Write the sum.');
+  const pt10 = L.guided.find((x) => x.id === 'pt10');
+  const r4 = Q.correctResponse(pt10); r4.n[0] = '';
+  assert.match(Q.emptyTip(pt10, r4), /^Write what you add in the hundreds/);
+  const r5 = Q.correctResponse(pt10); r5.n[0] = '2 + 3';
+  assert.equal(Q.check(pt10, r5).msg, 'Look again at the hundreds: write the values of the hundreds digits.');
   for (const q of L.guided.concat(L.bank)) {
     if (q.type !== 'chain' && q.type !== 'vcalc') continue;
     const ct = Q.correctText(q);
