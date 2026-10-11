@@ -35,7 +35,7 @@
     supplierFar: (k, best) => `That could work too, but it takes more exchanges than you need. Take from the nearest place that has something: the ${P[best].name}.`,
     supplierOk: (k) => `Yes. The ${P[k].name} can give.`,
     exchangeQ: (from, to) => `Exchange 1 ${P[from].one} for 10 ${P[to].name}. Write the new ${P[from].name} and the new ${P[to].name} above the top number.`,
-    exchangeKept: (from, to, after) => `Now there ${after[from] === 1 ? 'is' : 'are'} ${M.describe(after)}. ${valueLine(after)}`,
+    exchangeKept: (from, to, after) => `Now: ${M.describe(after)}. ${valueLine(after)}`,
     exchangeNoReduce: (from, had) => `The ${P[from].name} still shows ${had}. It gives 1 ${P[from].one} away, so it must go down by 1 (${had} − 1).`,
     exchangeGiver: (from, had) => `The ${P[from].name} had ${had}. It gives 1 ${P[from].one} away, so there is 1 fewer: ${had} − 1.`,
     exchangeGetter: (to, had) => `The ${P[to].name} had ${had}. It gets 10 more ${P[to].name} (1 ${P[to + 1].one} = 10 ${P[to].name}): ${had} + 10.`,
@@ -73,7 +73,9 @@
       'smaller-from-larger': (i, t, b) => `In the ${P[i].name}, the top has ${t} and the bottom has ${b}. You can't take ${b} from ${t}, and you can't turn it around. Exchange first.`,
       'original-digit': (i, orig) => `The ${P[i].name} gave 1 away, so use its new amount, not the original ${orig}.`,
       misaligned: () => 'Check the places: ones go under ones. It looks like the bottom number moved to the left.',
-      'no-reduce': (i, now, had) => `You made the ${P[i].name} ${now} (10 more), but the ${P[i + 1] ? P[i + 1].name : 'next place'} still shows ${had}. The place that gives must go down by 1: ${had} − 1.`,
+      'no-reduce': (i, now, had) => (had > 0
+        ? `You made the ${P[i].name} ${now} (10 more), but the ${P[i + 1] ? P[i + 1].name : 'next place'} still shows ${had}. The place that gives must go down by 1: ${had} − 1.`
+        : `You made the ${P[i].name} ${now} (10 more), but no place gave 1 away. The ${P[i + 1] ? P[i + 1].name : 'next place'} has 0, so it cannot give: go further left and exchange one place at a time.`),
       'zero-ten': (i) => `The ${P[i].name} got 10 and then gave 1 to the place on its right, so it has 9, not 10.`,
       'skip-zero': (i, k) => `You took 1 ${P[k].one} straight to the ${P[i].name}. Exchanges go to the place next door: go through each zero, one place at a time.`,
       'wrong-digit': (i, t, b) => (t < b ? `In the ${P[i].name}, ${t} is less than ${b}: exchange first, then subtract.` : `Look again at the ${P[i].name}: ${t} − ${b}.`)
@@ -505,7 +507,7 @@
           else if (x.kind === 'original-digit') msgs.push(f(i, orig[i]));
           else if (x.kind === 'no-reduce') msgs.push(f(i, cur[i], i + 1 < n ? cur[i + 1] : 0));
           else if (x.kind === 'skip-zero') { const ev2 = M.evaluateWork(top, bottom, S.ann); msgs.push(f(i, ev2.supplier !== undefined ? ev2.supplier : Math.min(n - 1, i + 2))); }
-          else if (x.kind === 'wrong-digit') msgs.push(f(i, cur[i], bdig[i]));
+          else if (x.kind === 'wrong-digit') { const amt = M.evaluateWork(top, bottom, S.ann).status === 'valid' && cur[i] >= bdig[i] ? cur[i] : plan.columns[i].topNow; msgs.push(f(i, amt, bdig[i])); }
           else msgs.push(f(i));
         });
         if (ev.status === 'valid' && !ev.standard) msgs.push(T.altValid);

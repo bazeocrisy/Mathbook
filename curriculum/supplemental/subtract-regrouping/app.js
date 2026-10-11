@@ -560,9 +560,9 @@
     }
     function wrongText(item, R, g, misses) {
       if (item.kind === 'decide') {
-        if (R.c1 !== item.needs) { const o = M.digitsOf(item.top, M.lengthOf(item.top)), b = M.digitsOf(item.bottom, M.lengthOf(item.top)); const c = M.plan(item.top, item.bottom).columns.find((x) => x.needs);
-          return c ? `Look at the ${M.PLACES[c.place].name}: ${c.before[c.place]} is less than ${c.bottomDigit}, so that column needs an exchange.` : `Every top digit is at least the digit under it (ones: ${o[0]} and ${b[0]}), so no exchange is needed.`; }
-        return misses > 1 ? `Start at the ones and move left. The first column whose top amount is less than its bottom digit is the ${item.first.toLowerCase()}.` : 'Start at the ones and move left. Which column is the first one that is too small?';
+        const o = M.digitsOf(item.top, M.lengthOf(item.top)), b = M.digitsOf(item.bottom, M.lengthOf(item.top));
+        if (R.c1 !== item.needs) return `Check each column, starting with the ones (the top has ${o[0]}, the bottom has ${b[0]}). Is any top digit less than the digit under it?`;
+        return 'Start at the ones and move left, one column at a time. Which column is the first one whose top digit is too small?';
       }
       if (item.kind === 'mistake') {
         if (!g.parts.mistake) return `Compare ${item.who}'s work with the right method, column by column, starting with the ones.`;
@@ -620,7 +620,7 @@
       main.querySelectorAll('[data-t]').forEach((b) => b.addEventListener('click', () => {
         const a = b.dataset.t;
         if (a === 'prev') T.pos = Math.max(0, i - 1); else if (a === 'next') T.pos = Math.min(set.length - 1, i + 1);
-        else if (a === 'new') { T.seed = shell.newSeed(); T.pos = 0; T.states = {}; T.done = {}; }
+        else if (a === 'new') { T.seed = shell.newSeed(); T.pos = 0; T.states = {}; T.done = {}; T.helped = {}; }
         save('guided', T); cleanup(); togetherView(); focusH('h1');
       }));
     }
