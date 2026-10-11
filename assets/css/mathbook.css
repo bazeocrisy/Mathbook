@@ -758,6 +758,10 @@ a.btn.is-disabled { background: #eceef5; color: #545a75; pointer-events: none; }
 .sym-circle { display: inline-grid; place-items: center; width: 3rem; height: 3rem; border-radius: 50%; border: 3px solid var(--primary); background: #fff; color: var(--primary); font-size: 1.6rem; }
 .q-choices.is-sym { grid-template-columns: repeat(auto-fit, minmax(64px, 6rem)); }
 .q-choices.is-sym .choice { justify-content: center; font-size: 1.6rem; font-weight: 900; }
+/* Narrow phones: keep "2,653 ◯ 2,907" on one line (2-13). */
+@media (max-width: 380px) { .sym-line { font-size: 1.3rem; gap: 0.45rem; } .sym-circle { width: 2.6rem; height: 2.6rem; } }
+/* Number-line labels marked is-wide-only are dropped on phones so long labels never collide (2-13). */
+@media (max-width: 559px) { .nline-label.is-wide-only { display: none; } }
 
 /* Answer boxes shared by chain and vcalc, with ✓/✗ badges (glyph + colour + border) */
 .cell { position: relative; display: inline-flex; align-items: center; justify-content: center; vertical-align: middle; }
