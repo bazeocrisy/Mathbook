@@ -658,3 +658,23 @@ Design agent's notes. Section 1 is written before the build; later sections revi
   - Optionally add a short visible note under the toolbar, "Full solution below ↓", while the solution is open.
 
 **Still open:** SR-D28 only.
+
+### SR-D28 re-check at 55e26c6: pass
+
+**Method:** in independent practice (`#practice/setup` → Start, and `#practice/skill-one`) I pressed Show me with a real click, then measured the "Full solution" heading and the child's answer row in viewport coordinates. One headless Chrome, closed afterwards. Script: `scenes-d28.mjs`.
+
+| Viewport | Heading (top–bottom) | Child's answer row | Both visible |
+|---|---|---|---|
+| 320×640 | 614–640 | 402–454 | yes |
+| 360×740 | 714–740 | 502–554 | yes |
+| 390×844 | 818–844 | 605–658 | yes |
+| 768×1024 | 379–405 (no scroll) | 565–617 | yes |
+| 1024×768 | 334–360 (no scroll) | 519–571 | yes |
+| 1366×768 | 336–362 (no scroll) | 521–573 | yes |
+| 683×384 (200% zoom) | 54–80 | 215–259 | yes |
+
+- **Focus** is on `.sk-solution-h` everywhere.
+- **No sideways scroll** and no JS errors.
+- **On phones** the heading sits flush with the bottom edge. That's enough to show that help appeared, and the child's work stays in view. Tablet and desktop don't scroll at all.
+
+**Status:** SR-D28 is closed. All design findings SR-D01 to SR-D28 are closed.
