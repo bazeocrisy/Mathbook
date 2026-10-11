@@ -1047,7 +1047,7 @@
         `<section class="card result-detail" id="detail"><h2>${esc(testTitle(selected))} <span class="muted">· ${esc(shell.formatDate(selected.date))}</span></h2>` +
         `<div class="score-row"><p class="score-big">${selected.score}<span>/${selected.total}</span></p><p class="score-pct">${selected.pct}%</p>` +
         `<p class="badge-m badge-big m-${m.key}">${m.label}</p></div>` +
-        `<p class="advice"><b>Next step:</b> ${esc(m.advice)}</p>` +
+        `<p class="advice"><b>Next step:</b> ${esc(m.advice.replace('the next lesson', `the next ${THING}`))}</p>` +
         `<p class="muted">Mastered: 90–100% · Review missed skills: 70–89% · Reteach and reassess: below 70%` +
         (selected.pauses ? ` · This test was paused and resumed ${plural(selected.pauses, 'time')}.` : '') + `</p>` +
         `<h3>Skills to review</h3>${skillHTML}${fullSet}` +

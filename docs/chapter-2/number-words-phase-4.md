@@ -44,3 +44,9 @@ Owner request (Batch 3, 2026-10-11): update the existing Number Words activity. 
 - Tests:
   - `tests/number-words.test.js` and `tests/number-words.browser.mjs` now expect Phases 2–3 locked and Phase 4 open.
   - New: `tests/number-words-phase-4.test.js` and `tests/number-words-phase-4.browser.mjs`.
+
+## Review fixes (docs/chapter-2/reviews/number-words-phase-4-review.md)
+
+- **NW4-01:** the place question reads the same for Yes and No ("What digit is in the tens place?" / "Do you say the tens in the words?"). Unit test added.
+- **NW4-02:** the mastery advice says "Ready to move on to the next phase." Lessons still say "next lesson", since `brand.thing` defaults to "lesson". Browser test added.
+- **NW4-03:** not changed in this batch. It already existed in the shared engine and also affects the lessons: a saved value that is valid JSON but the wrong shape (e.g. `5` in `see-wizard`) stops that screen rendering until progress is reset. Phase 4 has no older saves. Recorded as a remaining issue.

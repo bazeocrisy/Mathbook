@@ -207,6 +207,17 @@ try {
   }
   await b.viewport(1366, 768, false);
 
+  // ----- NW4-02: a mastered test says "next phase", never "next lesson" -----
+  await b.load(URL + '#menu'); await js(`localStorage.removeItem('${KEY}:draft-words');`);
+  await b.load(URL + '#test'); await b.reload(); await wait(150);
+  await js(`document.querySelector('[data-start="words"]').click();`); await wait(200);
+  await js(`${H}
+    const qs = get('draft-words').questions; const tq = () => document.querySelector('.test-one .q[data-qkey]');
+    for (let g = 0; g < 30 && tq(); g++) { fill(tq(), qs[g], true); document.querySelector('[data-nav="next"]').click(); }
+    document.querySelector('[data-finish]').click(); await sleep(300);`);
+  const adv = await js(`return (document.querySelector('.advice') || {}).innerText || '';`);
+  check('a mastered Phase 4 test advises the next phase, not the next lesson (NW4-02)', /next phase/.test(adv) && !/lesson/i.test(adv), adv);
+
   // ----- Entry point, Number Words branding, Home naming -----
   await b.viewport(1366, 768, false);
   const homeNow = await homeText();

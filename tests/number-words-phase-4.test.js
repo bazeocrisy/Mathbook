@@ -118,3 +118,9 @@ test('Phase 4 keeps its own storage; Phase 1 is unchanged', () => {
   assert.ok(!p1.storageKey.startsWith(L.storageKey) && !L.storageKey.startsWith(p1.storageKey), 'neither prefix contains the other');
   assert.equal(p1.words.length, 11);
 });
+
+test('review fix NW4-01: the place question reads the same whether the answer is Yes or No', () => {
+  const labels = L.guided.concat(L.bank, L._testItems).filter((q) => q.skill === 'place').map((q) => q.parts.map((p) => p.label.replace(/thousands|hundreds|tens|ones/, 'PLACE')).join(' | '));
+  assert.equal(new Set(labels).size, 1, labels.join(' / '));
+  assert.ok(!/"/.test(labels[0]));
+});

@@ -95,8 +95,9 @@
     return {
       id: o.id, type: 'parts', skill: 'place', prompt: o.prompt || `Look at ${fmt(n)}.`,
       parts: [
-        { kind: 'num', label: `How many ${NAMES[k].toLowerCase()}?`, answer: d[k] },
-        { kind: 'choice', label: d[k] ? `Do you say the ${NAMES[k].toLowerCase()} in the words?` : `Do you say "${NAMES[k].toLowerCase()}" in the words?`, answer: d[k] ? 'Yes' : 'No', choices: ['Yes', 'No'], compact: true }
+        { kind: 'num', label: `What digit is in the ${NAMES[k].toLowerCase()} place?`, answer: d[k] },
+        // One wording for Yes and No, so the label never hints at the answer (review NW4-01).
+        { kind: 'choice', label: `Do you say the ${NAMES[k].toLowerCase()} in the words?`, answer: d[k] ? 'Yes' : 'No', choices: ['Yes', 'No'], compact: true }
       ],
       hint: o.hint || 'A place with 0 is not said in the words.',
       explanation: `${fmt(n)} = ${placeText(n)}. ${d[k] ? `There ${d[k] === 1 ? 'is' : 'are'} ${d[k]} ${NAMES[k].toLowerCase()}, so you say them.` : `There are 0 ${NAMES[k].toLowerCase()}, so you do not say them.`} ${fmt(n)} is "${W(n)}".`
