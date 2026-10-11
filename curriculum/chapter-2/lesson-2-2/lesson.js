@@ -350,7 +350,7 @@
         wrong: ['Numbers with an 8 in the tens place round to 480.', 'Numbers that end in 4 or 5 round to 480.', 'Every number from 470 to 490 rounds to 480.'],
         hint: 'Find halfway on each side of 480: 475 and 485. Which numbers are between them?',
         rule: 'Only numbers from 475 to 484 round to 480. 485 is halfway to 490, so it rounds up to 490. 384 and 379 are near 380, not 480.', seed: 301 }),
-      probeQ({ id: 'pr2', target: 700, place: 100, prompt: 'You round to the nearest hundred. Which numbers round to 700? Choose all.', nums: [756, 681, 742, 627, 769, 609, 794, 715],
+      probeQ({ id: 'pr2', target: 700, place: 100, prompt: 'You round to the nearest hundred. Which numbers round to 700? Choose all.', nums: [756, 681, 742, 628, 769, 609, 794, 715],
         ask: 'Lily says every number that starts with 7 rounds to 700. Is she right?', right: f1, wrong: f2,
         hint: 'Look at the tens digit, not the first digit. Numbers from 650 to 749 round to 700.',
         rule: 'Numbers from 650 to 749 round to 700. 681 is past 650, so it rounds up to 700. 756, 769 and 794 are 750 or more, so they round to 800.', seed: 302 }),
@@ -374,7 +374,7 @@
 
   // Practice: items 1–12 match the Test item for item, with different numbers.
   const practice = [
-    lineQ(46, 10, 'p1'),                        // 1 nearest 10, number line, 2-digit (book item 1)
+    lineQ(36, 10, 'p1'),                        // 1 nearest 10, number line, 2-digit (book item 1; PLAN decision 1)
     lineQ(396, 10, 'p2'),                       // 2 nearest 10, number line, carry into the next hundred (→ 400)
     pvQ(63, 10, 'p3'),                          // 3 nearest 10, place value, rounds down (2-digit)
     pvQ(485, 10, 'p4'),                         // 4 nearest 10, place value, rounds up (halfway)
@@ -385,10 +385,10 @@
     explain100Q('p9', 561, 91),                 // 9 explain a nearest-100 result
     halfwayQ('p10', 'Maya', 650, 100, 101),     // 10 correct a halfway claim (→ 700)
     selectQ('p11', 300, 'crayons', [249, 251, 300, 342, 350, 399]), // 11 select all (exact multiple 300; halfway 350 → 400)
-    moneyQ('p12', 'Dev', 45, [14, 23, 12], 121) // 12 estimate $40 says yes; exact $49 says no
+    moneyQ('p12', 'Dev', 45, [14, 23, 11], 121) // 12 estimate $40 says yes; exact $48 says no
   ];
   const parentTips = {
-    p1: 'Ask: "Which two tens is 46 between?" Then: "What is halfway?"',
+    p1: 'Ask: "Which two tens is 36 between?" Then: "What is halfway?"',
     p6: 'Ask: "Which two hundreds is 87 between?" (0 and 100.) Then: "What is halfway?"',
     p2: 'Watch for the carry: one more ten after 390 is 400, not 3,100 or 310.',
     p4: 'Ask: "Is 5 rounding up or down?" (Halfway rounds up.)',
@@ -407,10 +407,10 @@
     lineQ(781, 100, 't6'),                       // rounds up
     compareQ('t7', 347, 77),
     backQ('t8', 520),                            // 515–524
-    explain100Q('t9', 849, 97),
-    halfwayQ('t10', 'Leo', 85, 10, 107),         // 2-digit halfway (→ 90)
-    selectQ('t11', 500, 'pages', [449, 450, 482, 500, 538, 551]), // halfway 450 ✓, exact 500 ✓
-    moneyQ('t12', 'Ana', 60, [27, 16, 14], 127)  // estimate $60, exact $57: enough, $3 left
+    explain100Q('t9', 68, 97),                   // 2-digit to the nearest hundred: between 0 and 100 (book item 7; PLAN decision 1)
+    halfwayQ('t10', 'Leo', 65, 10, 107),         // 2-digit halfway (→ 70; 85 is taught in the Check-Up, PLAN decision 1)
+    selectQ('t11', 600, 'pages', [549, 550, 582, 600, 637, 651]), // halfway 550 ✓, exact 600 ✓ (450 is taught in Check-Up PR4)
+    moneyQ('t12', 'Ana', 60, [26, 18, 13], 127)  // estimate $60, exact $57: enough, $3 left
   ].map((q) => { const c = Object.assign({}, q); delete c.hint; delete c.parent; return c; });
 
   /** The Rounding Test: the same 12 items each time; choice order changes with each attempt. */

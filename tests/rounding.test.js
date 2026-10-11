@@ -117,20 +117,20 @@ test('Practice and Test: 12 each, matching coverage, different numbers, every au
   const ans = (q) => (q.type === 'rline' ? [pv.roundEnds(q.n, q.place).lo, pv.roundEnds(q.n, q.place).mid, pv.roundEnds(q.n, q.place).hi, pv.roundTo(q.n, q.place)].concat(q.why ? [q.why.answer.split(',')[0]] : [])
     : q.type === 'parts' ? q.parts.map((p) => (p.kind === 'round' ? pv.roundRange(p.target, p.place).join('–') : p.kind === 'choice' ? p.answer.split('.')[0] : p.answer)) : q.answer);
   const want = {
-    p1: [40, 45, 50, 50], p2: [390, 395, 400, 400], p3: 60, p4: 490, p5: [400, 450, 500, 400], p6: [0, 50, 100, 100],
+    p1: [30, 35, 40, 40], p2: [390, 395, 400, 400], p3: 60, p4: 490, p5: [400, 450, 500, 400], p6: [0, 50, 100, 100],
     p7: [250, 200, 'Nearest ten looks at the ones digit (9), so it rounds up'], p8: ['375–384'], p9: [500, 550, 600, 600, 'It is past the halfway mark'],
-    p10: ['No', 700], p11: [['251 crayons', '300 crayons', '342 crayons']], p12: [40, 49, 'No'],
+    p10: ['No', 700], p11: [['251 crayons', '300 crayons', '342 crayons']], p12: [40, 48, 'No'],
     t1: [70, 75, 80, 70], t2: [290, 295, 300, 300], t3: 620, t4: 740, t5: [300, 350, 400, 300], t6: [700, 750, 800, 800],
-    t7: [350, 300, 'Nearest ten looks at the ones digit (7), so it rounds up'], t8: ['515–524'], t9: [800, 850, 900, 800, 'It is before the halfway mark'],
-    t10: ['No', 90], t11: [['450 pages', '482 pages', '500 pages', '538 pages']], t12: [60, 57, 'Yes']
+    t7: [350, 300, 'Nearest ten looks at the ones digit (7), so it rounds up'], t8: ['515–524'], t9: [0, 50, 100, 100, 'It is past the halfway mark'],
+    t10: ['No', 70], t11: [['550 pages', '582 pages', '600 pages', '637 pages']], t12: [60, 57, 'Yes']
   };
   for (const q of P.concat(T)) assert.deepEqual(ans(q), want[q.id], q.id);
   // The shopping explanations: estimate vs exact.
-  assert.match(P[11].explanation, /Estimate: \$10 \+ \$20 \+ \$10 = \$40\. Exact: \$14 \+ \$23 \+ \$12 = \$49\. \$49 is more than \$45/);
-  assert.match(T[11].explanation, /Estimate: \$30 \+ \$20 \+ \$10 = \$60\. Exact: \$27 \+ \$16 \+ \$14 = \$57\. .*with \$3 left/);
+  assert.match(P[11].explanation, /Estimate: \$10 \+ \$20 \+ \$10 = \$40\. Exact: \$14 \+ \$23 \+ \$11 = \$48\. \$48 is more than \$45/);
+  assert.match(T[11].explanation, /Estimate: \$30 \+ \$20 \+ \$10 = \$60\. Exact: \$26 \+ \$18 \+ \$13 = \$57\. .*with \$3 left/);
   // Halfway and exact-multiple coverage.
   assert.ok(P.some((q) => q.id === 'p4') && /5 is 5 or more/.test(P[3].explanation), 'practice halfway (485)');
-  assert.ok(T[10].parts[0].answer.includes('450 pages') && T[10].parts[0].answer.includes('500 pages'), 'test: halfway 450 and exact 500');
+  assert.ok(T[10].parts[0].answer.includes('550 pages') && T[10].parts[0].answer.includes('600 pages'), 'test: halfway 550 and exact 600');
   // Different numbers between Practice and Test.
   const nums = (q) => (q.prompt.match(/\d[\d,]*/g) || []).join();
   P.forEach((q, i) => assert.notEqual(nums(q), nums(T[i]), `item ${i + 1} uses different numbers`));
@@ -186,17 +186,27 @@ test('staged number line: grading, halfway wording, and no answers given away in
 test('2-2 verification fixes (2-2-verification.md §6): no book On My Own numbers; 2-digit lines; 0 to 100', () => {
   const P = L.guided, T = L.tests.rounding.generate(1);
   const byId = (list, id) => list.find((q) => q.id === id);
-  assert.equal(byId(P, 'p1').n, 46);
+  assert.equal(byId(P, 'p1').n, 36);
+  assert.equal(byId(T, 't9').n, 68);
+  assert.match(byId(T, 't9').explanation, /68 is between 0 and 100\. Halfway is 50\./);
+  assert.match(byId(T, 't10').prompt, /says 65 rounded to the nearest ten is 60/);
   assert.equal(byId(P, 'p5').n, 418);
   assert.equal(byId(P, 'p6').n, 87);
   assert.match(byId(P, 'p6').explanation, /87 is between 0 and 100\. Halfway is 50\./);
   assert.equal(byId(T, 't1').n, 72);
   assert.equal(byId(T, 't6').n, 781, 't6 unchanged (decision 1)');
   assert.ok(/^Dev has \$45/.test(byId(P, 'p12').prompt) && !/Sam/.test(byId(P, 'p12').prompt));
+  // No number taught in the Check-Up is tested again in the Rounding Test, and vice versa (PLAN decision 1, review L22F-01).
+  const roundedIn = (list) => new Set(list.flatMap((q) => (q.n !== undefined ? [q.n] : []).concat(...(q.parts || []).map((p) => (p.choices || []).map((c) => Number(String(c).split(' ')[0])))).concat((q.prompt.match(/\d+/g) || []).map(Number))));
+  const checkPractice = roundedIn(L.bank.filter((q) => q.skill === 'probe')), checkTest = roundedIn(L._checkTestItems);
+  const mainP = roundedIn(P.filter((q) => q.skill !== 'money')), mainT = roundedIn(T.filter((q) => q.skill !== 'money')); // a budget is not a rounded number
+  [...checkPractice].filter((n) => n >= 10 && n % 100 !== 0).forEach((n) => assert.ok(!mainT.has(n), `${n} is in the Check-Up practice and the Rounding Test`));
+  [...mainP].filter((n) => n >= 10 && n % 100 !== 0).forEach((n) => assert.ok(!checkTest.has(n), `${n} is in the practice and the Check-Up test`));
   // No number being rounded in practice or the test is one of the book's On My Own numbers (pp. 39–40).
-  const book = [27, 896, 48, 273, 436, 672, 78, 240, 678, 315];
-  for (const q of P.concat(T).filter((x) => x.skill !== 'money')) {
-    const nums = (q.n !== undefined ? [q.n] : []).concat((q.prompt.match(/\d[\d,]*/g) || []).map((x) => Number(x.replace(/,/g, ''))));
+  const book = [27, 896, 48, 273, 436, 672, 78, 240, 678, 315, 9, 25, 19, 16, 21, 15, 22, 12, 632, 638, 627, 625, 623, 635, 534, 529, 956, 871, 943, 839, 962, 819, 988, 925];
+  for (const q of P.concat(T, L.bank.filter((x) => x.skill === 'probe'), L._checkTestItems)) {
+    const nums = (q.n !== undefined ? [q.n] : []).concat((q.prompt.match(/\d[\d,]*/g) || []).map((x) => Number(x.replace(/,/g, ''))),
+      ...(q.parts || []).filter((p) => p.kind === 'multi').map((p) => p.choices.map((c) => Number(String(c).split(' ')[0]))));
     nums.forEach((n) => assert.ok(!book.includes(n), `${q.id}: ${n} is a book number`));
   }
   assert.ok(L.parentLearn.ask.some((a) => /Why is a number line helpful for rounding/.test(a)), 'Choosing Tools question (A-07)');

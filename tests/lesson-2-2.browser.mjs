@@ -196,29 +196,29 @@ try {
   const g = await js(`${RL}
     const box = document.querySelector('#guided-runner');
     const o = { count: box.querySelector('.q-count').textContent, part: part(), task: task(), extra: box.querySelectorAll('[data-act=check], [data-act=hint], [data-act=reveal]').length, help: !!document.querySelector('details.parent-help'), over: !!act('over') };
-    type('lo', '30'); type('hi', '50'); act('check').click(); o.wrong = rfb();
-    type('lo', '40'); act('check').click(); o.right = rfb(); act('next').click(); o.part2 = part();
+    type('lo', '20'); type('hi', '40'); act('check').click(); o.wrong = rfb();
+    type('lo', '30'); act('check').click(); o.right = rfb(); act('next').click(); o.part2 = part();
     return o;`);
   check('Practice Together: number-line items run the same parts with Check Answer, one hint, Continue, and Start Over (no extra check buttons)',
-    g.count === 'Question 1 of 12' && g.part === 'Part 1 of 3' && g.task === 'What two tens is 46 between?' && g.extra === 0 && /Not quite\. Which ten is just below 46/.test(g.wrong) && /^Yes! 46 is between 40 and 50/.test(g.right) && g.part2 === 'Part 2 of 3' && g.help && g.over, g);
+    g.count === 'Question 1 of 12' && g.part === 'Part 1 of 3' && g.task === 'What two tens is 36 between?' && g.extra === 0 && /Not quite\. Which ten is just below 36/.test(g.wrong) && /^Yes! 36 is between 30 and 40/.test(g.right) && g.part2 === 'Part 2 of 3' && g.help && g.over, g);
   await b.reload(); await wait(250);
-  check('Practice Together keeps the question, the part, and the answers after a refresh', await js(`${RL} return document.querySelector('.q-count').textContent === 'Question 1 of 12' && part() === 'Part 2 of 3' && labels().join() === '40,50'`));
+  check('Practice Together keeps the question, the part, and the answers after a refresh', await js(`${RL} return document.querySelector('.q-count').textContent === 'Question 1 of 12' && part() === 'Part 2 of 3' && labels().join() === '30,40'`));
   // Reviewer findings (regressions): an edited right answer must be checked again; misses never give the answer;
   // a finished problem shows one explanation after a refresh.
   const rev = await js(`${RL}
     const o = {};
-    type('mid', '46'); act('check').click(); o.miss1 = rfb(); act('check').click(); o.miss2 = rfb();
-    type('mid', '4'); o.hintWhileFixing = rfb();
-    type('mid', '45'); act('check').click(); o.ok = rfb(); o.cont = !!act('next');
-    type('mid', '44'); o.afterEdit = { fb: rfb(), check: !!act('check'), cont: !!act('next') };
-    type('mid', '45'); act('check').click(); act('next').click();
+    type('mid', '36'); act('check').click(); o.miss1 = rfb(); act('check').click(); o.miss2 = rfb();
+    type('mid', '3'); o.hintWhileFixing = rfb();
+    type('mid', '35'); act('check').click(); o.ok = rfb(); o.cont = !!act('next');
+    type('mid', '34'); o.afterEdit = { fb: rfb(), check: !!act('check'), cont: !!act('next') };
+    type('mid', '35'); act('check').click(); act('next').click();
     rl().querySelector('[data-side="hi"]').click(); act('check').click(); act('next').click(); o.done = task();
     return o;`);
   check('Editing a part already marked right clears "Yes!" and needs Check Answer again (no unchecked Continue)', /^Yes!/.test(rev.ok) && rev.cont && rev.afterEdit.fb === '' && rev.afterEdit.check && !rev.afterEdit.cont, rev);
-  check('A second miss repeats the specific hint and never gives the answer; the hint stays while the child fixes the box', /Halfway is 5 more than 40/.test(rev.miss1) && rev.miss2 === rev.miss1 && !/45/.test(rev.miss2) && rev.hintWhileFixing === rev.miss1, rev);
+  check('A second miss repeats the specific hint and never gives the answer; the hint stays while the child fixes the box', /Halfway is 5 more than 30/.test(rev.miss1) && rev.miss2 === rev.miss1 && !/35/.test(rev.miss2) && rev.hintWhileFixing === rev.miss1, rev);
   await b.reload(); await wait(250);
   const once = await js(`return { explanations: document.querySelectorAll('#guided-runner .rl-task.is-done').length, extra: document.querySelectorAll('#guided-runner .result-box .feedback').length }`);
-  check('A finished Practice Together problem shows its explanation once after a refresh', rev.done.startsWith('46 is closer to 50') && once.explanations === 1 && once.extra === 0, { rev: rev.done, once });
+  check('A finished Practice Together problem shows its explanation once after a refresh', rev.done.startsWith('36 is closer to 40') && once.explanations === 1 && once.extra === 0, { rev: rev.done, once });
   await b.load(O + LESSON + '#practice/own'); await wait(200);
   await b.navigate(`document.querySelector('[data-open-set="s1"]').click();`);
   const own = await js(`${FILL_HELPERS}

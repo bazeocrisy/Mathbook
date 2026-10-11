@@ -114,6 +114,23 @@ try {
   await js(`document.querySelector('[data-practice]').click();`); await wait(250);
   check('"Practice this skill" opens Set 2 at Question 1 of 4', await js(`return location.hash === '#practice/s2' && /Question 1 of 4/.test(document.querySelector('.q-count').textContent)`));
 
+  // ----- The Math Lessons list: only the main Rounding Test decides the score (review L22F-05) -----
+  await b.load(server.origin + BASE + 'math/'); await wait(250);
+  const note = await js(`const c = Array.from(document.querySelectorAll('.choice-card')).find((a) => /Round Multi-Digit/.test(a.textContent)); const p = c.querySelector('.choice-progress'); return p ? { text: p.textContent, cls: p.className } : null;`);
+  check('Lesson list: a Check-Up score alone does not show "Best test score" or "done" for 2-2', note && !/Best test score/.test(note.text) && !/is-done/.test(note.cls), note);
+
+  // ----- Home counts a two-part question only when both parts are answered (review L22F-04) -----
+  await b.load(URL + '#test'); await b.reload(); await wait(200);
+  await js(`localStorage.removeItem('${KEY}:draft-checkup');`);
+  await b.reload(); await wait(200);
+  await js(`document.querySelector('[data-start="checkup"]').click();`); await wait(250);
+  await js(`${H} const qs = JSON.parse(localStorage.getItem('${KEY}:draft-checkup')).questions; const el = document.querySelector('.test-one .q[data-qkey]');
+    el.querySelectorAll('fieldset[data-part="0"] input').forEach((x) => { if (qs[0].parts[0].answer.includes(x.value)) x.click(); });
+    document.querySelector('[data-nav="next"]').click();`);
+  await b.load(server.origin + BASE); await wait(250);
+  const half = await js(`return { shown: !document.getElementById('continue').hidden, text: document.getElementById('continue-what').textContent }`);
+  check('Home: only the select-all part answered → Continue is shown, "0 of 4 answered" (as the test menu says)', half.shown && /Rounding Check-Up: 0 of 4 answered/.test(half.text), half);
+
   // ----- Layout -----
   for (const [w, h] of [[320, 568], [390, 844], [768, 1024], [1366, 768]]) {
     await b.viewport(w, h);

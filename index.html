@@ -77,7 +77,11 @@
           return started ? boxes.some(function (v) { return !blank(v); }) : boxes.length > 0 && boxes.every(function (v) { return !blank(v); });
         }
         if (r && typeof r === 'object' && !Array.isArray(r)) return started ? LINE_PARTS.concat('why').some(function (k) { return filled(r, k); }) : LINE_PARTS.concat(r.needWhy ? ['why'] : []).every(function (k) { return filled(r, k); });
-        return r !== undefined && r !== '' && r !== null && !(Array.isArray(r) && r.every(blank));
+        if (Array.isArray(r)) {
+          if (r.length && r.every(function (v) { return typeof v === 'number'; })) return r.some(function (v) { return v > 0; });
+          return started ? !r.every(blank) : r.length > 0 && r.every(function (v) { return !blank(v); });
+        }
+        return r !== undefined && r !== '' && r !== null;
       }
       // Continue appears once anything has been typed; the label counts fully answered questions (as the test does).
       function count(responses, started) { return Object.keys(responses || {}).filter(function (k) { return answered(responses[k], started); }).length; }

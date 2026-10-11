@@ -22,7 +22,8 @@
 
   /** A short, honest progress note for one lesson ('' when nothing has been saved). */
   function progress(l) {
-    const attempts = get(l.key + 'attempts') || [];
+    // The main (first) test decides the score and "done"; a short extra test (2-2's Check-Up) never marks a lesson done.
+    const attempts = (get(l.key + 'attempts') || []).filter((a) => !a.testId || a.testId === l.tests[0][0]);
     if (attempts.length) {
       const best = attempts.reduce((m, a) => Math.max(m, a.pct || 0), 0);
       return { kind: best >= 90 ? 'done' : 'test', text: `Best test score: ${best}%` };
