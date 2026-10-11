@@ -8,6 +8,10 @@ Single source of truth for Chapter 2 progress. Updated by the coordinator after 
 
 ## Current scope (owner, 2026-10-10, updated)
 
+**Batch 3 (owner, 2026-10-11): Lessons 2-10 … 2-15 in order, then update the existing Number Words activity.** Continue without stopping between items; each item is built, independently reviewed (one reviewer, reused), fixed and re-checked, tested, published and live-verified before the next. Not in scope: Unit Review, Performance Task, Fluency Practice, Chapter 3. Recovery check before starting: 2-1 … 2-9 and the Rounding Check-Up recorded complete with review reports and test logs; all lesson branches are in main (b61600c); the live files match main.
+
+**Checkpoint:** item 2-10 · stage: build · worktree ../Mathbook-210, branch claude/lesson-2-10 (from b61600c) · next: build from docs/chapter-2/lessons/2-10.md and pp. 71–74.
+
 **Batch 2 (owner, 2026-10-11): Lessons 2-8 and 2-9 only — complete and live.** Stopped; 2-10 not started. Built one after the other (2-8 complete and live before 2-9). Coordinator builds; one independent reviewer. 2-8 must clearly separate adding (opposite moves) from subtracting (same moves); 2-9 teaches finding a missing addend to subtract. Stop after 2-9: no 2-10.
 
 **Batch 1 (owner, 2026-10-10): Lessons 2-6 and 2-7 only — complete and live (2026-10-11).** Stopped; 2-8 and the end-of-chapter activities not started. Built one after the other (2-6 finished, published and live-verified before 2-7 starts). The coordinator is the builder; one independent reviewer. Reuse the shared components and add only what these lessons need. Stop after 2-7: no 2-8, no end-of-chapter activities.
