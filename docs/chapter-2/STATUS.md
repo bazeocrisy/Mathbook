@@ -10,7 +10,7 @@ Single source of truth for Chapter 2 progress. Updated by the coordinator after 
 
 **Batch 3 (owner, 2026-10-11): Lessons 2-10 … 2-15 in order, then update the existing Number Words activity.** Continue without stopping between items; each item is built, independently reviewed (one reviewer, reused), fixed and re-checked, tested, published and live-verified before the next. Not in scope: Unit Review, Performance Task, Fluency Practice, Chapter 3. Recovery check before starting: 2-1 … 2-9 and the Rounding Check-Up recorded complete with review reports and test logs; all lesson branches are in main (b61600c); the live files match main.
 
-**Checkpoint:** item 2-13 · stage: build · worktree ../Mathbook-213, branch claude/lesson-2-13 (from main after 2-12) · next: build from docs/chapter-2/lessons/2-13.md and pp. 83–86 (draft lesson.js in the coordinator's scratchpad; drafts for 2-14 also exist; if lost, rebuild from the spec).
+**Checkpoint:** item 2-13 · stage: independent review · worktree ../Mathbook-213, branch claude/lesson-2-13, commit fca3437 (pushed) · evidence: npm test 164/164, lessons.browser 2-13 109/109, 2-13 skills 70/70, components 52/52; screenshots at 320/390/683×384/768/1024/1366/1920 checked · open findings: none yet · next: reviewer report → fix → re-check → publish → live verify. Drafts for 2-14 in the coordinator scratchpad.
 
 **Batch 2 (owner, 2026-10-11): Lessons 2-8 and 2-9 only — complete and live.** Stopped; 2-10 not started. Built one after the other (2-8 complete and live before 2-9). Coordinator builds; one independent reviewer. 2-8 must clearly separate adding (opposite moves) from subtracting (same moves); 2-9 teaches finding a missing addend to subtract. Stop after 2-9: no 2-10.
 
