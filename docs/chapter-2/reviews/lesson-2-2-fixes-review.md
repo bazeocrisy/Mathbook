@@ -158,3 +158,17 @@ No `mathbook-chrome-*` process was left running.
 | ID | Severity | Where | What I saw | Required fix |
 |---|---|---|---|---|
 | L22F-06 | minor (shared `catalog.js` `progress()`) | Math Lessons list note, when only a lesson's second test has been taken | The new filter drops every attempt that is not from the main test, and the code then falls through to the Learn and "Started" checks. A finished test leaves no draft, set or guided data behind, so the card shows **no note at all**. <br>**Seen:** with fresh storage, Check-Up at 100% gave a blank 2-2 card. With fresh storage, 2-1's Math Words Test at 100% gave a blank 2-1 card. Before c0cd053, the 2-1 case showed "Best test score: 100%", so this is a regression for 2-1. The parent can no longer see from the list that the child has done any work in that lesson. | When there are attempts but none from the main test, still show a note without the "done" style. For example, show "Started" (`is-started`), or name the test: "Rounding Check-Up: 100%" / "Math Words Test: 100%" (`is-test`). Extend the browser check that covers L22F-05 to assert this note, for 2-2 (Check-Up only) and for 2-1 (vocab only). |
+
+### Re-verification 2 (commit a5a5ee3)
+
+Re-checked `git show a5a5ee3 -- assets` (the `catalog.js` `progress()` change) two ways:
+- in Node: I ran `progress()` from a2b4d3c, c0cd053 and a5a5ee3 against 13 saved states for every lesson (`r22/progcmp.cjs`);
+- in the running app: I took real tests and read the Math Lessons list (`r22/rv2.mjs`).
+
+Suites, run one at a time: `npm test` 89/89, Check-Up 27/27, 2-1 + Home 198/198, 2-2 96/96, lessons 349/349. No `mathbook-chrome-*` process was left running.
+
+**Result: L22F-06 fixed. No new findings.**
+
+| ID | Status | Evidence |
+|---|---|---|
+| L22F-06 | verified | **In the app (1366×768):** <br>• 2-2 with only the Check-Up at 75%: "Rounding Check-Up: 75%" (`is-test`). After a second Check-Up at 100%: "Rounding Check-Up: 100%", still `is-test` and never "done" (`r22/shots/rv2-list-checkup-only.png`). <br>• Adding a Rounding Test at 75%: "Best test score: 75%" (`is-test`). The 100% Check-Up does not change it. <br>• 2-1 with only the Math Words Test at 100%: "Math Words Test: 100%" (`is-test`). <br>• Adding a Math Test at 90%: "Best test score: 90%" (`is-done`). <br>**Learn-only progress, unchanged:** <br>• 2-3 with Learn finished: "Learn finished" (`is-learned`). <br>• 2-5 at 2 of 6 steps: "Learn: 2 of 6 steps" (`is-started`). <br>• Just opening 2-4 Learn (step 0, nothing done): no note, as before. <br>**2-3 to 2-5, one test each, unchanged:** 2-3 at 100% shows "Best test score: 100%" (`is-done`); 2-4 at 71% and 2-5 at 86% show their scores (`is-test`). <br>**Node comparison:** across all states, a5a5ee3 gives the same note as a2b4d3c except in the cases that are meant to change, which happen only in 2-1 and 2-2: <br>• only the second test taken: now its named score, never "done"; <br>• main test below 90% with the second test at 100%: now the main score, not "done". <br>All other states are identical to a2b4d3c for every lesson: empty, Learn part-way, Learn finished, Practice Together only, unfinished draft, main test at 85% and 90%, older results without a test name (70%), and main test plus Learn finished. <br>The list has no sideways scroll at 320×568 or 683×384. No JavaScript errors. |
