@@ -14,7 +14,8 @@
     { id: '2-3', title: 'Estimate Sums and Differences', desc: 'Find about how many by rounding or using friendly numbers.', steps: 6, tests: [['estimate', 'Estimation Test']] },
     { id: '2-4', title: 'Use Addition Properties to Add', desc: 'Change the order or grouping to add more easily.', steps: 5, tests: [['properties', 'Addition Properties Test']] },
     { id: '2-5', title: 'Addition Patterns', desc: 'Even and odd sums, and why they work.', steps: 6, tests: [['patterns', 'Addition Patterns Test']] },
-    { id: '2-6', title: 'Use Partial Sums to Add', desc: 'Break apart by place value, then add the partial sums.', steps: 6, tests: [['partial', 'Partial Sums Test']] }
+    { id: '2-6', title: 'Use Partial Sums to Add', desc: 'Break apart by place value, then add the partial sums.', steps: 6, tests: [['partial', 'Partial Sums Test']] },
+    { id: '2-7', title: 'Decompose to Subtract', desc: 'Break apart one number, then take away the parts.', steps: 6, tests: [['decompose', 'Decompose to Subtract Test']] }
   ];
 
   const lessons = CHAPTER_2.map((l) => Object.assign({ chapter: 2, path: `curriculum/chapter-2/lesson-${l.id}/`, key: `mathbook:v2:lesson-${l.id}:` }, l));
