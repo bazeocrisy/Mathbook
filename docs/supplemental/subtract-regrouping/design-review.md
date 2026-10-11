@@ -468,3 +468,21 @@ Design agent's notes. Section 1 is written before the build; later sections revi
 - **Fix:** in `view` mode with a work answer, drop the box border and background, or use a light grey fill with no border, so the digits sit under the rule like printed work. Keep the visible caption.
 
 **Still needed to close:** SR-D07 (guided at 200% zoom) and SR-D16 (score cell). Optional: the SR-D04 leftover and SR-D17.
+
+## 4. Final re-check at f41cdc2
+
+**Method:** the affected scenes only, with real CDP input in one headless Chrome. Screenshots are the `f-*.png` files in the scratchpad `shots/`. No JS errors, and no sideways scroll on any of them.
+
+| ID | Result | Evidence |
+|---|---|---|
+| SR-D07 | **pass** | **Guided at 683×384:** two panes (`277.6px 284.3px`, `.sk` 589 px). Grid top at y=339 to Check bottom at 655 is 316 px, within the 384 px screen (`f-guided-s5-exch-zoom.png`). |
+| SR-D16 | **pass** | "Final answers 12 of 12" stays on one line at 390 (`f-m-results-390.png`). |
+| SR-D04 | **pass** | At 320 no chart cell overflows (the table is 276.6 px wide, inside the card). |
+| SR-D17 | **pass** | Someone's answer digits show on a light grey fill (`#eef0f7`) with no visible box border, clearly unlike the child's dashed and outlined input boxes below (`f-test-q13-390.png`; `f-skill-mistakes-390.png` is the same). |
+
+**The 560 px threshold elsewhere:**
+- **768×1024:** two panes (Check at y=592–642, beside the grid).
+- **1366×768:** two panes (Check at 466–516).
+- **390 and 320:** still stacked (`.sk` 296 and 251 px), with the grid inside the card and no overlap.
+
+**Status:** all design findings SR-D01 to SR-D17 are closed.
