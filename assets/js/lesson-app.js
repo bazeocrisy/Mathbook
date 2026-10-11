@@ -548,7 +548,8 @@
           qEl.querySelectorAll('input, select, button').forEach((x) => { x.disabled = true; });
           // Chapter 2 controls: ✓ on every box when right, ✗ on the wrong boxes after a miss (Try Again clears them).
           if (c.response !== undefined) Q.applyMarks(qEl, c.q, c.response);
-        } else Q.bind(qEl, c.q, (r) => { c.response = r; save(); });
+        // Focus stays on the step heading (the answer-row control would otherwise jump to its ones box, review L214-01).
+        } else Q.bind(qEl, c.q, (r) => { c.response = r; save(); }, { autofocus: false });
         main.querySelectorAll('[data-wiz]').forEach((b) => b.addEventListener('click', (e) => {
           const act = b.dataset.wiz;
           if (act === 'finish') { if (!W.done[step.id]) e.preventDefault(); return; }
@@ -574,6 +575,9 @@
             // On a short screen (e.g. 200% zoom) bring the card itself to the top so the question is in view (review L210-03).
             const card = main.querySelector('.wiz-card');
             if (card && root.innerHeight < 560) card.scrollIntoView({ block: 'start' }); else root.scrollTo(0, 0);
+            // A tall Your Turn (e.g. 2-14 partial sums): if Check Answer would start below the fold, bring the card up too.
+            const chk = main.querySelector('[data-wiz="check"]');
+            if (card && chk && root.innerHeight >= 560 && root.innerWidth >= 768 && chk.getBoundingClientRect().bottom > root.innerHeight) card.scrollIntoView({ block: 'start' });
             main.querySelector('.wiz-h').focus({ preventScroll: true }); return;
           }
           const focusTarget = main.querySelector('[data-wiz="next"]:not([disabled]), a[data-wiz="finish"]:not(.is-disabled), [data-wiz="again"], [data-wiz="new"], .wiz-check input:not([disabled]), .wiz-check button:not([disabled])');

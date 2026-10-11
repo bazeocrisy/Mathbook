@@ -924,7 +924,7 @@ a.btn.is-disabled { background: #eceef5; color: #545a75; pointer-events: none; }
 .vc-box { width: 100%; }
 .vc-in { width: 100%; max-width: 3rem; height: 52px; padding: 0; text-align: center; font-family: ui-monospace, "Cascadia Mono", Consolas, Menlo, monospace; font-size: 1.5rem; border-radius: 10px; }
 .vc-box.is-read { width: 100%; max-width: 3rem; min-width: 0; height: 52px; padding: 0; border-radius: 10px; font-family: ui-monospace, "Cascadia Mono", Consolas, Menlo, monospace; font-size: 1.5rem; }
-.vc-carry { width: 100%; max-width: 36px; height: 36px; padding: 0; font: inherit; font-size: 1rem; font-weight: 800; text-align: center; color: var(--primary); background: #fff; border: 2px dashed #b5a8e8; border-radius: 8px; min-width: 0; }
+.vc-carry { width: 100%; max-width: 44px; height: 44px; padding: 0; font: inherit; font-size: 1rem; font-weight: 800; text-align: center; color: var(--primary); background: #fff; border: 2px dashed #b5a8e8; border-radius: 8px; min-width: 0; }
 .vc-carry.is-read { display: grid; place-items: center; border-color: var(--line); }
 .vc-carry:focus { outline: 3px solid var(--primary); outline-offset: 1px; }
 .vc-carry-d { color: var(--primary); font-size: 0.95rem; font-weight: 800; }
