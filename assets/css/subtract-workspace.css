@@ -22,9 +22,9 @@
 .sk *, .sk *::before, .sk *::after { box-sizing: border-box; }
 .sk-sr { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
 
-/* Layout: the problem, then the coach panel; side by side when the component is at least 600px wide. */
+/* Layout: the problem, then the coach panel; side by side when the component is at least 560px wide. */
 .sk-wrap { display: grid; gap: 0.75rem 1.5rem; }
-@container (min-width: 600px) { .sk-wrap.has-coach { grid-template-columns: max-content minmax(0, 1fr); align-items: start; } }
+@container (min-width: 560px) { .sk-wrap.has-coach { grid-template-columns: max-content minmax(0, 1fr); align-items: start; } }
 .sk-main { min-width: 0; }
 .sk-caption { margin: 0 0 0.25rem; font-weight: 800; }
 .sk-coach[hidden] { display: none; }
@@ -78,7 +78,9 @@ input.sk-cur:placeholder-shown { border-style: dashed; }
 }
 .sk-ans-read { border-style: solid; }
 .sk-mode-view .sk-ans-read, .sk-mode-demo .sk-ans-read { border-color: transparent; background: transparent; }
-.sk-mode-demo .sk-ans-read:not(:empty), .sk-mode-view .sk-ans-read:not(:empty) { border-color: var(--sk-box-line); background: var(--sk-box-bg); }
+.sk-mode-demo .sk-ans-read:not(:empty) { border-color: var(--sk-box-line); background: var(--sk-box-bg); }
+/* Someone's work is printed, not typed: a light fill and no input-style border, so it never looks tappable (SR-D17). */
+.sk-mode-view .sk-ans-read:not(:empty) { border-color: transparent; background: #eef0f7; }
 .sk-ans.is-ok { border-color: var(--sk-ok); border-width: 3px; }
 .sk-ans.is-no { border-color: var(--sk-no); border-width: 3px; border-style: dashed; }
 .sk-mark {
@@ -130,7 +132,7 @@ input.sk-cur:placeholder-shown { border-style: dashed; }
 .sk-mini .sk-hist { font-size: 0.95rem; }
 /* "Top number now": the whole list when wide; the current line and folded earlier lines when narrow. */
 .sk-narrow-only { display: none; }
-@container (max-width: 599px) { .sk-wide-only { display: none; } .sk-narrow-only { display: block; } }
+@container (max-width: 559px) { .sk-wide-only { display: none; } .sk-narrow-only { display: block; } }
 
 @media (max-height: 600px) {
   /* Short screens (200% zoom): shrink the label rows and digit rows, never the boxes a child taps (≥ 44 px). */

@@ -79,7 +79,7 @@ Instances are independent: each has its own id prefix, its own listeners on its 
 
 **Rendering guarantees.** The component builds its skeleton once: grid, toolbar, coach panel and one polite live region. A regroup mark, Undo or Clear updates only the changed cells, so the box or button the child moves to is never replaced. Every other rebuild moves focus to a named place: the pressed button after a wrong guided choice, the done message, the solution heading, Undo after Clear work. Tapping a filled regroup box selects it, so typing replaces the value.
 
-**Layout.** `.sk` is a CSS size container (`container-type: inline-size`). Column width follows the component's own width (`--sk-col` uses `cqi`). The coach panel sits beside the grid when the component is at least 600 px wide, and below it otherwise. Inside a flex row, give the host element a width (e.g. `flex: 1 1 260px`), because a size container does not size itself from its content.
+**Layout.** `.sk` is a CSS size container (`container-type: inline-size`). Column width follows the component's own width (`--sk-col` uses `cqi`). The coach panel sits beside the grid when the component is at least 560 px wide, and below it otherwise. Inside a flex row, give the host element a width (e.g. `flex: 1 1 260px`), because a size container does not size itself from its content.
 
 ## State format (`v: 1`)
 
