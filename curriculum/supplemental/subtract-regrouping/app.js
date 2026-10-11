@@ -493,9 +493,18 @@
         const bindRow = () => area().querySelectorAll('[data-help]').forEach((b) => b.addEventListener('click', () => help(b.dataset.help)));
         const mainHelp = () => box.querySelectorAll('.sr-helprow:not(.sr-retry) [data-help]');
         const retryRow = '<div class="check-row sr-helprow sr-retry"><button type="button" class="btn btn-ghost" data-help="retry">Try again</button><button type="button" class="btn btn-ghost" data-help="hint">Get a hint</button><button type="button" class="btn btn-ghost" data-help="show">Show me how</button></div>';
+        /** The first part that is wrong: its radio group (the chosen radio, else the first), or the first wrong answer digit from the ones. */
+        function retryTarget() {
+          const p = grade(item, R).parts;
+          const grp = p.decide === false ? (R.c1 !== item.needs ? 'c1' : 'c2') : (p.mistake === false || p.check === false) ? 'c1' : null;
+          if (grp) return box.querySelector(`input[type=radio][name$="${grp}"]:checked`) || box.querySelector(`input[type=radio][name$="${grp}"]`);
+          const want = M.digitsOf(item.top - item.bottom, M.lengthOf(item.top));
+          const ans = Array.from(box.querySelectorAll('input.sk-ans:not([disabled])'));
+          return ans.find((a) => { const k = Number((a.dataset.k || '').slice(1)), v = a.value.trim(); return v !== String(want[k]) && !(v === '' && want[k] === 0 && k > 0 && want.slice(k).every((d) => d === 0)); }) || ans[0] || box.querySelector('input:not([disabled])');
+        }
         function help(kind) {
           mainHelp().forEach((b) => { b.hidden = false; });
-          if (kind === 'retry') { area().innerHTML = ''; const f = box.querySelector('input:not([disabled])'); if (f) f.focus(); return; }
+          if (kind === 'retry') { area().innerHTML = ''; const f = retryTarget(); if (f) f.focus(); return; }
           if (kind === 'hint') { area().innerHTML = `<div class="feedback feedback-info"><p><span aria-hidden="true">💡 </span>${esc(hintText(item, R))}</p></div>`; if (o.onHint) o.onHint(); return; }
           // Show me: the right answer, worked in the same vertical model, then the child may go on (recorded as help).
           helped = true; R.helped = true;
@@ -842,13 +851,13 @@
     }
 
     // ===== Results =====
-    const helpN = (o) => Object.keys(o || {}).length;
+    const helpN = (o, done) => Object.keys(o || {}).filter((k) => done && done[k]).length;
     function resultsView() {
       activity(false);
       const all = attempts(), last = all[all.length - 1];
       const W = wizard(), T = together(), S = sessions(), SKS = skillStore();
       const guidedNote = `<section class="card">${head('', 'Learning and practice (not part of the test score)', 'student')}<ul class="rules">` +
-        `<li>Learn: ${Object.keys(W.done).length} of ${STEP_IDS.length} steps done${helpN(W.helped) ? ` (${helpN(W.helped)} with help)` : ''}.</li><li>Practice Together: ${Object.keys(T.done).length} of ${C.together.length} problems done${helpN(T.helped) ? ` (${helpN(T.helped)} with help)` : ''}.</li>` +
+        `<li>Learn: ${Object.keys(W.done).length} of ${STEP_IDS.length} steps done${helpN(W.helped, W.done) ? ` (${helpN(W.helped, W.done)} with help)` : ''}.</li><li>Practice Together: ${Object.keys(T.done).length} of ${C.together.length} problems done${helpN(T.helped, T.done) ? ` (${helpN(T.helped, T.done)} with help)` : ''}.</li>` +
         `<li>Practice on My Own: ${S.setup.attempts.length} session${S.setup.attempts.length === 1 ? '' : 's'} finished.</li>` +
         `<li>Practice One Skill: ${C.skills.filter((s) => SKS['skill-' + s.id] && SKS['skill-' + s.id].attempts.length).length} of ${C.skills.length} skills practiced.</li></ul></section>`;
       if (!last) {

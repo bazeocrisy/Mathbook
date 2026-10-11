@@ -120,6 +120,31 @@ try {
   check('Learn finished with Show me is recorded as 9 of 9 WITH help (not independent)', journey.helped === 9, journey);
   await b.load(URL + '#results'); await b.reload(); await wait(250);
   check('My Results says "9 of 9 steps done (9 with help)" and shows no test score from it', await js(`return /Learn: 9 of 9 steps done \\(9 with help\\)/.test(document.querySelector('main').innerText) && /No test results yet/.test(document.querySelector('main').innerText)`));
+  // SR-M18: "with help" counts only steps that are also done (damaged data cannot inflate it).
+  await b.load(URL + '#menu'); await js(`const W = JSON.parse(localStorage.getItem('${KEY}:see-wizard')); delete W.done.four; localStorage.setItem('${KEY}:see-wizard', JSON.stringify(W))`);
+  await b.load(URL + '#results'); await b.reload(); await wait(250);
+  { const t = await js(`return document.querySelector("main").innerText`); check('My Results counts "with help" only for steps that are done (8 of 9 → 8 with help)', /Learn: 8 of 9 steps done \(8 with help\)/.test(t), t.slice(0, 400)); }
+  // SR-M17: Try again returns focus to the part that was wrong (Learn decide: the column group, not "Yes").
+  await b.load(URL + '#menu'); await js(`localStorage.setItem('${KEY}:see-wizard', JSON.stringify({ v: 1, step: 6, done: {}, phase: {}, ex: {}, checks: {}, helped: {} }))`);
+  await b.load(URL + '#see'); await b.reload(); await wait(250);
+  await js(`document.querySelector('[data-w="try"]').click()`); await wait(200);
+  const dfx = await js(`${H} const box = document.querySelector('#sr-try'); const W = get('see-wizard'); const it = C.learn[6].yourTurn(M.rng(W.checks.decide.seed));
+    const pick = (grp, val) => { const r = Array.from(box.querySelectorAll('input[type=radio][name$="' + grp + '"]')).find((x) => val(x.value)); r.click(); return r.value; };
+    pick('c1', (v) => v === it.needs); const wrongCol = pick('c2', (v) => v !== it.first);
+    box.querySelector('[data-check]').click(); await sleep(30);
+    box.querySelector('.feedback-area [data-help="retry"]').click(); await sleep(30);
+    const a = document.activeElement; return { name: a.name, value: a.value, wrongCol, first: it.first };`);
+  check('Learn decide: Try again focuses the wrong column choice, not the right "Yes/No"', /c2$/.test(dfx.name) && dfx.value === dfx.wrongCol, dfx);
+  // SR-M17: guided wrong getter (7,405 − 3,168: tens written 1) → Try again focuses the tens box, not the right hundreds box.
+  await b.load(URL + '#menu'); await js(`localStorage.setItem('${KEY}:guided', JSON.stringify({ v: 1, pos: 5, seed: 0, states: {}, done: {} }))`);
+  await b.load(URL + '#practice/together'); await b.reload(); await wait(300);
+  const gfx = await js(`${H} const box = document.querySelector('#sr-tg');
+    for (let k = 0; k < 2; k++) { box.querySelector('[data-act="g-show"]').click(); await sleep(30); } // needs, supplier
+    const set = (j, v) => { const x = box.querySelector('[data-k="r' + j + '"]'); x.value = String(v); fire(x, 'input'); };
+    set(2, 3); set(1, 1); box.querySelector('[data-act="check-ex"]').click(); await sleep(30);
+    box.querySelector('[data-act="g-retry"]').click(); await sleep(30);
+    return { k: document.activeElement.dataset.k, r2: box.querySelector('[data-k="r2"]').value };`);
+  check('Guided: Try again after a wrong getter focuses that box (tens), and the right hundreds stays', gfx.k === 'r1' && gfx.r2 === '3', gfx);
   // Guided Show me shows the worked step with amounts, and wrong answers offer the retry row.
   await b.load(URL + '#menu'); await js(`localStorage.setItem('${KEY}:guided', JSON.stringify({ v: 1, pos: 6, seed: 0, states: {}, done: {} }))`);
   await b.load(URL + '#practice/together'); await b.reload(); await wait(300);

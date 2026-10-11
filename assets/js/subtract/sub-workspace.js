@@ -508,7 +508,7 @@
           else if (x.kind === 'original-digit') msgs.push(f(i, orig[i]));
           else if (x.kind === 'no-reduce') msgs.push(f(i, cur[i], i + 1 < n ? cur[i + 1] : 0));
           else if (x.kind === 'skip-zero') { const ev2 = M.evaluateWork(top, bottom, S.ann); msgs.push(f(i, ev2.supplier !== undefined ? ev2.supplier : Math.min(n - 1, i + 2))); }
-          else if (x.kind === 'wrong-digit') { const amt = M.evaluateWork(top, bottom, S.ann).status === 'valid' && cur[i] >= bdig[i] ? cur[i] : plan.columns[i].topNow; msgs.push(f(i, amt, bdig[i])); }
+          else if (x.kind === 'wrong-digit') { const amt = M.evaluateWork(top, bottom, S.ann).status === 'valid' && M.checkAmounts(top, bottom, cur).ok ? cur[i] : plan.columns[i].topNow; msgs.push(f(i, amt, bdig[i])); }
           else msgs.push(f(i));
         });
         if (ev.status === 'valid' && !ev.standard) msgs.push(T.altValid);
@@ -557,7 +557,9 @@
       const g = S.guided, col = plan.columns[g.col], i = g.col, t = col.before[i], b = col.bottomDigit;
       if (act === 'g-retry') {
         feedbackHTML = ''; retryRow = false; renderCoach();
-        focusOn(g.stage === 'exchange' ? '[data-k^="r"]' : g.stage === 'digit' ? `[data-k="a${i}"]` : '.sk-choices .sk-btn');
+        let exSel = '[data-k^="r"]';
+        if (g.stage === 'exchange') { const e = col.exchanges[g.ex], inp = gridHost.querySelector(`[data-k="r${e.from}"]`), v = inp ? M.readAmount(inp.value) : null; exSel = `[data-k="r${v === e.after[e.from] ? e.to : e.from}"]`; }
+        focusOn(g.stage === 'exchange' ? exSel : g.stage === 'digit' ? `[data-k="a${i}"]` : '.sk-choices .sk-btn');
         return;
       }
       if (act === 'g-hint') {
