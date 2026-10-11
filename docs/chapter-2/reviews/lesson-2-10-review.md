@@ -112,3 +112,19 @@ No JavaScript errors or missing files. No `mathbook-chrome` processes are left; 
 - Headless Chrome via `tests/lib/harness.mjs` (local static server at `/Mathbook/`). Viewports were simulated; 200% zoom was simulated as a 683×384 desktop viewport. No physical device.
 - Windows 11, 2026-10-11.
 - The working tree has only this report as a new file. Nothing was committed.
+
+### Re-verification at fa0f1f6
+
+I re-checked commit `fa0f1f6` with light runs only, one at a time in the foreground:
+- `r210/sample2.cjs` (output `r210/sample2.out`), the Node sampler with no leak exemptions;
+- `r210/rv.mjs` (output `r210/rv.out`) in headless Chrome, with screenshots `r210/shots/rv-*.png`.
+
+I edited no app, lesson, engine or test file.
+
+| Finding | Status | Evidence |
+|---|---|---|
+| L210-01 | verified | P9, O10 and T10 now ask "Rolls/Packs/Bags to buy:" (3, 4, 3) and "That many … hold:" (750, 600, 900). The prompt adds "Keep adding 250 until there are enough." No label or prompt prints a count or a sum the child types: my check, with no exemptions, finds **0** printed answers in all items and in 20,000 seeds per Learn step. The `fromStory` exemption is gone. The child now has to decide how many is enough. |
+| L210-02 | verified | Learn 2 Your Turn, P3, O13 and T4 now use the shared stacked control (vcalc `input: 'rows'`). The partial-sum boxes sit under the line, tagged Hundreds / Tens / Ones with "400 + 300" etc. beside them, then the sum under a second line, as in the book and Learn 2's example (`rv-pt3-320.png`, `rv-2-10-try2-683x384.png`). The keys are unchanged (700/140/12/852, 700/120/14/834, 700/110/12/822), and the correct responses grade correct. No sideways scroll at 320 or 1366 px. |
+| L210-03 | verified | **683×384 (200% zoom):** after "Now I'll Try" the wizard card is scrolled to the top (card top 12 px) and the question starts at y 89, where before it started at 302. Focus is on the Your Turn heading. Next Step at 683×384 also brings the new step's card to the top. Check Answer is now on the first screen for step 3 (bottom 340 of 384). Steps 1, 2, 4 and 5 still need 15–133 px of scrolling (bottoms 399–517). These items are simply taller than 384 px minus the card heading, so I judge the remaining scroll unavoidable and acceptable.<br>**No regressions:** 390×844 and 1366×768 behave as before (scrollY 0, focus on the heading). At 1366×768 every 2-10 Your Turn, including the taller column item, keeps Check Answer above the fold (bottom 486–698 of 768). Spot checks of 2-6 step 3 and 2-8 step 2 at 683×384 show the same improvement (question at y 89); at 390×844 and 1366×768 they are unchanged. |
+
+No JavaScript errors and no new findings. No `mathbook-chrome` processes are left; I left other projects' headless Chrome alone.
