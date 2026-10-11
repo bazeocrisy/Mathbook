@@ -653,7 +653,8 @@
       S.hintCol = h.place;
       if (!solution) retryRow = false;
       renderGrid(); renderTools(); renderCoach(); updateTools();
-      if (S.hint >= 5) { retryRow = false; updateTools(); focusOn('.sk-solution-h'); }
+      // Bring just the worked answer's heading into view (a small scroll on phones), so the child sees it opened while their own answer row stays on screen (SR-D28).
+      if (S.hint >= 5) { retryRow = false; updateTools(); focusOn('.sk-solution-h'); const hh = coachEl.querySelector('.sk-solution-h'); if (hh && hh.scrollIntoView) hh.scrollIntoView({ block: 'nearest' }); }
       else if (!focusOn('[data-act="hint"]') && !focusOn('[data-act="solution"]')) focusOn('.sk-hint');
       say(S.hint >= 5 ? `${T.solutionTitle}. ${M.solutionLines(top, bottom).join(' ')}` : `${T.hintLabel(S.hint)}: ${h.levels[S.hint - 1]}`);
       emit('hint', { level: S.hint, place: h.place, solution: S.hint >= 5, shown: S.hint >= 5 });
