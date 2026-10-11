@@ -135,3 +135,23 @@ No JavaScript errors or missing files in any run. No headless Chrome I started i
 - Headless Chrome driven through `tests/lib/harness.mjs` (local static server at `/Mathbook/`). Viewports were simulated with device metrics. No physical device.
 - Windows 11, 2026-10-10.
 - The working tree has only this report as a new file. Nothing was committed.
+
+### Re-verification at 9edbac6
+
+I re-checked commit `9edbac6` (fixes for L27-01…L27-04) in the app with the same harness and headless Chrome (390 px and 320 px). Scripts: `r27/rv.mjs` (output `r27/rv.out`) and `r27/trail.mjs`. Screenshots: `r27/shots/rv-*.png`. I edited no app, lesson, engine or test file. The coordinator is running the full browser regression.
+
+| Finding | Status | Evidence |
+|---|---|---|
+| L27-01 | verified | **Before typing (PT4, 320 px):** each way reads "634 − … =", "… − … =", "… − … =". Only row 1 starts from 634, and no row is greyed (`rv-pt4-untouched-320.png`).<br>**After 200:** "634 − 200 =", "… − … =", "… − … =".<br>**Middle part left empty, last part typed:** row 2 is greyed and row 3 follows on from row 1 ("… − 7 ="). A middle **0** is greyed the same way.<br>**Trailing part cleared (200, 80, blank):** row 3 is normal ("… − … ="), not greyed.<br>The spoken label "(not used …)" is only on greyed rows. Focus stays in the tree box while typing. |
+| L27-02 | verified | **Guided (PT3, tree 200 / 0 / 60 / 3, right):** ✓ on the three real parts, their steps and the answer. **No** mark on the 0 part or its greyed row "341 − 0 =". **Wrong** (291 after 341 − 60): only that step and the answer are ✗ ("Check 341 − 60.").<br>**Review (On My Own):**<br>• O4 as 400 / 60 / 0 shows "728 − 400 = 328 ✓", "328 − 60 = 268 ✓", and "268 − 0 = — **not used**" with no mark. The 0 part has no mark.<br>• O7 with an empty middle part shows "403 − … = — not used" and no mark.<br>The scores are unchanged (14 of 15 with one deliberate miss). |
+| L27-03 | verified | PT1 with Way 2 empty (and with only one part in Way 2): "Way 2: Write at least 2 parts that add to 258." PT4 with Way 2 empty: "Way 2: Write at least 2 parts that add to 287." |
+| L27-04 | verified | In the On My Own set, the key is choice 4 of 4 for O3b and choice 2 of 4 for O4b. |
+
+**The shared mark changes, checked in other lessons:**
+- **2-6 Practice Together PT1** with "2" for 200 gives "Look again at the hundreds line." Only that box is ✗.
+- **2-6 On My Own** with a wrong row (O1) and a wrong stacked sum (O2): "12 of 14 correct", with 68 ✓ and 2 ✗ in the review and no "not used" notes.
+- **2-5 Practice Together PT2** with a wrong sum gives "Check 290 + 524." Only the sum box is ✗.
+- **2-5 On My Own** with one wrong equation: "18 of 19 correct", with 1 ✗ in the review.
+- No JavaScript errors.
+
+No new findings. No headless Chrome I started is left running (I left the other project's "ww-chrome" alone).
