@@ -26,7 +26,10 @@ There are no other dependencies: no framework, no build step, no network. It nee
     hints: true, feedback: true,      // independent mode only (always off in test mode)
     solution: true,                   // allow "Show the full solution" after hint 4
     state: savedState,                // optional: restore earlier work (ignored if it does not validate)
-    theme: { accent: '#006b75' },     // optional: sets --sk-accent etc. on the element
+    theme: { accent: '#006b75' },     // optional: sets --sk-accent etc. on the element (removed again by destroy())
+    caption: "Zoe's work",            // optional: a visible label above the grid
+    answerLabel: "Zoe's answer",       // optional: how the answer cells are read aloud in view mode
+    answer: true,                     // false hides the answer row (e.g. 'write the regrouped top number')
     text: { check: 'Check it' },      // optional: replace any wording (see SubtractKit.text)
     on: { complete: (e) => {} }       // optional: event handlers (or use ws.on)
   });
@@ -42,7 +45,7 @@ There are no other dependencies: no framework, no build step, no network. It nee
 | `guided` | Decides each step, column by column: does it need regrouping? which place can give? the new values of both columns? the answer digit? Wrong answers get specific feedback; correct work is kept. A valid but non-standard choice is told "that could work too". |
 | `independent` | Optional regroup marks above the columns (Undo, Clear work), answer boxes, Check, specific feedback, and hints 1–4. The full solution is a separate request; the child's grid is never filled in. |
 | `test` | Regroup marks and answer boxes only. No Check, hints, feedback, solution or marks, even if the options ask for them. Read the result with `ws.result()`. |
-| `view` | Read-only. Shows `options.work = { ann, d, misaligned? }`: someone's work, or a solution. `answer: false` hides the answer row. |
+| `view` | Read-only. Shows `options.work = { ann, d, misaligned? }`: someone's work (with its answer under the line), or a solution. Leading zeros in the answer are left blank. `answer: false` hides the answer row. |
 
 ### API
 
@@ -74,6 +77,10 @@ Every event has `{ type, instance }` plus:
 
 Instances are independent: each has its own id prefix, its own listeners on its own element, and no document-level listeners or shared state.
 
+**Rendering guarantees.** The component builds its skeleton once: grid, toolbar, coach panel and one polite live region. A regroup mark, Undo or Clear updates only the changed cells, so the box or button the child moves to is never replaced. Every other rebuild moves focus to a named place: the pressed button after a wrong guided choice, the done message, the solution heading, Undo after Clear work. Tapping a filled regroup box selects it, so typing replaces the value.
+
+**Layout.** `.sk` is a CSS size container (`container-type: inline-size`). Column width follows the component's own width (`--sk-col` uses `cqi`). The coach panel sits beside the grid when the component is at least 600 px wide, and below it otherwise. Inside a flex row, give the host element a width (e.g. `flex: 1 1 260px`), because a size container does not size itself from its content.
+
 ## State format (`v: 1`)
 
 ```js
@@ -81,7 +88,7 @@ Instances are independent: each has its own id prefix, its own listeners on its 
   ann: { 3: [2], 2: [10, 9], 1: [10, 9], 0: [12] }, // regroup marks per place (0 = ones): history, current value last
   log: [ { place: 2, before: [10] } ],              // undo log (or { clear: true, before: {…} })
   d: ['4', '2', '4', '1'],                          // answer digits from the ones up ('' = empty)
-  hint: 0, demo: 0,                                 // hint level 0–5; demo part
+  hint: 0, hintCol: null, demo: 0,                  // hint level 0–5 for the hinted column (a new column starts at 1); demo part
   guided: { col: 0, stage: 'needs', ex: 0 } | null, // guided progress
   result: null, done: false }
 ```
