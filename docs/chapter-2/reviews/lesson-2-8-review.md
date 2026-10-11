@@ -127,3 +127,21 @@ No JavaScript errors or missing files. No `mathbook-chrome` processes are left (
 - Headless Chrome via `tests/lib/harness.mjs` (local static server at `/Mathbook/`). Viewports were simulated. No physical device.
 - Windows 11, 2026-10-11.
 - The working tree has only this report as a new file. Nothing was committed.
+
+### Re-verification at 643be47
+
+I re-checked commit `643be47` with light runs only, one at a time in the foreground:
+- `r28/sample.cjs` (output `r28/sample2.out`), a Node check over 20,000 seeds per Learn step;
+- `r28/rv.mjs` (output `r28/rv.out`) in headless Chrome at 320 px, with screenshots `r28/shots/rv-*.png`.
+
+I edited no app, lesson, engine or test file.
+
+| Finding | Status | Evidence |
+|---|---|---|
+| L28-01 | verified | Every Learn step's question goes through `noLeak`. Over 20,000 seeds per step (120,000 questions), the lesson's leak check finds **0** printed answers (before the fix: 31 in step 5 and 18 in step 6). All the other generator rules still hold, my sampler finds nothing wrong, and the fix direction is still always right (+ items ask to subtract, − items ask to add). |
+| L28-02 | verified | No "digit - digit" (ASCII hyphen) appears anywhere: 0 in every authored item and 0 over all sampled Learn questions. Prompts now read "487 − 245", the same sign as the figure and the engine messages. |
+| L28-04 | verified | The slides are 25 left (PT5b), 30 right (O8b) and 40 right (T8b). Each bottom line has two hop arrows from the old ends to the new ends, and at 320 px the slide is clearly visible (`rv-pt5b-320.png`, `rv-o8b-320.png`, `rv-t8b-320.png`).<br>• Right picture: the same amount twice (−25/−25, +30/+30, +40/+40).<br>• Wrong picture: a different amount at the right end (−85, −30, −20).<br>• Only the original ends are labelled. The moved ends have no labels, there is no gap label, and the difference is never drawn.<br>• The hop labels (25, 30, 40, 85, 20) are not answers. The child types 242, 267 and 229 in the adjust questions and picks A/B in the pictures. The prompt already says the slide amount.<br>• No sideways scroll at 320 px. The "−85" bubble sits close to its arrow but is readable. |
+| L28-05 | verified | The story answer boxes are labelled with the unit: PT9 "More rolls in June", O11 "More pies this year", T11 "More tickets on Saturday" (seen in the test at 320 px). Learn step 6 uses the label for its story ("More orders in June", "More points for Ray", "More steps on Monday", "More tickets for the play"). |
+| L28-03 | not re-checked (accepted) | Accepted by the coordinator as a known limitation and recorded in STATUS.md. Nothing changed. |
+
+**Test mode:** T8b still shows no feedback. No JavaScript errors. No new findings. No `mathbook-chrome` processes are left; I left other projects' headless Chrome alone.
