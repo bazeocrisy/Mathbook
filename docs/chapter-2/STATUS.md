@@ -8,7 +8,11 @@ Single source of truth for Chapter 2 progress. Updated by the coordinator after 
 
 ## Current scope (owner, 2026-10-10, updated)
 
+**Supplemental section (owner, 2026-10-11): "Subtract with Regrouping".** A new section after 2-15, not a textbook lesson and not a replacement for 2-15. Vertical subtraction with regrouping (exchanges), including across zeros; Learn wizard, guided, independent (size/difficulty/length setup) and targeted practice, a 15-question test, results, Parent Guide; a small reusable subtraction component (pure math / vertical workspace / content / Mathbook adapter) with a standalone demo page and an integration README. Team: coordinator (builder) + exactly two agents: a design agent and an independent math/testing agent (the Batch 3 reviewer). Spec: the owner's message of 2026-10-11 (recorded in docs/supplemental/subtract-regrouping/SPEC.md).
+
 **Batch 3 (owner, 2026-10-11): Lessons 2-10 … 2-15 in order, then update the existing Number Words activity.** Continue without stopping between items; each item is built, independently reviewed (one reviewer, reused), fixed and re-checked, tested, published and live-verified before the next. Not in scope: Unit Review, Performance Task, Fluency Practice, Chapter 3. Recovery check before starting: 2-1 … 2-9 and the Rounding Check-Up recorded complete with review reports and test logs; all lesson branches are in main (b61600c); the live files match main.
+
+**Checkpoint (Subtract with Regrouping):** stage 1 done (inspection) → stage 2 design/outline · worktree ../Mathbook-sr, branch claude/subtract-regrouping (from main e246a71) · plan: component under assets/js/subtract/ (sub-math.js pure math, sub-workspace.js vertical workspace) + assets/css/subtract-workspace.css; content + Mathbook adapter under curriculum/supplemental/subtract-regrouping/; demo page dev/subtract-demo/; README docs/supplemental/subtract-regrouping/INTEGRATION.md · next: outline, then the first interactive vertical example (3,002 − 1,578).
 
 **Checkpoint:** **Batch 3 complete (2026-10-11). Stopped.** 2-10 … 2-15 and Number Words Phase 4 are built, reviewed, fixed, tested, published and live-verified (last: main 03b61bf). Not started, per scope: Unit Review, Performance Task, Fluency Practice, Chapter 3. Remaining issues: see "Open issues after Batch 3" below.
 
