@@ -680,12 +680,15 @@
       el.removeAttribute('data-sk');
       if (o.theme) Object.keys(o.theme).forEach((k) => el.style.removeProperty(k.startsWith('--') ? k : '--sk-' + k));
     }
+    // After destroy() every method is a safe no-op (review SR-M11): a late callback from a host must not throw.
+    const live1 = (fn, dead) => (...args) => (destroyed ? dead : fn(...args));
     const api = {
       id, mode, top, bottom,
-      on, off, getState, setState, check, reset, destroy,
-      hint: () => showHint(false), showSolution: () => showHint(true),
-      undo, clearWork, focus: () => { focusOn('.sk-in, .sk-btn'); },
-      result: () => (mode === 'test' || mode === 'independent' ? Object.assign(M.gradeFinal(top, bottom, S.d), { marks: M.evaluateWork(top, bottom, S.ann).status }) : null),
+      on, off, getState, destroy,
+      setState: live1(setState, false), check: live1(check, null), reset: live1(reset, undefined),
+      hint: live1(() => showHint(false)), showSolution: live1(() => showHint(true)),
+      undo: live1(undo), clearWork: live1(clearWork), focus: live1(() => { focusOn('.sk-in, .sk-btn'); }),
+      result: () => destroyed ? null : (mode === 'test' || mode === 'independent' ? Object.assign(M.gradeFinal(top, bottom, S.d), { marks: M.evaluateWork(top, bottom, S.ann).status }) : null),
       get destroyed() { return destroyed; }
     };
     renderAll();

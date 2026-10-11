@@ -59,7 +59,7 @@ There are no other dependencies: no framework, no build step, no network. It nee
 | `undo()`, `clearWork()` | Undo the last regroup mark; clear all marks. Answer digits are kept. |
 | `reset()` | Clears all work for this problem. |
 | `on(event, fn)`, `off(event, fn)` | Subscribe and unsubscribe; `'*'` receives every event. |
-| `destroy()` | Removes every listener (one `AbortController`), empties the element and removes its classes. |
+| `destroy()` | Removes every listener (one `AbortController`), empties the element and removes its classes and theme variables. Afterwards every method is a safe no-op (`check()` and `result()` return `null`, `setState()` returns `false`). |
 | `SubtractKit.validState(s, top, bottom)` | The same validation `setState` uses, for hosts checking saved records. |
 
 ### Events

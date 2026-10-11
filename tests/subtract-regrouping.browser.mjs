@@ -243,10 +243,12 @@ try {
     const t = SK.mount(host2, { top: 3002, bottom: 1578, mode: 'test', hints: true, feedback: true }); t.hint(); t.showSolution();
     out.testIsolated = !host2.querySelector('[data-act="hint"], [data-act="check"], [data-act="solution"], .sk-hint, .sk-solution') && t.getState().hint === 0 && t.check().correct === false;
     a2.destroy(); t.destroy(); b2.destroy();
+    try { out.afterDestroy = a2.check() === null && a2.setState(saved) === false && a2.hint() === undefined && a2.reset() === undefined && a2.result() === null && host.innerHTML === ''; } catch (e) { out.afterDestroy = 'threw: ' + e.message; }
     return out;`);
   check('Component works without Mathbook (no Mathbook scripts or styles on the page)', port.noMathbook, port);
   check('Two instances: no shared ids, state or events', port.uniqueIds && port.independent, port);
   check('destroy() empties the element and removes its listeners', port.destroyedEmpty && port.noListeners, port);
+  check('After destroy(), every method is a safe no-op (SR-M11)', port.afterDestroy === true, port.afterDestroy);
   check('State exports and restores; malformed state is rejected', port.restored && port.rejectBad, port);
   check('Test mode never shows hints, Check or the solution, even if asked', port.testIsolated, port);
   const theme = await js(`document.getElementById('theme').value = 'theme-sea'; document.getElementById('theme').dispatchEvent(new Event('change')); await new Promise((r) => setTimeout(r, 100));
