@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex">
+  <title>SubtractKit developer demo</title>
+  <!-- Developer page: proves the subtraction component works without Mathbook (no Mathbook scripts, styles, routes or storage). Not linked from any child page. -->
+  <link rel="stylesheet" href="../../assets/css/subtract-workspace.css">
+  <style>
+    body { margin: 0; padding: 16px; font: 16px/1.5 system-ui, sans-serif; background: #f4f5fb; color: #222; }
+    h1 { font-size: 1.4rem; margin: 0 0 0.25rem; } h2 { font-size: 1.1rem; margin: 0 0 0.5rem; }
+    .box { background: #fff; border: 1px solid #ccd; border-radius: 12px; padding: 12px; margin: 12px 0; }
+    .row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: 8px 0; }
+    .row button, .row select { min-height: 40px; padding: 0 12px; font: inherit; }
+    pre { background: #f0f0f6; padding: 8px; border-radius: 8px; max-height: 10rem; overflow: auto; font-size: 0.8rem; white-space: pre-wrap; }
+    .pair { display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); }
+    /* A second host theme, to show the workspace can be restyled without breaking alignment. */
+    .theme-sea { --sk-ink: #003845; --sk-accent: #006b75; --sk-box-line: #00838f; --sk-cross: #00222a; --sk-active-bg: #e0f7f9; --sk-active-line: #00646e;
+      --sk-primary-bg: #006b75; --sk-btn-line: #00838f; --sk-btn-ink: #003845; --sk-col: clamp(46px, 3.8rem, 64px); --sk-font: "Courier New", monospace; --sk-radius: 4px; }
+  </style>
+</head>
+<body>
+  <h1>SubtractKit developer demo</h1>
+  <p>Standalone: this page loads only <code>sub-math.js</code>, <code>sub-workspace.js</code> and <code>subtract-workspace.css</code>. See docs/supplemental/subtract-regrouping/INTEGRATION.md.</p>
+
+  <div class="box">
+    <h2>Demonstration (3,002 − 1,578)</h2>
+    <div id="demo"></div>
+  </div>
+
+  <div class="box">
+    <h2>Two instances side by side</h2>
+    <div class="pair"><div id="a"></div><div id="b"></div></div>
+    <div class="row">
+      <button type="button" id="export">Export A's state</button>
+      <button type="button" id="restore">Restore it into a new A</button>
+      <button type="button" id="destroy">Destroy B</button>
+      <label>Theme <select id="theme"><option value="">Default</option><option value="theme-sea">Sea</option></select></label>
+    </div>
+    <pre id="log" aria-live="polite"></pre>
+  </div>
+
+  <div class="box">
+    <h2>Guided (4,532 − 1,768)</h2>
+    <div id="guided"></div>
+  </div>
+
+  <div class="box">
+    <h2>Test mode (no hints, no checking)</h2>
+    <div id="test"></div>
+  </div>
+
+  <script src="../../assets/js/subtract/sub-math.js"></script>
+  <script src="../../assets/js/subtract/sub-workspace.js"></script>
+  <script>
+    (function () {
+      var SK = window.SubtractKit;
+      var log = document.getElementById('log');
+      var write = function (s) { log.textContent = s + '\n' + log.textContent; };
+      var events = function (name) { return { '*': null }; };
+      SK.mount(document.getElementById('demo'), { top: 3002, bottom: 1578, mode: 'demo' });
+      var a = SK.mount(document.getElementById('a'), { top: 4305, bottom: 1268, mode: 'independent' });
+      var b = SK.mount(document.getElementById('b'), { top: 4352, bottom: 2126, mode: 'independent' });
+      ['answer', 'step', 'hint', 'complete', 'reset'].forEach(function (ev) {
+        a.on(ev, function (d) { write('A ' + ev + ' ' + JSON.stringify(Object.assign({}, d, { instance: undefined, state: undefined }))); });
+        b.on(ev, function (d) { write('B ' + ev + ' ' + JSON.stringify(Object.assign({}, d, { instance: undefined, state: undefined }))); });
+      });
+      var saved = null;
+      document.getElementById('export').addEventListener('click', function () { saved = a.getState(); write('Exported A: ' + JSON.stringify(saved)); });
+      document.getElementById('restore').addEventListener('click', function () {
+        if (!saved) return write('Export first.');
+        a.destroy();
+        a = SK.mount(document.getElementById('a'), { top: 4305, bottom: 1268, mode: 'independent', state: saved });
+        write('Restored A from the exported state.');
+      });
+      document.getElementById('destroy').addEventListener('click', function () { b.destroy(); write('B destroyed (its listeners are removed).'); });
+      document.getElementById('theme').addEventListener('change', function (e) {
+        ['a', 'b'].forEach(function (id) { var el = document.getElementById(id); el.classList.remove('theme-sea'); if (e.target.value) el.classList.add(e.target.value); });
+      });
+      SK.mount(document.getElementById('guided'), { top: 4532, bottom: 1768, mode: 'guided' });
+      SK.mount(document.getElementById('test'), { top: 3002, bottom: 1578, mode: 'test', hints: true, feedback: true });
+      window.__demo = { get a() { return a; }, get b() { return b; } };
+    })();
+  </script>
+</body>
+</html>
