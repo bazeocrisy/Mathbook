@@ -244,9 +244,9 @@
         prompt: `(1) How much farther is ${rows[2][0]} than ${rows[0][0]}? (2) You have ${fmt(T)} points. You spend ${fmt(s1)}, then ${fmt(s2)}. How many are left? Is it more than 100?`,
         figure: { fig: 'table', title: 'Road Sign', head: ['Place', 'Miles'], rows },
         parts: [
-          { kind: 'num', label: 'Miles farther:', answer: d[2] - d[0] },
-          { kind: 'num', label: 'Points left:', answer: left },
-          { kind: 'choice', label: 'More than 100 left?', answer: left > 100 ? 'Yes' : 'No', choices: ['Yes', 'No'], compact: true }
+          { kind: 'num', label: '(1) Miles farther:', answer: d[2] - d[0] },
+          { kind: 'num', label: '(2) Points left:', answer: left },
+          { kind: 'choice', label: '(2) More than 100 left?', answer: left > 100 ? 'Yes' : 'No', choices: ['Yes', 'No'], compact: true }
         ],
         hint: 'Farther means subtract the smaller distance. For two spends, subtract one, then the other.',
         explanation: `${minus(d[2], d[0])} = ${fmt(d[2] - d[0])} miles. ${minus(T, s1)} = ${fmt(T - s1)}, ${minus(T - s1, s2)} = ${fmt(left)}: ${left > 100 ? 'more' : 'less'} than 100.`
@@ -354,9 +354,18 @@
     // O13–O15 give the test's decompose (T1), adjust (T2) and related (T3) skills their own practice (new numbers).
     decomposeQ({ id: 'o13', a: 857, b: 423 }),
     adjustQ({ id: 'o14', a: 721, b: 396 }),
-    relatedQ({ id: 'o15', a: 634, b: 278, seed: 25 })
+    relatedQ({ id: 'o15', a: 634, b: 278, seed: 25 }),
+    // O16 practises the test's "is it the only way?" format (T12), with new numbers (review L211-02).
+    { id: 'o16', type: 'parts', skill: 'strategy', prompt: 'Is counting up the only way to find 534 − 218?',
+      parts: [
+        { kind: 'choice', label: 'Is it the only way?', answer: 'No. You can also decompose 218 or adjust both numbers.', choices: ['Yes. Counting up is the only way to subtract.', 'No. You can also decompose 218 or adjust both numbers.', 'No. You can add the two numbers instead.'] },
+        { kind: 'num', label: '534 − 218 =', answer: 316 }
+      ],
+      hint: 'Think of the three ways from Learn.',
+      explanation: 'Decompose 218: 534 − 200 = 334, 334 − 10 = 324, 324 − 8 = 316. Or adjust: add 2 to both, 536 − 220 = 316. Or count up: 218 + 316 = 534.' }
   ];
 
+  const ONLY_RIGHT = 'No. You can also adjust both numbers or count up.';
   const testItems = [
     decomposeQ({ id: 't1', a: 784, b: 351 }),
     adjustQ({ id: 't2', a: 532, b: 297 }),
@@ -372,7 +381,7 @@
     twoStepQ({ id: 't11', total: 700, s1: 365, s2: 218, story: 'Ben has 700 coins. He spends 365 on a hat and 218 on a sword. Does he save more than 100?' }),
     { id: 't12', type: 'parts', skill: 'strategy', prompt: 'Is decomposing the only way to find 456 − 139?',
       parts: [
-        { kind: 'choice', label: 'Is it the only way?', answer: 'No. You can also adjust both numbers (457 − 140) or count up (139 + ? = 456).', choices: ['No. You can also adjust both numbers (457 − 140) or count up (139 + ? = 456).', 'Yes. Decomposing is the only way.', 'No. You can add 456 + 139.'] },
+        { kind: 'choice', label: 'Is it the only way?', answer: ONLY_RIGHT, choices: [ONLY_RIGHT, 'Yes. Decomposing is the only way to subtract.', 'No. You can add the two numbers instead.'] },
         { kind: 'num', label: '456 − 139 =', answer: 317 }
       ],
       explanation: 'Adjust: add 1 to both, 457 − 140 = 317. Count up: 139 + 1 = 140, 140 + 60 = 200, 200 + 256 = 456; 1 + 60 + 256 = 317.' }
@@ -381,7 +390,7 @@
   function subtractTest(seed) {
     const r = pv.rng(seed);
     return testItems.map((q) => (q.parts
-      ? Object.assign({}, q, { parts: q.parts.map((p) => ((p.kind === 'choice' && !p.compact) || p.kind === 'multi' ? Object.assign({}, p, { choices: pv.shuffle(r, p.choices) }) : p)) })
+      ? Object.assign({}, q, { parts: q.parts.map((p) => ((p.kind === 'choice' && p.choices.join() !== 'Yes,No') || p.kind === 'multi' ? Object.assign({}, p, { choices: pv.shuffle(r, p.choices) }) : p)) })
       : Object.assign({}, q)));
   }
 
@@ -457,7 +466,7 @@
     saveGuided: true,
     bank,
     skillPractice: true,
-    bankSets: [{ id: 's1', title: 'Fluently Subtract', blurb: 'All 15 practice questions: differences, decomposing, adjusting, counting up, strategies, and word problems.', ids: bank.map((q) => q.id) }],
+    bankSets: [{ id: 's1', title: 'Fluently Subtract', blurb: 'All 16 practice questions: differences, decomposing, adjusting, counting up, strategies, and word problems.', ids: bank.map((q) => q.id) }],
     tests: {
       subtract: { id: 'subtract', title: 'Fluently Subtract Test', questions: 12, blurb: 'Decompose, adjust, count up, choose strategies, and word problems.', generate: subtractTest }
     },

@@ -24,13 +24,13 @@ const GUIDED = {
 };
 const PRACTICE = {
   o1: [444], o2: [356], o3: [59], o4: [74], o5: [257], o6: [BOTH, 33], o7: ['115', 123], o8: [143], o9: [442], o10: [268],
-  o11: [BACK(152, 476), 324], o12: [85, 'No'], o13: [457, 437, 434], o14: ['adjust', 721, 396, 325, '725', '400'], o15: ['278 + ? = 634', 356]
+  o11: [BACK(152, 476), 324], o12: [85, 'No'], o13: [457, 437, 434], o14: ['adjust', 721, 396, 325, '725', '400'], o15: ['278 + ? = 634', 356], o16: ['No. You can also decompose 218 or adjust both numbers.', 316]
 };
 const TEST = {
   t1: [[484, 434, 433], 'decompose'], t2: [['adjust', 532, 297, 235, '535', '300'], 'adjust'], t3: [['365 + ? = 812', 447], 'related'],
   t4: [[79], 'subtract'], t5: [[274], 'subtract'], t6: [[157], 'apply'], t7: [[['745 − 130', '743 − 100 − 20 − 8', '128 + ? = 743'], 615], 'strategy'],
   t8: [[BACK(235, 569), 334], 'strategy'], t9: [[255], 'apply'], t10: [['98', 187], 'apply'], t11: [[117, 'Yes'], 'apply'],
-  t12: [['No. You can also adjust both numbers (457 − 140) or count up (139 + ? = 456).', 317], 'strategy']
+  t12: [['No. You can also adjust both numbers or count up.', 317], 'strategy']
 };
 
 test('Practice Together and On My Own match the hand-checked key', () => {
@@ -88,4 +88,14 @@ test('Learn generators follow the spec and never print an answer', () => {
     const left = s5.parts[1].answer; assert.ok(left >= 20 && left <= 200 && left !== 100 && s5.parts[2].answer === (left > 100 ? 'Yes' : 'No'));
   }
   assert.ok(cross > 200 && cross < 400, `about half cross a ten (${cross}/600)`);
+});
+
+test('review fixes L211-01, 02, 04', () => {
+  const T = L.tests.subtract;
+  const firsts = new Set(); for (let s = 1; s <= 40; s++) firsts.add(T.generate(s).find((q) => q.id === 't10').parts[0].choices[0]);
+  assert.ok(firsts.size > 1, 'T10 choices are shuffled');
+  const t12 = L._testItems.find((q) => q.id === 't12').parts[0].choices.map((c) => c.length);
+  assert.ok(Math.max(...t12) - Math.min(...t12) <= 12, 'T12 choices are alike in length');
+  const p4 = L.guided.find((q) => q.id === 'p4');
+  assert.match(Q.tip(p4, [p4.parts[0].choices.find((c) => c !== p4.parts[0].answer), '475']), /related to 731 − 256 = ?./);
 });
