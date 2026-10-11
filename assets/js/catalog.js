@@ -19,7 +19,8 @@
     { id: '2-8', title: 'Adjust Numbers to Add or Subtract', desc: 'Make friendly numbers and keep the answer the same.', steps: 6, tests: [['adjust', 'Adjust Numbers Test']] },
     { id: '2-9', title: 'Use Addition to Subtract', desc: 'Find the missing addend with a bar diagram.', steps: 6, tests: [['related', 'Use Addition to Subtract Test']] },
     { id: '2-10', title: 'Fluently Add within 1,000', desc: 'Partial sums or adjusting: choose a strategy.', steps: 5, tests: [['add', 'Fluently Add Test']] },
-    { id: '2-11', title: 'Fluently Subtract within 1,000', desc: 'Decompose, adjust, or count up: choose a strategy.', steps: 5, tests: [['subtract', 'Fluently Subtract Test']] }
+    { id: '2-11', title: 'Fluently Subtract within 1,000', desc: 'Decompose, adjust, or count up: choose a strategy.', steps: 5, tests: [['subtract', 'Fluently Subtract Test']] },
+    { id: '2-12', title: 'Solve Two-Step Problems', desc: 'Bar diagrams and letters for unknowns.', steps: 6, tests: [['twostep', 'Two-Step Problems Test']] }
   ];
 
   const lessons = CHAPTER_2.map((l) => Object.assign({ chapter: 2, path: `curriculum/chapter-2/lesson-${l.id}/`, key: `mathbook:v2:lesson-${l.id}:` }, l));
