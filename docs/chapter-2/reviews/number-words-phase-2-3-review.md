@@ -264,3 +264,47 @@ Remove the whole record only when it isn't an object at all.
 - Number parsing accepts `1 4` as 14, and spelling accepts an extra "and" ("forty and two"). Both leave the value unchanged.
 - The landing page's Parent Guide link sits just below the fold at 1366×768. All four cards are visible, which is what the requirement asks.
 - After a test that was saved and reopened, My Results says "This test was paused and resumed 2 times." This is existing engine wording and is correct; it could move into the Parent Help area now that these results are aimed at children.
+
+## Re-check (9cf7006)
+
+I re-checked with `npm test` (225/225), my Node checks again (`node.js`, `tc.js`) and one foreground browser with real clicks and typing (`rc.mjs`). The browser script passed 5 of 5 with no page errors, and the browser was closed afterwards.
+
+| ID | Result | Evidence |
+|---|---|---|
+| NW23-01 | **Pass** | See below |
+| NW23-02 | **Pass** | See below |
+| NW23-03 | **Pass** | See below |
+| NW23-04 | **Pass** | See below |
+| NW23-05 | **Pass** | See below |
+| NW23-06 | **Pass** | See below |
+
+**NW23-01: missing-letter hints no longer give the letter away.**
+- I read all 17 missing-letter hints and their "Not that letter" tips. None names the letter or spells a word with it in the blank position. Examples:
+  - `eigh_een`: "Think about how the word for 8 ends. That letter is not written twice."
+  - `twel_e`: "…listen for the sound just before the last letter."
+- With real clicks in Phase 2 Practice One Skill (missing letter), no hint or tip shown gave the letter.
+- Small note: the `fo_ty` hint "It sounds like the word for 4…" contains the ordinary word "for", which happens to be f-o-r. It is not a deliberate clue; "It sounds like four…" would avoid it, but it is optional.
+
+**NW23-02: no misspelling is described as a different number.**
+- 0 of the 5,505 misspellings tested are now described as a different number.
+- Every listed misspelling, alone or with "-seven", gets "Check the spelling of …".
+- In Practice Together, typing "threety" for 30 gives "Check the spelling of "threety". It starts like thirteen and ends with -ty."
+
+**NW23-03: two-word spelling answers are protected in tests.** Across 1,500 tests per phase:
+- another question shows the ones word of a two-word spelling answer 0 times (it was 3,926 times in Phase 3);
+- another question shows the teen or tens word 0 times;
+- generation always succeeded.
+
+**NW23-04: no Your Turn repeats its example.**
+- Phase 2 step 3's example is "fo _ rteen", and its Your Turns are `th_rteen` / `fi_teen` (shown in the browser).
+- Phase 3 step 2's example is "nin _ ty", and its Your Turns are thirty, forty, fifty and eighty.
+- Phase 2 step 4's example is "eightteen", and its Your Turn for 18 uses "eighten".
+
+**NW23-05: one bad field no longer erases saved progress.** I wrote `step: 99`, `checks: "x"`, a bogus done entry and Practice Together `i: -3` into storage. After loading:
+- `step` and `i` were reset to 0, and the bad entries were dropped;
+- the two completed Learn steps, the helped mark and the saved Practice Together answer were kept;
+- there were no page errors.
+
+**NW23-06: the Parent Guide crumb link is a full-size target.** `.nw-crumb` is 44 px tall at 768, 1366 and 1920 px.
+
+**Result:** all findings NW23-01 … NW23-06 are closed.
