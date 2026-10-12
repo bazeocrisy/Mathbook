@@ -1020,3 +1020,41 @@ a.btn.is-disabled { background: #eceef5; color: #545a75; pointer-events: none; }
 }
 .q-choices.is-compact .choice { overflow-wrap: normal; }
 .q-choices.is-compact.is-wordy { grid-template-columns: repeat(auto-fit, minmax(min(100%, 9.5rem), 1fr)); }
+
+/* ---------- Number Words Phases 2–3 (help mode, tens-and-ones model, landing cards) ---------- */
+.blocks.blocks-2 { grid-template-columns: repeat(2, minmax(0, 11rem)); justify-content: center; }
+.blocks-col.is-hi { box-shadow: 0 0 0 4px var(--star); }
+.nw-pair { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.8rem; }
+.nw-pair .blocks.blocks-2 { margin: 0.4rem 0; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.nw-parts { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 0.4rem; margin: 0.6rem 0; font-size: 1.5rem; font-weight: 800; }
+.nw-part { padding: 0.2rem 0.7rem; border-radius: 12px; background: var(--primary-soft); color: var(--heading); border: 2px solid #c9bdf5; }
+.nw-part.is-key { background: var(--te-bg); border-color: var(--te-line); color: var(--te-ink); }
+.nw-plus { color: var(--muted); }
+.nw-mistake { color: var(--no); }
+.nw-mistake s { text-decoration-thickness: 3px; }
+.nw-tag { font-size: 0.8rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.05em; background: var(--no-soft); color: var(--no); border-radius: 999px; padding: 0.15rem 0.6rem; vertical-align: middle; }
+.nw-right { color: var(--ok); }
+.nw-tens { list-style: none; padding: 0; margin: 0.6rem 0; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 0.5rem; }
+.nw-tens li { display: flex; flex-direction: column; align-items: center; padding: 0.5rem; border-radius: 14px; background: var(--te-bg); border: 2px solid var(--te-line); color: var(--te-ink); font-weight: 700; }
+.nw-tens li b { font-size: 1.4rem; }
+.help-row { display: flex; flex-wrap: wrap; gap: 0.6rem; margin-top: 0.8rem; }
+.help-shown:focus, .hint-note:focus { outline: 3px solid var(--primary); outline-offset: 2px; }
+.help-done { font-weight: 600; }
+.skill-table .skill-group th, .skill-table .skill-group td { background: var(--primary-soft); }
+.skill-table .skill-sub { padding-left: 1.6rem; }
+.nw-phase-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1rem; margin: 1rem 0; }
+.nw-phase { display: flex; flex-direction: column; gap: 0.4rem; padding: 1.1rem 1.3rem; border-radius: var(--radius); background: var(--card); color: var(--ink); box-shadow: var(--shadow); min-width: 0; }
+.nw-phase h2 { margin: 0; font-size: 1.3rem; color: var(--heading); }
+.nw-phase .nw-phase-tag { margin: 0; font-size: 0.85rem; font-weight: 800; color: var(--student); text-transform: uppercase; letter-spacing: 0.05em; }
+.nw-phase p { margin: 0; color: var(--muted); }
+.nw-phase .btn { margin-top: auto; align-self: flex-start; min-width: 8rem; }
+.nw-phase-desc { flex: 1; margin-bottom: 0.4rem !important; }
+.crumbs a.nw-crumb { display: inline-flex; align-items: center; min-height: 44px; color: inherit; }
+@media (max-width: 700px) {
+  .nw-phase-grid { grid-template-columns: minmax(0, 1fr); }
+  .nw-tens { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width: 400px) {
+  .nw-pair { grid-template-columns: minmax(0, 1fr); }
+  .nw-parts { font-size: 1.25rem; }
+}

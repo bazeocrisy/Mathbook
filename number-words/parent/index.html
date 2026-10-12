@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Number Words Parent Guide · Mathbook</title>
+  <meta name="description" content="Number Words Parent Guide: how each phase works, what it teaches, and the spelling convention.">
+  <link rel="icon" href="../../assets/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="../../assets/css/mathbook.css">
+</head>
+<body>
+  <a class="skip" href="#main">Skip to the guide</a>
+  <header class="topbar"><div class="topbar-in">
+    <a class="brand" href="../../">
+      <svg viewBox="0 0 40 40" aria-hidden="true" focusable="false"><circle cx="20" cy="20" r="11" fill="#ffc94d"/><circle cx="16" cy="16" r="4" fill="#ffe39a"/><ellipse cx="20" cy="21" rx="18" ry="6" fill="none" stroke="#b9a8ff" stroke-width="2.6" transform="rotate(-18 20 20)"/><circle cx="34" cy="7" r="1.8" fill="#fff"/><circle cx="6" cy="33" r="1.2" fill="#fff"/></svg>
+      <span>Mathbook</span>
+    </a>
+    <span class="crumbs"><a class="nw-crumb" href="../">Number Words</a> · Parent Guide</span>
+    <span class="topbar-right"><a class="home-link" href="../../">Home</a></span>
+  </div></header>
+
+  <main class="stage stage-menu" id="main">
+    <section class="hero">
+      <p class="eyebrow">Number Words · For the parent</p>
+      <h1>Parent Guide</h1>
+      <p class="lead">How each phase works, what it teaches, and how answers are checked.</p>
+    </section>
+
+    <section class="card card-parent" aria-labelledby="how-title">
+      <div class="section-head"><div class="section-title"><h2 id="how-title">How each phase works</h2></div><span class="aud aud-parent">For the parent</span></div>
+      <ol class="rules">
+        <li><b>Phase 1 (0–10):</b> Learn the word, say it and spell it aloud, Look-Cover-Write-Check, practice with hints, and a 10-word spelling test (mastery is 9 or more).</li>
+        <li><b>Phases 2, 3 and 4</b> work like a math lesson: a Phase Menu with Learn (an example, then your turn), Practice (Practice Together, On My Own, and practice for one skill), a test, My Results, and a Parent Guide for that phase.</li>
+        <li><b>Help in Phases 2 and 3:</b> every Learn and practice question has Check Answer, a Hint, and Show Me. A hint gives a clue, never the whole answer. Show Me gives the answer and explains it, and your child can go on. Answers seen with Show Me are counted as <b>completed with help</b>, never as correct on their own and never toward mastery.</li>
+        <li><b>Tests</b> have no hints, no Show Me and no feedback until they are finished. My Results then shows each answer with an explanation, results by skill (number recognition and spelling), and practice for missed skills.</li>
+        <li><b>Saved progress</b> stays in this browser. Each phase is saved and reset on its own; resetting one phase does not change the others or the math lessons.</li>
+      </ol>
+    </section>
+
+    <section class="card card-parent" aria-labelledby="teach-title">
+      <div class="section-head"><div class="section-title"><h2 id="teach-title">What each phase teaches</h2></div><span class="aud aud-parent">For the parent</span></div>
+      <div id="phase-notes"></div>
+    </section>
+
+    <section class="card card-parent" aria-labelledby="conv-title">
+      <div class="section-head"><div class="section-title"><h2 id="conv-title">Spelling and checking answers</h2></div><span class="aud aud-parent">For the parent</span></div>
+      <p id="convention"></p>
+      <ul class="rules">
+        <li>Capital letters and spaces before or after an answer do not matter.</li>
+        <li>Between the tens and the ones, a hyphen or a space is accepted: forty-two or forty two.</li>
+        <li>Every letter must be right. A missing part (forty for 42) or a different number is not accepted.</li>
+        <li>Number answers are typed with digits. An empty answer is never counted as 0.</li>
+      </ul>
+    </section>
+
+    <div class="stage-nav"><a class="btn btn-ghost" href="../">← Number Words</a><a class="btn btn-ghost" href="../../">Home</a></div>
+  </main>
+  <footer class="footer"><p>Mathbook · Original learning content · Progress is saved in this browser only.</p></footer>
+
+  <script src="../../assets/js/place-value.js"></script>
+  <script src="../program.js"></script>
+  <script>
+    (function () {
+      var P = Mathbook.numberWords.program;
+      function esc(s) { return String(s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
+      document.getElementById('convention').textContent = 'Spelling convention: ' + P.convention;
+      document.getElementById('phase-notes').innerHTML = P.phases.map(function (ph) {
+        var words = ph.words ? ph.words.map(function (w) { return typeof w === 'string' ? w : w.word; }) : [];
+        return '<h3>Phase ' + esc(ph.id) + ': ' + esc(ph.title) + '</h3><p>' + esc(ph.card) + ' <a href="../' + esc(ph.href) + '">Open Phase ' + esc(ph.id) + '</a></p>' +
+          (words.length ? '<p class="muted"><b>Words:</b> ' + words.map(esc).join(', ') + '</p>' : '') +
+          (ph.focus ? '<ul class="rules">' + ph.focus.map(function (f) { return '<li>' + esc(f) + '</li>'; }).join('') + '</ul>' : '');
+      }).join('');
+    })();
+  </script>
+</body>
+</html>

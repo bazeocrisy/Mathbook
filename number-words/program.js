@@ -1,8 +1,9 @@
 /*
  * Number Words — Read It, Say It, Spell It, Write It.
  * Curriculum data only. The reusable phase engine is assets/js/number-words-app.js.
- * Phase 1 (spelling 0–10) and Phase 4 (numbers 100–9,999 in words and words to numbers) are ready. Phases 2–3 are an
- * outline only. Phase 4 runs on the lesson engine; its content is number-words/phase-4/lesson.js.
+ * All four phases are ready. Phase 1 (spelling 0–10) runs on number-words-app.js; Phases 2 (11–20), 3 (20–99) and
+ * 4 (100–9,999) run on the lesson engine (number-words/phase-N/lesson.js; 2 and 3 share number-words/words99.js).
+ * The landing page shows one card per phase (title + card line); the Parent Guide (number-words/parent/) shows the rest.
  * Spelling follows American English and matches Lesson 2-1's word form (Mathbook.pv.numberToWords).
  */
 (function (root) {
@@ -31,6 +32,7 @@
     phases: [
       {
         id: '1', title: 'Numbers 0–10', status: 'ready', href: 'phase-1/',
+        card: 'Spell zero to ten: learn, say, look-cover-write-check, practice, and a spelling test.',
         storageKey: 'mathbook:v2:number-words:phase-1',
         words: PHASE_1_WORDS,
         testSize: 10,
@@ -38,7 +40,9 @@
         practiceSize: 8
       },
       {
-        id: '2', title: 'Numbers 11–20', status: 'planned',
+        id: '2', title: 'Numbers 11–20', status: 'ready', href: 'phase-2/',
+        storageKey: 'mathbook:v2:number-words:phase-2',
+        card: 'Eleven to twenty, including the tricky ones: thirteen, fifteen, eighteen.',
         words: ['eleven', 'twelve', 'thirteen', 'fourteen', 'fifteen', 'sixteen', 'seventeen', 'eighteen', 'nineteen', 'twenty'],
         focus: [
           'eleven and twelve do not follow a pattern — learn them as whole words.',
@@ -48,7 +52,9 @@
         ]
       },
       {
-        id: '3', title: 'Tens and two-digit numbers', status: 'planned',
+        id: '3', title: 'Numbers 20–99', status: 'ready', href: 'phase-3/',
+        storageKey: 'mathbook:v2:number-words:phase-3',
+        card: 'The tens words and two-digit numbers like forty‑two.',
         words: ['twenty', 'thirty', 'forty', 'fifty', 'sixty', 'seventy', 'eighty', 'ninety'],
         focus: [
           'forty has no u (not "fourty").',
@@ -58,7 +64,8 @@
         ]
       },
       {
-        id: '4', title: 'Hundreds and thousands', status: 'ready', href: 'phase-4/', range: '100–9,999',
+        id: '4', title: 'Numbers 100–9,999', status: 'ready', href: 'phase-4/', range: '100–9,999',
+        card: 'Hundreds and thousands in words, and words back to numbers.',
         storageKey: 'mathbook:v2:number-words:phase-4',
         blurb: 'Learn with examples, practice, and a 12-question test: numbers to words and words to numbers, with zeros.',
         examples: [135, 2137, 5072],

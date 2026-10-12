@@ -205,6 +205,13 @@
         inner = `<div class="q"><p class="q-prompt"><span>${esc(q.prompt)}</span></p></div>` +
           `<div class="actions"><button type="button" class="btn btn-primary" data-act="explained">They explained it</button>` +
           `<button type="button" class="btn btn-ghost" data-act="reveal">Show the explanation</button></div>`;
+      } else if (cfg.help) {
+        // Help mode (cfg.help, cfg.tip, cfg.correctResponse): Check Answer · 💡 Hint · Show Me beside the answer.
+        // Show Me fills in and explains the answer; the problem is then "completed with help" (st.helped).
+        inner = Q.render(q, cfg.keyPrefix + '-' + q.id, { response: st.reveal ? cfg.correctResponse(q) : st.response, mode: 'guided' }) +
+          (st.reveal ? '' : `<div class="actions help-row"><button type="button" class="btn btn-primary" data-act="check">Check Answer</button>` +
+            (q.hint && !st.hint ? `<button type="button" class="btn btn-ghost" data-act="hint"><span aria-hidden="true">💡 </span>Hint</button>` : '') +
+            `<button type="button" class="btn btn-ghost" data-act="reveal"${st.result === true ? ' hidden' : ''}>Show Me</button></div>`);
       } else {
         inner = Q.render(q, cfg.keyPrefix + '-' + q.id, { response: st.response, mode: 'guided' }) +
           `<div class="actions"><button type="button" class="btn btn-primary" data-act="check">Check answer</button>` +
@@ -212,7 +219,7 @@
           `<button type="button" class="btn btn-ghost" data-act="reveal">Show answer and why</button></div>`;
       }
       card.innerHTML = inner + help +
-        `<div class="hint-box" ${st.hint && q.hint ? '' : 'hidden'}><b>Hint:</b> ${esc(q.hint || '')}</div>` +
+        `<div class="hint-box" ${st.hint && q.hint && !(cfg.help && st.reveal) ? '' : 'hidden'}><b>${cfg.help ? '<span aria-hidden="true">💡 </span>' : ''}Hint:</b> ${esc(q.hint || '')}</div>` +
         `<div class="result-box" aria-live="polite"></div>` +
         `<div class="stage-nav stage-nav-inner"><button type="button" class="btn btn-ghost" data-act="prev" ${i === 0 ? 'disabled' : ''}>← Previous</button>` +
         `<button type="button" class="btn btn-primary" data-act="next">${i === cfg.items.length - 1 ? esc(cfg.lastLabel || 'Done') : 'Next problem →'}</button></div>`;
@@ -220,7 +227,13 @@
       const resultBox = card.querySelector('.result-box');
       const showResult = () => {
         if (q.type === 'rline') { resultBox.innerHTML = ''; return; }
-        if (st.reveal) {
+        if (cfg.help && st.reveal) {
+          resultBox.innerHTML = `<div class="feedback feedback-info help-shown" tabindex="-1"><p><b>Show Me:</b> the answer is <b>${esc(Q.correctText(q))}</b>.</p><p>${esc(q.explanation)}</p>` +
+            `<p class="help-done"><b>Completed with help.</b> Go on to the next problem.</p></div>`;
+        } else if (cfg.help && st.result === false) {
+          const t = (cfg.tip && cfg.tip(q, st.response)) || Q.tip(q, st.response);
+          resultBox.innerHTML = `<div class="feedback feedback-no"><p><b>Not quite.</b> ${esc(t ? t + ' ' : '')}Change your answer and check again, or use ${q.hint && !st.hint ? '💡 Hint or ' : ''}Show Me.</p></div>`;
+        } else if (st.reveal) {
           const ans = q.type === 'explain' ? '' : `<p><b>Answer:</b> ${esc(Q.correctText(q))}</p>`;
           resultBox.innerHTML = `<div class="feedback feedback-info">${ans}<p><b>Why:</b> ${esc(q.explanation)}</p></div>`;
         } else if (st.result === true) {
@@ -245,7 +258,8 @@
         Q.bind(qEl, q, (r) => { st.response = r; st.result = r.complete ? true : null; changed(); });
       } else if (qEl) Q.bind(qEl, q, (r) => { st.response = r; changed(); });
       // Chapter 2 controls mark their boxes after a check (✓ all when right, ✗ on the wrong ones); typing clears them.
-      if (qEl && (st.result === true || st.result === false) && st.response !== undefined) Q.applyMarks(qEl, q, st.response);
+      if (qEl && (st.result === true || st.result === false) && st.response !== undefined && !(cfg.help && st.reveal)) Q.applyMarks(qEl, q, st.response);
+      if (qEl && cfg.help && st.reveal) qEl.querySelectorAll('input, select, button').forEach((x) => { x.disabled = true; });
       changed();
 
       card.querySelectorAll('[data-act]').forEach((b) => b.addEventListener('click', () => {
@@ -257,6 +271,19 @@
           if (st.result === true || st.result === false) Q.applyMarks(qEl, q, st.response);
           showResult();
           dots();
+          if (cfg.help) { const rv = card.querySelector('[data-act="reveal"]'); if (rv) rv.hidden = st.result === true; }
+        } else if (act === 'hint' && cfg.help) {
+          st.response = Q.read(qEl, q);
+          st.hint = true;
+          draw();
+          const f = card.querySelector('.q input:not([disabled]), .q select:not([disabled])');
+          if (f) f.focus();
+        } else if (act === 'reveal' && cfg.help) {
+          st.response = Q.read(qEl, q);
+          st.reveal = true; st.helped = true;
+          draw();
+          const sh = card.querySelector('.help-shown');
+          if (sh) sh.focus();
         } else if (act === 'hint') {
           st.hint = true;
           card.querySelector('.hint-box').hidden = false;
