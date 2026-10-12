@@ -97,7 +97,10 @@
         if (repair) store.set(k, repair(v));
       };
       const stepIds = L.seeIt.steps.map((s) => s.id);
-      keep('see-wizard', (w) => obj(w) && Number.isInteger(w.step) && w.step >= 0 && w.step < stepIds.length && obj(w.done) && obj(w.checks), (w) => {
+      keep('see-wizard', obj, (w) => {
+        if (!Number.isInteger(w.step) || w.step < 0 || w.step >= stepIds.length) w.step = 0;
+        w.done = obj(w.done) ? w.done : {};
+        w.checks = obj(w.checks) ? w.checks : {};
         Object.keys(w.done).forEach((k) => { if (!stepIds.includes(k) || w.done[k] !== true) delete w.done[k]; });
         w.helped = obj(w.helped) ? w.helped : {};
         Object.keys(w.helped).forEach((k) => { if (!w.done[k] || w.helped[k] !== true) delete w.helped[k]; });
@@ -108,7 +111,9 @@
         Object.keys(w.slide).forEach((k) => { if (!Number.isInteger(w.slide[k]) || w.slide[k] < 0) delete w.slide[k]; });
         return w;
       });
-      keep('guided', (g) => obj(g) && Number.isInteger(g.i) && g.i >= 0 && obj(g.states), (g) => {
+      keep('guided', obj, (g) => {
+        if (!Number.isInteger(g.i) || g.i < 0 || g.i >= L.guided.length) g.i = 0;
+        g.states = obj(g.states) ? g.states : {};
         Object.keys(g.states).forEach((k) => { if (!L.guided.some((q) => q.id === k) || !obj(g.states[k])) delete g.states[k]; });
         return g;
       });

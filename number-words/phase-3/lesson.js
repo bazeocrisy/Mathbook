@@ -40,7 +40,7 @@
         model(50) + parts([{ t: 'fif' }, 'ty']) + big('50 → fifty') + say('Not five + ty. It starts like <b>fifteen</b>: fif + ty.'),
         model(40) + big('40 → forty') + say('four has a u, but <b>forty</b> does not: f-o-r-t-y.'),
         model(80) + parts(['eigh', { t: 't' }, 'y']) + big('80 → eighty') + say('eight already ends in t, so just add y: <b>eighty</b> has one t.'),
-        say('Complete a tricky spelling: one letter is missing.') + big('fo _ ty') + say('Say "forty". It has no u, so the missing letter is <b>r</b>.')
+        say('Complete a tricky spelling: one letter is missing.') + big('nin _ ty') + say('Say "ninety". It keeps every letter of nine, so the missing letter is <b>e</b>: <b>ninety</b>.')
       ],
       check: (r) => trickyQ({ id: 'learn-2', n: pick(r, [30, 40, 50, 80]) })
     },

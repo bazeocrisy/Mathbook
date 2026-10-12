@@ -212,6 +212,9 @@ try {
     const ok2 = await js(`return !!document.querySelector('main h1') && document.querySelector('main').innerText.length > 50`);
     check(`Malformed save (${label}): Learn and My Results still draw; nothing else is touched`, ok.learn && ok.others && ok2, ok);
   }
+  await js(`localStorage.setItem('${K3}:see-wizard', JSON.stringify({ step: 99, done: { tens: true }, checks: {}, phase: {} })); localStorage.setItem('${K3}:guided', JSON.stringify({ i: 'x', states: { g1: { result: true } } }))`);
+  await b.load(P3 + '#see'); await b.reload();
+  check('One bad field is reset, the rest is kept (NW23-05): Learn step 99 → step 1 with its done step kept; Practice Together answers kept', await js(`const w = JSON.parse(localStorage.getItem('${K3}:see-wizard')), g = JSON.parse(localStorage.getItem('${K3}:guided')); return w.step === 0 && w.done.tens === true && g.i === 0 && g.states.g1.result === true && document.querySelector('.wiz-count').textContent === 'Step 1 of 6'`));
   check('A damaged Learn record keeps its good parts only (unknown steps and help on undone steps are dropped)', await js(`const w = JSON.parse(localStorage.getItem('${K3}:see-wizard')); return !!w && !('bogus' in w.done) && !(w.helped || {}).tricky && !(w.checks.tricky && !w.checks.tricky.q)`));
   for (const [P, K, other] of [[P2, K2, K3], [P3, K3, K2]]) {
     await b.load(P); await js(`localStorage.setItem('${K}:see-wizard', '{"step":0,"done":{},"checks":{}}'); localStorage.setItem('${other}:see-wizard', '{"step":0,"done":{},"checks":{}}');`);

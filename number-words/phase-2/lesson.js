@@ -46,7 +46,7 @@
       slides: [
         model(13) + parts([{ t: 'thir' }, 'teen']) + big('13 → thirteen') + say('The start changes to <b>thir</b>. We do not write three + teen.'),
         model(15) + parts([{ t: 'fif' }, 'teen']) + big('15 → fifteen') + say('The start changes to <b>fif</b>. We do not write five + teen.'),
-        say('Complete a tricky spelling: one letter is missing.') + big('th _ rteen') + say('Say "thirteen" slowly. The missing letter is in the part that changes: <b>i</b>, so it is <b>thirteen</b>.')
+        say('Complete a tricky spelling: one letter is missing.') + big('fo _ rteen') + say('Say "fourteen" slowly. It is four + teen, so the missing letter is <b>u</b>: <b>fourteen</b>.')
       ],
       check: (r) => trickyQ({ id: 'learn-3', n: pick(r, [13, 15]) })
     },
@@ -58,7 +58,8 @@
         say('Fix a spelling mistake. Someone wrote 18 with an extra t:') + mistake('eightteen') + right('eighteen') +
           say('Find the part that is wrong, then write the whole word the right way.')
       ],
-      check: (r) => { const n = pick(r, [18, 15, 13, 19, 12]); return fixQ({ id: 'learn-4', n, which: Math.floor(r() * 2) }); }
+      // 18 uses its other misspelling: the example already showed "eightteen" (review NW23-04).
+      check: (r) => { const n = pick(r, [18, 15, 13, 19, 12]); return fixQ({ id: 'learn-4', n, which: n === 18 ? 1 : Math.floor(r() * 2) }); }
     },
     {
       id: 'twenty', kind: 'slides', title: 'Twenty: 2 tens',

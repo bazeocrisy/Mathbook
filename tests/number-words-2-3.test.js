@@ -190,3 +190,29 @@ test('Help mode, skill groups and separate saved progress', () => {
   assert.deepEqual(P.phases.map((p) => [p.id, p.title, p.status, p.href]), [['1', 'Numbers 0–10', 'ready', 'phase-1/'], ['2', 'Numbers 11–20', 'ready', 'phase-2/'], ['3', 'Numbers 20–99', 'ready', 'phase-3/'], ['4', 'Numbers 100–9,999', 'ready', 'phase-4/']]);
   for (const p of P.phases) assert.ok(p.card && p.card.length < 110, p.id);
 });
+
+test('Review fixes: listed misspellings are spelling slips; missing-letter hints never name the letter; Your Turns differ from the example', () => {
+  // NW23-02: every listed misspelling (alone, or as the tens part of a two-word number) is called a spelling slip.
+  for (const [w, note] of Object.entries(N.NOTES)) for (const bad of note.wrong || []) {
+    const n = N.VALUE[w];
+    assert.match(N.wordsTip({ answer: n }, bad), /^Check the spelling of/, `${w} ${bad}`);
+    if (n >= 20) assert.match(N.wordsTip({ answer: n + 7 }, `${bad}-seven`), /^Check the spelling of/, `${bad}-seven`);
+  }
+  // NW23-01: the clue for "fill in the missing letter" never prints that letter on its own.
+  for (let n = 11; n <= 99; n++) {
+    const q = N.trickyQ({ id: 'x', n });
+    assert.ok(!new RegExp(`(^|[^a-z])${q.answer}([^a-z]|$)`).test(q.hint.toLowerCase()), `${n}: ${q.hint}`);
+    assert.ok(!q.hint.toLowerCase().includes(q.word), `${n}: ${q.hint}`);
+  }
+  // NW23-04: the Learn Your Turn never asks the item its Example just showed.
+  const shownBy = { 'nw-2': { thirfif: 'fo_rteen', eighteen: 'eightteen' }, 'nw-3': { tricky: 'nin_ty' } };
+  for (const L of [L2, L3]) for (const st of L.seeIt.steps) {
+    const ex = shownBy[L.id][st.id];
+    if (!ex) continue;
+    for (const seed of seeds(200)) {
+      const q = st.check(pv.rng(seed));
+      const asked = q.type === 'letter' ? q.word.split('').map((c, i) => (i === q.missing ? '_' : c)).join('') : q.wrongForm;
+      assert.notEqual(asked, ex, `${L.id} ${st.id}`);
+    }
+  }
+});

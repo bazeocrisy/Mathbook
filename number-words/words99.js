@@ -29,23 +29,23 @@
     eight: { note: 'eight has a silent g and h: e-i-g-h-t.', clue: 'The ones word has a silent g and h.' },
     nine: { note: 'nine ends with a silent e.', clue: 'The ones word ends with a silent e.' },
     ten: { note: 'ten is t-e-n.', clue: 'It has three letters.' },
-    eleven: { note: 'eleven is a whole word to learn, with no -teen: e-l-e-v-e-n.', clue: 'It is a whole word with no -teen. It starts with "el" and has 6 letters.', blank: 3, wrong: ['elevin', 'elevan'] },
-    twelve: { note: 'twelve is a whole word to learn, with no -teen. It starts with tw, like two: t-w-e-l-v-e.', clue: 'It is a whole word with no -teen. It starts with "tw", like two, and ends with "ve".', blank: 4, wrong: ['twelf', 'twelv'] },
-    thirteen: { note: 'thirteen starts with thir-, not three-: thir + teen.', clue: 'It ends with -teen, but the start changes: it is not "three" + teen.', blank: 2, wrong: ['threeteen', 'thirtean'] },
-    fourteen: { note: 'fourteen is four + teen. It keeps the u of four.', clue: 'Write the word for 4, then -teen.', blank: 2, wrong: ['forteen', 'fourtean'] },
-    fifteen: { note: 'fifteen starts with fif-, not five-: fif + teen.', clue: 'It ends with -teen, but the start changes: it is not "five" + teen.', blank: 2, wrong: ['fiveteen', 'fifeteen'] },
-    sixteen: { note: 'sixteen is six + teen.', clue: 'Write the word for 6, then -teen.', blank: 2, wrong: ['sixtean', 'sixten'] },
-    seventeen: { note: 'seventeen is seven + teen.', clue: 'Write the word for 7, then -teen.', blank: 5, wrong: ['seventene', 'sevunteen'] },
-    eighteen: { note: 'eighteen is eight + een, with only one t: eight already ends in t.', clue: 'Eight already ends in t, so -teen does not add another t.', blank: 4, wrong: ['eightteen', 'eighten'] },
-    nineteen: { note: 'nineteen is nine + teen. It keeps the e at the end of nine.', clue: 'Write all of the word for 9, then -teen.', blank: 3, wrong: ['ninteen', 'ninetean'] },
-    twenty: { note: 'twenty means 2 tens. It starts with tw, like two and twelve, and ends with -ty.', clue: 'It means 2 tens: it starts with "tw", like two, and ends with -ty.', blank: 2, wrong: ['twinty', 'tweny'] },
-    thirty: { note: 'thirty starts with thir-, like thirteen, not three-: thir + ty.', clue: 'It starts like thirteen and ends with -ty.', blank: 2, wrong: ['threety', 'thirdy'] },
-    forty: { note: 'forty has no u. four has a u, but forty does not: f-o-r-t-y.', clue: 'It starts like four, but it drops the u. It ends with -ty.', blank: 2, wrong: ['fourty', 'fortey'] },
-    fifty: { note: 'fifty starts with fif-, like fifteen, not five-: fif + ty.', clue: 'It starts like fifteen and ends with -ty.', blank: 2, wrong: ['fivety', 'fifdy'] },
-    sixty: { note: 'sixty is six + ty.', clue: 'Write the word for 6, then -ty.', blank: 2, wrong: ['sixdy', 'sixtey'] },
-    seventy: { note: 'seventy is seven + ty.', clue: 'Write the word for 7, then -ty.', blank: 4, wrong: ['sevendy', 'seventie'] },
-    eighty: { note: 'eighty is eight + y, with only one t: eight already ends in t.', clue: 'Eight already ends in t, so just add y.', blank: 4, wrong: ['eightty', 'eigthy'] },
-    ninety: { note: 'ninety is nine + ty. It keeps the e of nine.', clue: 'Write all of the word for 9, then -ty.', blank: 3, wrong: ['ninty', 'ninedy'] }
+    eleven: { note: 'eleven is a whole word to learn, with no -teen: e-l-e-v-e-n.', clue: 'It is a whole word with no -teen. It starts with "el" and has 6 letters.', blank: 3, tclue: 'It is a whole word with no -teen. Say it slowly and listen for the sound just before the last two letters.', wrong: ['elevin', 'elevan'] },
+    twelve: { note: 'twelve is a whole word to learn, with no -teen. It starts with tw, like two: t-w-e-l-v-e.', clue: 'It is a whole word with no -teen. It starts with "tw", like two, and ends with "ve".', blank: 4, tclue: 'It is a whole word with no -teen. Say it slowly and listen for the sound just before the last letter.', wrong: ['twelf', 'twelv'] },
+    thirteen: { note: 'thirteen starts with thir-, not three-: thir + teen.', clue: 'It ends with -teen, but the start changes: it is not "three" + teen.', blank: 2, tclue: 'The start is not the word three. Say it slowly: which vowel sound comes right after th?', wrong: ['threeteen', 'thirtean'] },
+    fourteen: { note: 'fourteen is four + teen. It keeps the u of four.', clue: 'Write the word for 4, then -teen.', blank: 2, tclue: 'It is the word for 4, then -teen. Keep every letter of the word for 4.', wrong: ['forteen', 'fourtean'] },
+    fifteen: { note: 'fifteen starts with fif-, not five-: fif + teen.', clue: 'It ends with -teen, but the start changes: it is not "five" + teen.', blank: 2, tclue: 'The start is not the word five. Say it slowly and listen for the sound before -teen.', wrong: ['fiveteen', 'fifeteen'] },
+    sixteen: { note: 'sixteen is six + teen.', clue: 'Write the word for 6, then -teen.', blank: 2, tclue: 'It is the word for 6, then -teen.', wrong: ['sixtean', 'sixten'] },
+    seventeen: { note: 'seventeen is seven + teen.', clue: 'Write the word for 7, then -teen.', blank: 5, tclue: 'It is the word for 7, then the ending that the words for 13 to 19 share.', wrong: ['seventene', 'sevunteen'] },
+    eighteen: { note: 'eighteen is eight + een, with only one t: eight already ends in t.', clue: 'Eight already ends in t, so -teen does not add another t.', blank: 4, tclue: 'Think about how the word for 8 ends. That letter is not written twice.', wrong: ['eightteen', 'eighten'] },
+    nineteen: { note: 'nineteen is nine + teen. It keeps the e at the end of nine.', clue: 'Write all of the word for 9, then -teen.', blank: 3, tclue: 'Keep every letter of the word for 9, then add -teen.', wrong: ['ninteen', 'ninetean'] },
+    twenty: { note: 'twenty means 2 tens. It starts with tw, like two and twelve, and ends with -ty.', clue: 'It means 2 tens: it starts with "tw", like two, and ends with -ty.', blank: 2, tclue: 'Say it slowly and listen for the vowel sound after tw.', wrong: ['twinty', 'tweny'] },
+    thirty: { note: 'thirty starts with thir-, like thirteen, not three-: thir + ty.', clue: 'It starts like thirteen and ends with -ty.', blank: 2, tclue: 'The start is not the word three. Say it slowly: which vowel sound comes right after th?', wrong: ['threety', 'thirdy'] },
+    forty: { note: 'forty has no u. four has a u, but forty does not: f-o-r-t-y.', clue: 'It starts like four, but it drops the u. It ends with -ty.', blank: 2, tclue: 'It sounds like the word for 4, but one letter is dropped. Say it slowly and listen before -ty.', wrong: ['fourty', 'fortey'] },
+    fifty: { note: 'fifty starts with fif-, like fifteen, not five-: fif + ty.', clue: 'It starts like fifteen and ends with -ty.', blank: 2, tclue: 'The start is not the word five. Say it slowly and listen for the sound before -ty.', wrong: ['fivety', 'fifdy'] },
+    sixty: { note: 'sixty is six + ty.', clue: 'Write the word for 6, then -ty.', blank: 2, tclue: 'It is the word for 6, then -ty.', wrong: ['sixdy', 'sixtey'] },
+    seventy: { note: 'seventy is seven + ty.', clue: 'Write the word for 7, then -ty.', blank: 4, tclue: 'Keep every letter of the word for 7, then add -ty.', wrong: ['sevendy', 'seventie'] },
+    eighty: { note: 'eighty is eight + y, with only one t: eight already ends in t.', clue: 'Eight already ends in t, so just add y.', blank: 4, tclue: 'Think about how the word for 8 ends. Then only y is added.', wrong: ['eightty', 'eigthy'] },
+    ninety: { note: 'ninety is nine + ty. It keeps the e of nine.', clue: 'Write all of the word for 9, then -ty.', blank: 3, tclue: 'Keep every letter of the word for 9, then add -ty.', wrong: ['ninty', 'ninedy'] }
   };
   const TENS = [20, 30, 40, 50, 60, 70, 80, 90];
   const TEENS = [11, 12, 13, 14, 15, 16, 17, 18, 19, 20];
@@ -58,6 +58,9 @@
   const VALUE = {};
   for (let n = 0; n <= 99; n++) VALUE[norm(W(n))] = n;
   const WORDS = Object.keys(NOTES); // the single words 1–20 and the tens
+  /** Each listed misspelling → the word it misspells (checked before any closest-word guess). */
+  const MISSPELT = {};
+  WORDS.forEach((w) => (NOTES[w].wrong || []).forEach((bad) => { MISSPELT[bad] = w; }));
 
   function dist(a, b) {
     const m = a.length, n = b.length, d = [];
@@ -68,6 +71,7 @@
   }
   /** The closest real number word to a typed token (ties go to `prefer`). */
   function closest(tok, prefer) {
+    if (MISSPELT[tok]) return { word: MISSPELT[tok], d: 1 };
     let best = null, bd = Infinity;
     WORDS.forEach((w) => { const d = dist(tok, w); if (d < bd || (d === bd && w === prefer)) { best = w; bd = d; } });
     return { word: best, d: bd };
@@ -132,7 +136,7 @@
   function trickyQ(o) {
     const n = o.n, k = keyWord(n), word = W(n), missing = NOTES[k].blank;
     return { id: o.id, type: 'letter', skill: 'tricky', word, missing, answer: word[missing],
-      prompt: `Fill in the missing letter in the word for ${n}.`, hint: `Say the word slowly. ${NOTES[k].clue}`, explanation: explain(n) };
+      prompt: `Fill in the missing letter in the word for ${n}.`, hint: NOTES[k].tclue, explanation: explain(n) };
   }
   /** Fix a misspelled word. The wrong spelling is shown only here, always labelled as a mistake. */
   function fixQ(o) {
@@ -195,7 +199,7 @@
   function letterTip(q, r) {
     if (!r || String(r).trim().toLowerCase() === q.answer) return '';
     const n = VALUE[norm(q.word)];
-    return `Not that letter. ${NOTES[keyWord(n)].clue}`;
+    return `Not that letter. ${NOTES[keyWord(n)].tclue}`;
   }
   /** The engine's feedback hook (help mode): specific, encouraging, and never the full answer. */
   function tip(q, r) {
@@ -244,15 +248,19 @@
   const SPELLING = ['spell', 'fix', 'tricky'];
   /**
    * A test is fair when each spelling question (write, fix, complete) has its own tricky word (the teen or tens word),
-   * and no other question prints that word, whole or as part of a two-word number.
+   * and no other question prints that word (or a two-word answer's ones word), whole or as part of a two-word number.
    */
   function testOK(qs) {
     const sp = qs.filter((q) => SPELLING.includes(q.skill));
     const keys = sp.map((q) => keyWord(numOf(q)));
     if (new Set(keys).size !== keys.length) return false;
     if (new Set(qs.map((q) => q.skill + ':' + numOf(q))).size !== qs.length) return false; // never the same task twice
-    return sp.every((q) => { const k = keyWord(numOf(q)); return !qs.some((o) => o.id !== q.id && shownWords(o).some((w) => norm(w).split(' ').includes(k))); });
+    // The teen or tens word, and for a two-word number its ones word too (review NW23-03), is printed by no other question.
+    return sp.every((q) => {
+      const n = numOf(q), guard = [keyWord(n)].concat(n >= 20 && n % 10 ? [W(n % 10)] : []);
+      return !qs.some((o) => o.id !== q.id && shownWords(o).some((w) => norm(w).split(' ').some((part) => guard.includes(part))));
+    });
   }
 
-  MB.nw99 = { NOTES, TENS, TEENS, VALUE, W, explain, spellHint, READ_HINT, nearNumbers, matchQ, readQ, spellQ, trickyQ, fixQ, tip, wordsTip, numberTip, tensOnesFig, partsHTML, leaks, keyWord, closest, numOf, shownWords, testOK };
+  MB.nw99 = { NOTES, TENS, TEENS, VALUE, W, explain, spellHint, READ_HINT, nearNumbers, matchQ, readQ, spellQ, trickyQ, fixQ, tip, wordsTip, numberTip, tensOnesFig, partsHTML, leaks, keyWord, closest, numOf, shownWords, testOK, MISSPELT };
 })(typeof window !== 'undefined' ? window : globalThis);
