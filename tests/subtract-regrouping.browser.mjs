@@ -72,6 +72,10 @@ try {
     inp().value = String(it.tens - 1); fire(inp(), 'input'); click('check'); await sleep(30);
     out.q1 = q(); out.firstKept = (box.querySelector('.sr-done-line') || {}).textContent;
     click('show'); await sleep(40);
+    out.demo0 = { part: (box.querySelector('.demo-count') || {}).textContent, noInput: !box.querySelector('#sr-q1in'), notDone: !box.querySelector('.sr-complete') && document.querySelector('[data-w="next"]').disabled && !(get('see-wizard').done || {}).value, ones: (get('see-wizard').checks.value.resp || {}).o || '', focus: document.activeElement.className };
+    out.says = [box.querySelector('.sr-say').textContent]; out.mid = [];
+    for (let k = 0; k < 3; k++) { out.mid.push(!box.querySelector('.sr-complete') && document.querySelector('[data-w="next"]').disabled); click('d-next'); await sleep(30); out.says.push((box.querySelector('.sr-say') || {}).textContent); }
+    out.kept = { demo: !!box.querySelector('.sr-showdemo .sr-blocks2'), say: (box.querySelector('.sr-showdemo .sr-say') || {}).textContent, start: !!box.querySelector('.sr-xt > .sr-blocks2') };
     out.shown = (box.querySelector('.sr-shown') || {}).textContent; out.focusDone = document.activeElement.classList.contains('sr-complete'); out.done = (box.querySelector('.feedback-ok') || {}).textContent;
     out.next = !document.querySelector('[data-w="next"]').disabled; out.helped = get('see-wizard').helped; out.n = it.n; out.t = it.tens; out.o = it.ones;
     return out;`);
@@ -80,8 +84,11 @@ try {
   check('A wrong answer gets concrete feedback naming the amounts, plus Try again · Get a hint · Show me how', new RegExp(yt1.n + ' has ' + yt1.t + ' tens').test(yt1.wrong) && yt1.retryRow === 'Try again|Get a hint|Show me how', yt1);
   check('Get a hint gives a next step without the answer; the typed entry is kept', /Start with the/.test(yt1.hint) && !new RegExp('\\b' + (yt1.t - 1) + ' tens are left').test(yt1.hint) && yt1.keptValue === String(yt1.t), yt1);
   check('Right answer → the next single question ("How many ones are there now?"), the first answer kept', yt1.q1 === 'How many ones are there now?' && new RegExp(String(yt1.t - 1)).test(yt1.firstKept), yt1);
-  check('Finishing step 1 moves focus to the completion message (not the page)', yt1.focusDone, yt1);
-  check('Show me explains with the amounts, finishes the step, unlocks Next, and records it as done WITH help', /\+ 10 =/.test(yt1.shown) && /The value is the same/.test(yt1.done) && yt1.next && yt1.helped && yt1.helped.value === true, yt1);
+  check('Step 1 Show me plays the exchange with the blocks, one part at a time (Part 1 of 4); the answer is not filled in and the step is not done while it plays',
+    yt1.demo0.part === 'Part 1 of 4' && yt1.demo0.noInput && yt1.demo0.notDone && yt1.demo0.ones === '' && /sr-showdemo-h/.test(yt1.demo0.focus) && yt1.mid.every(Boolean), yt1);
+  check('Its parts show each action: has → exchange 1 ten for 10 ones → tens and ones now → value the same', new RegExp(yt1.n + ' has').test(yt1.says[0]) && /Exchange 1 ten for 10 ones/.test(yt1.says[1]) && /Now there are/.test(yt1.says[2]) && /The value is the same/.test(yt1.says[3]), yt1.says);
+  check('After it ends: the model and explanation stay on screen (with the starting blocks); focus moves to the completion message', yt1.kept.demo && yt1.kept.start && /The value is the same/.test(yt1.kept.say) && yt1.focusDone, yt1.kept);
+  check('Then the answer is filled in with its explanation, the step says "Completed with help", Next unlocks, and it is recorded WITH help', /\+ 10 =/.test(yt1.shown) && /Completed with help/.test(yt1.done) && /The value is the same/.test(yt1.done) && yt1.next && yt1.helped && yt1.helped.value === true, yt1);
   await b.reload(); await wait(250);
   const kept = await js(`return { phase: document.querySelector('.phase-tag').textContent, next: !document.querySelector('[data-w="next"]').disabled }`);
   check('Learn: phase and completion survive a refresh', kept.phase === 'Your Turn' && kept.next, kept);
@@ -104,26 +111,34 @@ try {
   // ----- Recovery: finish all of Learn using only Show me; credited as "with help", never as independent -----
   await b.load(URL + '#menu'); await js(`localStorage.removeItem('${KEY}:see-wizard')`);
   await b.load(URL + '#see'); await b.reload(); await wait(250);
-  const journey = await js(`${H} const log = [];
+  const journey = await js(`${H} const log = [], played = [];
     for (let k = 0; k < 9; k++) {
       document.querySelector('[data-w="try"]').click(); await sleep(150);
       const box = document.querySelector('#sr-try');
-      if (box.querySelector('#sr-q1in')) { box.querySelector('[data-x="show"]').click(); await sleep(40); box.querySelector('[data-x="show"]').click(); await sleep(40); }
+      if (box.querySelector('#sr-q1in')) { box.querySelector('[data-x="show"]').click(); await sleep(40); for (let p = 0; p < 3; p++) { box.querySelector('[data-x="d-next"]').click(); await sleep(30); } }
       else if (box.querySelector('#sr-yt')) { for (let g = 0; g < 40 && box.querySelector('[data-act="g-show"]'); g++) { box.querySelector('[data-act="g-show"]').click(); await sleep(20); } }
-      else { const sh = box.querySelector('[data-help="show"]'); if (sh) sh.click(); await sleep(60); }
+      else { const sh = box.querySelector('[data-help="show"]'); if (sh) sh.click(); await sleep(60);
+        const nb = () => box.querySelector('.sr-worked [data-act="next"]'); const lockedBefore = document.querySelector('[data-w="next"]') ? document.querySelector('[data-w="next"]').disabled : document.querySelector('[data-w="finish"]').classList.contains('is-disabled');
+        const filledBefore = Array.from(box.querySelectorAll('input[type=radio]')).some((r) => r.checked) || Array.from(box.querySelectorAll('[data-ws="answer"] input.sk-ans')).some((x) => x.value);
+        let parts = 0, ex = 0; while (nb() && !nb().disabled && parts < 60) { nb().click(); parts++; await sleep(10); if (/^Exchange 1/.test((box.querySelector('.sr-worked .sk-note') || {}).textContent)) ex++; }
+        const it = C.learn[k].yourTurn(M.rng(get('see-wizard').checks[C.learn[k].id].seed));
+        played.push({ id: C.learn[k].id, lockedBefore, filledBefore, parts, ex, wantEx: M.plan(it.top, it.bottom).exchanges.length, kept: !!box.querySelector('.sr-worked .sk-grid') && !!box.querySelector('.sr-shown-end .sk-steps'), done: (box.querySelector('.sr-shown-done') || {}).textContent || '' }); }
       const nx = document.querySelector('[data-w="next"]'), fin = document.querySelector('[data-w="finish"]');
       log.push(C.learn[k].id + ':' + (nx ? !nx.disabled : !fin.classList.contains('is-disabled')));
       if (nx) { nx.click(); await sleep(150); }
     }
-    const W = get('see-wizard'); return { log, done: Object.keys(W.done).length, helped: Object.keys(W.helped || {}).length };`);
+    const W = get('see-wizard'); return { log, played, done: Object.keys(W.done).length, helped: Object.keys(W.helped || {}).length };`);
   check('A learner can finish every Learn step with Show me (no dead ends)', journey.log.length === 9 && journey.log.every((x) => /:true$/.test(x)) && journey.done === 9, journey);
   check('Learn finished with Show me is recorded as 9 of 9 WITH help (not independent)', journey.helped === 9, journey);
+  check('Learn questions (decide, mistakes, check, 4-digit): Show me plays every exchange first; answers stay empty and Next stays locked until it ends',
+    journey.played.length === 3 && journey.played.every((x) => x.lockedBefore && !x.filledBefore && x.parts > 0 && x.ex === x.wantEx), journey.played);
+  check('…then the worked model, explanation and steps stay on screen and it says "Completed with help"', journey.played.every((x) => x.kept && /Completed with help/.test(x.done)), journey.played);
   await b.load(URL + '#results'); await b.reload(); await wait(250);
-  check('My Results says "9 of 9 steps done (9 with help)" and shows no test score from it', await js(`return /Learn: 9 of 9 steps done \\(9 with help\\)/.test(document.querySelector('main').innerText) && /No test results yet/.test(document.querySelector('main').innerText)`));
+  check('My Results says "9 of 9 steps done (9 completed with help)" and shows no test score from it', await js(`return /Learn: 9 of 9 steps done \\(9 completed with help\\)/.test(document.querySelector('main').innerText) && /No test results yet/.test(document.querySelector('main').innerText)`));
   // SR-M18: "with help" counts only steps that are also done (damaged data cannot inflate it).
   await b.load(URL + '#menu'); await js(`const W = JSON.parse(localStorage.getItem('${KEY}:see-wizard')); delete W.done.four; localStorage.setItem('${KEY}:see-wizard', JSON.stringify(W))`);
   await b.load(URL + '#results'); await b.reload(); await wait(250);
-  { const t = await js(`return document.querySelector("main").innerText`); check('My Results counts "with help" only for steps that are done (8 of 9 → 8 with help)', /Learn: 8 of 9 steps done \(8 with help\)/.test(t), t.slice(0, 400)); }
+  { const t = await js(`return document.querySelector("main").innerText`); check('My Results counts "completed with help" only for steps that are done (8 of 9 → 8)', /Learn: 8 of 9 steps done \(8 completed with help\)/.test(t), t.slice(0, 400)); }
   // SR-M17: Try again returns focus to the part that was wrong (Learn decide: the column group, not "Yes").
   await b.load(URL + '#menu'); await js(`localStorage.setItem('${KEY}:see-wizard', JSON.stringify({ v: 1, step: 6, done: {}, phase: {}, ex: {}, checks: {}, helped: {} }))`);
   await b.load(URL + '#see'); await b.reload(); await wait(250);
@@ -135,6 +150,17 @@ try {
     box.querySelector('.feedback-area [data-help="retry"]').click(); await sleep(30);
     const a = document.activeElement; return { name: a.name, value: a.value, wrongCol, first: it.first };`);
   check('Learn decide: Try again focuses the wrong column choice, not the right "Yes/No"', /c2$/.test(dfx.name) && dfx.value === dfx.wrongCol, dfx);
+  // SR-D29 / SR-D30: the Show me player puts each sentence before its controls, and a refresh resumes it at the same part.
+  await b.load(URL + '#menu'); await js(`localStorage.setItem('${KEY}:see-wizard', JSON.stringify({ v: 1, step: 6, done: {}, phase: {}, ex: {}, checks: {}, helped: {} }))`);
+  await b.load(URL + '#see'); await b.reload(); await wait(250);
+  await js(`document.querySelector('[data-w="try"]').click()`); await wait(200);
+  const pl1 = await js(`${H} const box = document.querySelector('#sr-try'); box.querySelector('[data-help="show"]').click(); await sleep(40);
+    for (let k = 0; k < 2; k++) { box.querySelector('.sr-worked [data-act="next"]').click(); await sleep(30); }
+    const note = box.querySelector('.sr-worked .sk-note'), ctl = box.querySelector('.sr-worked .sk-democtl');
+    return { part: box.querySelector('.sr-worked .sk-partof').textContent, noteFirst: !!(note.compareDocumentPosition(ctl) & Node.DOCUMENT_POSITION_FOLLOWING) };`);
+  await b.reload(); await wait(300);
+  const pl2 = await js(`const box = document.querySelector('#sr-try'); return { part: (box.querySelector('.sr-worked .sk-partof') || {}).textContent, filled: Array.from(box.querySelectorAll('input[type=radio]')).some((r) => r.checked), locked: document.querySelector('[data-w="next"]').disabled };`);
+  check('Show me player: the sentence comes before its controls (stays in view on phones), and a refresh mid-play resumes the same part with nothing filled in yet', pl1.noteFirst && pl1.part === 'Part 3' + pl1.part.slice(6) && pl2.part === pl1.part && !pl2.filled && pl2.locked, { pl1, pl2 });
   // SR-M17: guided wrong getter (7,405 − 3,168: tens written 1) → Try again focuses the tens box, not the right hundreds box.
   await b.load(URL + '#menu'); await js(`localStorage.setItem('${KEY}:guided', JSON.stringify({ v: 1, pos: 5, seed: 0, states: {}, done: {} }))`);
   await b.load(URL + '#practice/together'); await b.reload(); await wait(300);
@@ -194,13 +220,21 @@ try {
     log.showNow = !!box.querySelector('[data-act="solution"]'); // Show me is there from the start (no hint gate)
     for (let k = 0; k < 3; k++) box.querySelector('[data-act="hint"]').click();
     log.h4 = !!box.querySelector('[data-act="solution"]'); log.noSolYet = !box.querySelector('.sk-solution');
-    box.querySelector('[data-act="solution"]').click(); log.sol = !!box.querySelector('.sk-solution .sk-grid');
+    const own = () => Array.from(box.querySelectorAll('input.sk-ans')).filter((x) => !x.closest('[data-sk-mini]')).map((x) => x.value).join('');
+    box.querySelector('[data-act="solution"]').click(); await sleep(20); log.sol = !!box.querySelector('.sk-solution .sk-mode-demo .sk-grid');
+    log.before = { own: own(), done: !!box.querySelector('.sk-shown-done'), steps: !!box.querySelector('.sk-solution .sk-steps'), correct: !!(get('bank-sets').setup.active.results.q1 || {}).correct };
+    const mini = box.querySelector('[data-sk-mini]'); const notes = []; let n = 0;
+    while (mini.querySelector('[data-act="next"]:not([disabled])') && n < 60) { mini.querySelector('[data-act="next"]').click(); n++; notes.push(mini.querySelector('.sk-note').textContent); }
+    log.play = { n, ex: notes.filter((t) => /^Exchange 1/.test(t)).length, wantEx: p.exchanges.length };
+    log.after = { own: own(), want: String(q.top - q.bottom), done: (box.querySelector('.sk-shown-done') || {}).textContent, steps: !!box.querySelector('.sk-solution-end .sk-steps'), kept: !!mini.querySelector('.sk-grid'), marks: Object.keys(get('bank-sets').setup.active.responses.q1.ws.ann).length, focus: document.activeElement.className, res: get('bank-sets').setup.active.results.q1 };
     digits(box, q.top - q.bottom); box.querySelector('[data-act="check"]').click(); await sleep(30); log.right = fb(box);
     log.result = get('bank-sets').setup.active.results.q1; return log;`);
   check('Check with nothing typed asks for an answer (empty is not 0)', /Write your answer/.test(ind.empty), ind.empty);
   check('A smaller-from-larger answer gets that specific feedback; wrong digits are marked; work is kept', /can't take .* and you can't turn it around/.test(ind.wrong) && ind.marked >= 1, ind);
   check('Regroup marks are saved; Undo removes the last one; Clear work removes all marks', ind.marks.length > 2 && ind.undo !== ind.marks && ind.clear === '{}', ind);
   check('Hints step up; Show me is available at once (no hint gate) and shows a separate vertical worked answer', /^Hint 1 of 4: Look at the \w+ column/.test(ind.h1) && ind.showNow && ind.h4 && ind.noSolYet && ind.sol, ind);
+  check('Practice Show me plays each exchange first; the child\'s answer is not filled in and nothing is recorded correct until it ends', ind.sol && ind.before.own !== String(ind.after.want) && !ind.before.done && !ind.before.steps && !ind.before.correct && ind.play.n > 0 && ind.play.ex === ind.play.wantEx, ind);
+  check('When it ends: the answer and regroup marks are filled in, the model and steps stay on screen, "Completed with help", recorded WITH help (not first try)', ind.after.own === ind.after.want && ind.after.marks > 0 && ind.after.kept && ind.after.steps && /Completed with help/.test(ind.after.done) && /sk-shown-done/.test(ind.after.focus) && ind.after.res.correct === true && ind.after.res.helped === true && ind.after.res.firstTry === false, ind.after);
   check('After Show me, a right answer is recorded as done WITH help (not on your own, not first try)', /Correct!/.test(ind.right) && ind.result.helped === true && ind.result.firstTry === false, ind.result);
   await b.reload(); await wait(300);
   check('Refresh keeps the question and the typed answer', await js(`${H} const box = document.querySelector('#sr-ws'); return document.querySelector('.q-count').textContent === 'Question 1 of 10' && Array.from(box.querySelectorAll('.sk-ans')).map((x) => x.value).join('') !== ''`));
@@ -214,6 +248,13 @@ try {
   await b.load(URL + '#practice/skill-zeros2'); await wait(300);
   const sk = await js(`${H} return { count: document.querySelector('.q-count').textContent, skill: !!get('skill-practice')['skill-zeros2'].active, setupPos: get('bank-sets').setup.active.pos }`);
   check('Practice One Skill (zeros next to each other): 6 questions, saved apart from Practice on My Own', sk.count === 'Question 1 of 6' && sk.skill && sk.setupPos === 1, sk);
+  const zz = await js(`${H} const box = document.querySelector('#sr-ws'); const it = C.skillSession('zeros2', get('skill-practice')['skill-zeros2'].active.seed)[0]; const p = M.plan(it.top, it.bottom);
+    box.querySelector('[data-act="solution"]').click(); await sleep(20); const mini = box.querySelector('[data-sk-mini]'); const seen = []; let n = 0;
+    const own = () => Array.from(box.querySelectorAll('input.sk-ans')).filter((x) => !x.closest('[data-sk-mini]')).map((x) => x.value).join('');
+    const before = own();
+    while (mini.querySelector('[data-act="next"]:not([disabled])') && n < 60) { mini.querySelector('[data-act="next"]').click(); n++; const t = mini.querySelector('.sk-note').textContent; if (/^Exchange 1/.test(t)) seen.push(t.slice(0, 40)); if (n === 1) var mid = own(); }
+    return { top: it.top, bottom: it.bottom, four: M.lengthOf(it.top) === 4, chain: p.columns.some((c) => c.chain >= 2), wantEx: p.exchanges.length, seen, before, mid, after: own(), want: String(it.top - it.bottom), done: (box.querySelector('.sk-shown-done') || {}).textContent, res: get('skill-practice')['skill-zeros2'].active.results[it.id] };`);
+  check('Four-digit across two zeros: Show me shows every exchange (one per part) before the answer is filled; then completed with help', zz.four && zz.chain && zz.seen.length === zz.wantEx && zz.wantEx >= 3 && zz.before === '' && zz.mid === '' && zz.after === zz.want && /Completed with help/.test(zz.done) && zz.res && zz.res.helped === true, zz);
   await b.load(URL + '#practice/skill-mistakes'); await wait(300);
   const mk = await js(`${H} const it = C.skillSession('mistakes', get('skill-practice')['skill-mistakes'].active.seed)[0]; const box = document.querySelector('#sr-q');
     box.querySelector('[data-check]').click(); await sleep(30); const f0 = fb(box);

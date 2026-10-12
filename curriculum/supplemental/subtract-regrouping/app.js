@@ -36,6 +36,8 @@
   /** Is a saved response usable for this item? (structure and values) */
   function validResponse(item, r) {
     if (!isObj(r)) return false;
+    if (r.sd !== undefined && typeof r.sd !== 'boolean') return false;
+    if (r.sp !== undefined && !isInt(r.sp, 0, 60)) return false;
     if (r.ws !== undefined && r.ws !== null && !SK.validState(r.ws, item.top, item.bottom)) return false;
     if (r.ws2 !== undefined && r.ws2 !== null && !SK.validState(r.ws2, item.top, item.bottom)) return false;
     const okChoice = (v, list) => v === undefined || v === null || v === '' || (typeof v === 'string' && list.includes(v));
@@ -360,7 +362,7 @@
       const showAgain = (helped) => {
         let a = box.querySelector('.sr-again');
         if (!a) { box.insertAdjacentHTML('beforeend', '<div class="sr-again"></div>'); a = box.querySelector('.sr-again'); }
-        a.innerHTML = (helped ? '<p class="sr-helped">Done with help. When you are ready, try a similar problem on your own (or go on).</p>' : '') +
+        a.innerHTML = (helped ? '<p class="sr-helped">Completed with help. When you are ready, try a similar problem on your own (or go on).</p>' : '') +
           `<button type="button" class="btn btn-ghost" data-new>${helped ? 'Try a similar problem' : 'New problem'}</button>`;
         a.querySelector('[data-new]').addEventListener('click', () => { W.checks[step.id] = { seed: shell.newSeed() }; save('see-wizard', W); drawStep(W); focusH('.wiz-h'); });
       };
@@ -397,23 +399,33 @@
           wrong: (v) => `There were ${on} ones, and the exchanged ten becomes 10 ones${v === on + 1 ? ' (10 ones, not 1)' : ''}.`,
           show: `There were ${on} ones. 1 ten = 10 ones, so now there are ${on} + 10 = ${on + 10} ones.` }
       ];
+      const parts = blockParts(n), last = parts.length - 1;
+      let demoK = R0.sp !== undefined && !R0.sd && R0.q < 2 ? Math.min(R0.sp, last) : -1; // the Show me part on screen (-1: not playing; once finished, R0.sd keeps the last part on screen); saved as sp (SR-D30)
+      box.innerHTML = '<div class="sr-xt"></div><p class="sk-sr" aria-live="polite" id="sr-show-live"></p>';
+      const host = box.querySelector('.sr-xt'), liveEl = box.querySelector('#sr-show-live');
+      const announce = (msg) => { liveEl.textContent = ''; setTimeout(() => { liveEl.textContent = msg; }, 50); };
       const draw = (focusSel) => {
-        const q = R0.q;
+        const q = R0.q, showing = demoK >= 0 || !!R0.sd, k = demoK >= 0 ? demoK : last;
         let h = `<p class="q-prompt">Exchange 1 ten for 10 ones in ${n}.</p>${blocks2(t, on)}`;
         QS.forEach((Q, k) => { if (k < q) h += `<p class="sr-done-line"><span aria-hidden="true">✓ </span>${esc(Q.label)} <b>${R0[Q.key]}</b>${R0['h' + k] ? ' <span class="sr-helped-tag">(shown)</span>' : ''}</p>${R0['h' + k] ? `<p class="sr-shown">${esc(Q.show)}</p>` : ''}`; });
-        if (q < 2) {
+        if (showing) {
+          h += `<div class="sr-showdemo"><p class="sr-showdemo-h" tabindex="-1"><b>Show me:</b> watch the exchange, one part at a time.</p><div class="sr-blockdemo">${parts[k].html}<p class="slide-say sr-say">${esc(parts[k].say)}</p></div>` +
+            `<div class="demo-controls"><button type="button" class="btn btn-ghost" data-x="d-back"${k === 0 ? ' disabled' : ''}>◀ Back</button><span class="demo-count">Part ${k + 1} of ${parts.length}</span>` +
+            `<button type="button" class="btn btn-primary" data-x="d-next"${k === last ? ' disabled' : ''}>Next ▶</button></div></div>`;
+        }
+        if (q < 2 && !showing) {
           const Q = QS[q];
           h += `<div class="sr-q1"><label class="sr-q1-label" for="sr-q1in">${esc(Q.label)}</label> <input id="sr-q1in" class="ci sr-num" inputmode="numeric" maxlength="2" autocomplete="off" value="${esc(R0[Q.key] || '')}"></div>` +
             `<div class="check-row sr-helprow"><button type="button" class="btn btn-primary" data-x="check">Check Answer</button><button type="button" class="btn btn-ghost" data-x="hint">💡 Hint</button><button type="button" class="btn btn-ghost" data-x="show">Show me</button></div>` +
             `<div class="feedback-area" aria-live="polite"></div>`;
-        } else {
-          h += `<p class="sr-after-h">After the exchange:</p>${blocks2(t - 1, on + 10, { hiT: true, chipT: '−1', hiO: true, chipO: '+10' })}` +
-            `<div class="feedback feedback-ok sr-complete" tabindex="-1"><p><span aria-hidden="true">✓ </span>Now there are ${tens(t - 1)} and ${ones(on + 10)}. ${(t - 1) * 10} + ${on + 10} = ${n}. The value is the same.</p></div>`;
+        } else if (q === 2) {
+          h += (R0.sd ? '' : `<p class="sr-after-h">After the exchange:</p>${blocks2(t - 1, on + 10, { hiT: true, chipT: '−1', hiO: true, chipO: '+10' })}`) +
+            `<div class="feedback feedback-ok sr-complete" tabindex="-1"><p><span aria-hidden="true">✓ </span>${R0.helped ? 'Completed with help. ' : ''}Now there are ${tens(t - 1)} and ${ones(on + 10)}. ${(t - 1) * 10} + ${on + 10} = ${n}. The value is the same.</p></div>`;
         }
-        box.innerHTML = h;
+        host.innerHTML = h;
         const inp = box.querySelector('#sr-q1in');
         if (inp) inp.addEventListener('input', () => { inp.value = inp.value.replace(/\D/g, '').slice(0, 2); R0[QS[R0.q].key] = inp.value; o.onChange(Object.assign({}, R0)); });
-        box.querySelectorAll('[data-x]').forEach((b) => b.addEventListener('click', () => act(b.dataset.x)));
+        host.querySelectorAll('[data-x]').forEach((b) => b.addEventListener('click', () => act(b.dataset.x)));
         if (focusSel) { const f = box.querySelector(focusSel); if (f) f.focus({ preventScroll: true }); }
       };
       const fbArea = () => box.querySelector('.feedback-area');
@@ -425,12 +437,27 @@
         if (R0.q === 2) o.onDone(!!R0.helped);
       };
       function act(x) {
-        const Q = QS[R0.q], area = fbArea();
+        const Q = QS[R0.q], area = fbArea() || document.createElement('div');
         const mainHelp = box.querySelectorAll('.sr-helprow:not(.sr-retry) [data-x="hint"], .sr-helprow:not(.sr-retry) [data-x="show"]');
         mainHelp.forEach((b) => { b.hidden = false; });
         if (x === 'retry') { area.innerHTML = ''; const i = box.querySelector('#sr-q1in'); if (i) { i.focus(); i.select(); } return; }
         if (x === 'hint') { area.innerHTML = `<div class="feedback feedback-info"><p><span aria-hidden="true">💡 </span>${esc(Q.hint)}</p></div>`; return; }
-        if (x === 'show') { R0[Q.key] = String(Q.want); next(true); return; } // the worked line is drawn under its question (see draw)
+        // Show me: play the exchange with the blocks, one part at a time. The answers are filled in only when it ends.
+        if (x === 'show') { demoK = 0; R0.helped = true; R0.sp = 0; o.onChange(Object.assign({}, R0)); draw('.sr-showdemo-h'); announce(parts[0].say); return; }
+        if (x === 'd-back' || x === 'd-next') {
+          const cur = demoK >= 0 ? demoK : last;
+          demoK = Math.max(0, Math.min(last, cur + (x === 'd-next' ? 1 : -1)));
+          if (R0.q < 2) { R0.sp = demoK; o.onChange(Object.assign({}, R0)); }
+          if (demoK === last && R0.q < 2) {
+            for (let j = R0.q; j < 2; j++) { R0[QS[j].key] = String(QS[j].want); R0['h' + j] = true; }
+            R0.q = 2; R0.sd = true; o.onChange(Object.assign({}, R0));
+            draw('.sr-complete'); announce(`${parts[last].say} Completed with help.`);
+            o.onDone(true);
+            return;
+          }
+          draw(demoK === last ? '[data-x="d-back"]' : demoK === 0 ? '[data-x="d-next"]' : `[data-x="${x}"]`); announce(parts[demoK].say);
+          return;
+        }
         const v = String(R0[Q.key] || '').trim();
         if (!/^\d+$/.test(v)) { area.innerHTML = '<div class="feedback"><p>Type a number, then check.</p></div>'; return; }
         if (Number(v) === Q.want) { next(false); return; }
@@ -481,8 +508,9 @@
         ansInst.on('change', (d) => { R[ansKey] = d.state; fire(); });
         if (o.onWorkspace) o.onWorkspace(ansInst);
       }
+      let stepsInst = null;
       if (wsSteps) {
-        const inst = keep(SK.mount(wsSteps, { top: item.top, bottom: item.bottom, mode: 'test', answer: false, state: R.ws || null }));
+        const inst = stepsInst = keep(SK.mount(wsSteps, { top: item.top, bottom: item.bottom, mode: 'test', answer: false, state: R.ws || null }));
         inst.on('change', (d) => { R.ws = d.state; fire(); });
       }
       box.querySelectorAll('input[type=radio]').forEach((r) => r.addEventListener('change', () => { R[r.name.slice(-2)] = r.value; fire(); }));
@@ -506,23 +534,42 @@
           mainHelp().forEach((b) => { b.hidden = false; });
           if (kind === 'retry') { area().innerHTML = ''; const f = retryTarget(); if (f) f.focus(); return; }
           if (kind === 'hint') { area().innerHTML = `<div class="feedback feedback-info"><p><span aria-hidden="true">💡 </span>${esc(hintText(item, R))}</p></div>`; if (o.onHint) o.onHint(); return; }
-          // Show me: the right answer, worked in the same vertical model, then the child may go on (recorded as help).
-          helped = true; R.helped = true;
+          // Show me: the worked answer plays one step at a time (each exchange visible), in the same vertical model.
+          // Only when it ends are the answers filled in; then the child may go on (recorded as completed WITH help).
+          helped = true; R.helped = true; R.sp = 0; fire();
+          area().innerHTML = '';
+          playWorked(false);
+        }
+        let shownDone = false;
+        function playWorked(atEnd) {
+          const worked = box.querySelector('.sr-worked');
+          worked.innerHTML = `<p class="sr-shown-h" tabindex="-1"><b>Show me:</b> watch each step of ${esc(problemText(item))}. Press Next to see each exchange. The answers are filled in at the end.</p><div class="sr-ws" data-ws="worked"></div><div class="sr-shown-end"></div>`;
+          const demo = keep(SK.mount(worked.querySelector('[data-ws="worked"]'), { top: item.top, bottom: item.bottom, mode: 'demo', caption: 'Worked answer', noteFirst: true, demoStep: atEnd === true ? 99 : typeof atEnd === 'number' ? atEnd : 0 }));
+          demo.on('complete', () => finishShown());
+          demo.on('step', (d) => { if (!shownDone) { R.sp = d.index; fire(); } });
+          if (atEnd === true) { shownDone = true; worked.querySelector('.sr-shown-end').innerHTML = shownEnd(); return; }
+          if (atEnd !== false) return; // resumed after a refresh: no focus move
+          const h = worked.querySelector('.sr-shown-h'); h.focus({ preventScroll: true }); if (h.scrollIntoView) h.scrollIntoView({ block: 'nearest' });
+        }
+        const shownEnd = () => { const st = showText(item); return (st ? `<p class="sr-shown"><b>Here is how:</b> ${esc(st)}</p>` : '') + `<ol class="sk-steps">${M.solutionLines(item.top, item.bottom).map((l) => `<li>${esc(l)}</li>`).join('')}</ol>`; };
+        function finishShown() {
+          if (shownDone) return;
+          shownDone = true; R.sd = true;
           if (item.kind === 'decide') { R.c1 = item.needs; R.c2 = item.first; }
           if (item.kind === 'mistake' || item.kind === 'check') R.c1 = item.answer;
           box.querySelectorAll('input[type=radio]').forEach((r) => { const key = r.name.slice(-2); r.checked = R[key] === r.value; });
           const p = M.plan(item.top, item.bottom), ann = {};
           p.exchanges.forEach((e) => { (ann[e.from] = ann[e.from] || []).push(e.after[e.from]); (ann[e.to] = ann[e.to] || []).push(e.after[e.to]); });
-          if (ansInst) { const st = ansInst.getState(); st.d = M.digitsOf(item.top - item.bottom, M.lengthOf(item.top)).map(String); while (st.d.length > 1 && st.d[st.d.length - 1] === '0') st.d.pop(); ansInst.setState(st); R[ansKey] = ansInst.getState(); }
+          if (ansInst) { const st = ansInst.getState(); st.ann = ann; st.d = M.digitsOf(item.top - item.bottom, M.lengthOf(item.top)).map(String); while (st.d.length > 1 && st.d[st.d.length - 1] === '0') st.d.pop(); ansInst.setState(st); R[ansKey] = ansInst.getState(); }
+          if (stepsInst) { const st = stepsInst.getState(); st.ann = ann; stepsInst.setState(st); R.ws = stepsInst.getState(); }
           fire();
-          const worked = box.querySelector('.sr-worked');
-          worked.innerHTML = `<p class="sr-shown"><b>Here is how:</b> ${esc(showText(item))}</p>` + (item.kind === 'decide' ? '' : `<div class="sr-ws" data-ws="worked"></div><ol class="sk-steps">${M.solutionLines(item.top, item.bottom).map((l) => `<li>${esc(l)}</li>`).join('')}</ol>`);
-          const wv = worked.querySelector('[data-ws="worked"]');
-          if (wv) keep(SK.mount(wv, { top: item.top, bottom: item.bottom, mode: 'view', work: { ann, d: p.columns.map((c) => String(c.digit)) }, caption: 'Worked answer' }));
-          area().innerHTML = '<div class="feedback feedback-info"><p>Shown. Read it, then go on, or try a similar problem on your own.</p></div>';
-          const h = worked.querySelector('.sr-shown'); if (h) { h.setAttribute('tabindex', '-1'); h.focus({ preventScroll: true }); h.scrollIntoView({ block: 'nearest' }); }
+          box.querySelector('.sr-shown-end').innerHTML = shownEnd();
+          area().innerHTML = '<div class="feedback feedback-ok sr-shown-done" tabindex="-1"><p><span aria-hidden="true">✓ </span>Completed with help. The answers are filled in. Go on, or try a similar problem on your own.</p></div>';
+          const d = area().querySelector('.sr-shown-done'); d.focus({ preventScroll: true }); if (d.scrollIntoView) d.scrollIntoView({ block: 'nearest' });
           if (o.onCorrect) o.onCorrect(false, true);
         }
+        if (R.sd) playWorked(true);
+        else if (R.helped && R.sp !== undefined) playWorked(R.sp); // resume a Show me that was playing (SR-D30)
         box.querySelectorAll('.sr-helprow [data-help]').forEach((b) => b.addEventListener('click', () => help(b.dataset.help)));
         box.querySelector('[data-check]').addEventListener('click', () => {
           if (!answered(item, R)) { area().innerHTML = `<div class="feedback"><p>Answer every part, then check.</p></div>`; return; }
@@ -763,7 +810,7 @@
       main.innerHTML = `<section class="hero act-hero"><p class="eyebrow">${eyebrow('Practice')}</p><h1 tabindex="-1">${esc(title)}: done!</h1></section>` +
         `<section class="card done-card"><p class="done-title">${ok} of ${items.length} solved on your own · ${first} on the first try${withHelp ? ` · ${withHelp} with help` : ''} · ${hints} hint${hints === 1 ? '' : 's'} used</p>` +
         `<p class="muted">Practice is for learning; it is not a test score.</p>` +
-        `<ul class="sr-list">${items.map((q, k) => `<li>${k + 1}. ${esc(itemLabel(q))} ${run.results[q.id] && run.results[q.id].helped ? '<span class="muted">done with help</span>' : run.results[q.id] && run.results[q.id].correct ? '<span class="badge-done">✓ on your own</span>' : '<span class="muted">not finished</span>'}</li>`).join('')}</ul>` +
+        `<ul class="sr-list">${items.map((q, k) => `<li>${k + 1}. ${esc(itemLabel(q))} ${run.results[q.id] && run.results[q.id].helped ? '<span class="muted">completed with help</span>' : run.results[q.id] && run.results[q.id].correct ? '<span class="badge-done">✓ on your own</span>' : '<span class="muted">not finished</span>'}</li>`).join('')}</ul>` +
         `<div class="actions"><button type="button" class="btn btn-primary btn-big" data-again>Practice again</button>` +
         (spec.kind === 'setup' ? `<a class="btn btn-ghost btn-big" href="#practice/setup">Change setup</a>` : `<a class="btn btn-ghost btn-big" href="#practice/skills">Other skills</a>`) + `</div></section>` + menuNav('#practice', 'Practice choices');
       main.querySelector('[data-again]').addEventListener('click', () => {
@@ -857,7 +904,7 @@
       const all = attempts(), last = all[all.length - 1];
       const W = wizard(), T = together(), S = sessions(), SKS = skillStore();
       const guidedNote = `<section class="card">${head('', 'Learning and practice (not part of the test score)', 'student')}<ul class="rules">` +
-        `<li>Learn: ${Object.keys(W.done).length} of ${STEP_IDS.length} steps done${helpN(W.helped, W.done) ? ` (${helpN(W.helped, W.done)} with help)` : ''}.</li><li>Practice Together: ${Object.keys(T.done).length} of ${C.together.length} problems done${helpN(T.helped, T.done) ? ` (${helpN(T.helped, T.done)} with help)` : ''}.</li>` +
+        `<li>Learn: ${Object.keys(W.done).length} of ${STEP_IDS.length} steps done${helpN(W.helped, W.done) ? ` (${helpN(W.helped, W.done)} completed with help)` : ''}.</li><li>Practice Together: ${Object.keys(T.done).length} of ${C.together.length} problems done${helpN(T.helped, T.done) ? ` (${helpN(T.helped, T.done)} completed with help)` : ''}.</li>` +
         `<li>Practice on My Own: ${S.setup.attempts.length} session${S.setup.attempts.length === 1 ? '' : 's'} finished.</li>` +
         `<li>Practice One Skill: ${C.skills.filter((s) => SKS['skill-' + s.id] && SKS['skill-' + s.id].attempts.length).length} of ${C.skills.length} skills practiced.</li></ul></section>`;
       if (!last) {

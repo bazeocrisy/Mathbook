@@ -41,9 +41,9 @@ There are no other dependencies: no framework, no build step, no network. It nee
 
 | Mode | What the child does |
 |---|---|
-| `demo` | Steps through the standard method with Back, Next and Start over: one exchange or one answer digit per part, a sentence for each, and a "Top number now" list. |
+| `demo` | (`options.demoStep` starts at a given part.) Steps through the standard method with Back, Next and Start over: one exchange or one answer digit per part, a sentence for each, and a "Top number now" list. |
 | `guided` | Decides each step, column by column: does it need regrouping? which place can give? the new values of both columns? the answer digit? Wrong answers get specific feedback; correct work is kept. A valid but non-standard choice is told "that could work too". |
-| `independent` | Optional regroup marks above the columns (Undo, Clear work), answer boxes, Check, specific feedback, and hints 1–4. The full solution is a separate request; the child's grid is never filled in. |
+| `independent` | Optional regroup marks above the columns (Undo, Clear work), answer boxes, Check, specific feedback, and hints 1–4. **Show me** (no hints needed first) plays the worked answer in a demo-mode copy, one exchange or digit per part (Back/Next). The child's grid is filled in (answer and regroup marks) only when the last part is reached; then the problem is "Completed with help": `answer` and `complete` fire with `helped: true, shown: true`, and the worked model and its written steps stay on screen. |
 | `test` | Regroup marks and answer boxes only. No Check, hints, feedback, solution or marks, even if the options ask for them. Read the result with `ws.result()`. |
 | `view` | Read-only. Shows `options.work = { ann, d, misaligned? }`: someone's work (with its answer under the line), or a solution. Leading zeros in the answer are left blank. `answer: false` hides the answer row. |
 
@@ -90,6 +90,8 @@ Instances are independent: each has its own id prefix, its own listeners on its 
   d: ['4', '2', '4', '1'],                          // answer digits from the ones up ('' = empty)
   hint: 0, hintCol: null, demo: 0,                  // hint level 0–5 for the hinted column (a new column starts at 1); demo part
   guided: { col: 0, stage: 'needs', ex: 0 } | null, // guided progress
+  show: 0, shownDone: false,                        // Show me player part; true once it reached the end (optional)
+  helped: false,                                    // Show me (or guided Show me) was used: never count it as independent
   result: null, done: false }
 ```
 

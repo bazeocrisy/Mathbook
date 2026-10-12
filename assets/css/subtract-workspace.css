@@ -144,3 +144,6 @@ input.sk-cur:placeholder-shown { border-style: dashed; }
   .sk-ans { height: 44px; }
 }
 @media (forced-colors: active) { .sk-x::after { display: none; } .sk-x { text-decoration: line-through 3px; } .sk-band.is-active { border-color: Highlight; } }
+/* Show me player inside the coach panel; the completion note and written steps appear only when it finishes. */
+.sk-solution-end:empty { display: none; }
+.sk-shown-done:focus { outline: 3px solid var(--sk-focus, #5236c9); outline-offset: 2px; }

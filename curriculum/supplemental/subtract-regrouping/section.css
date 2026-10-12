@@ -56,3 +56,8 @@
   .sr-long { display: none; } .sr-short { display: inline; }
   .sr-chart .sr-val { font-size: 0.9rem; }
 }
+/* Show me: the worked answer plays one part at a time; it stays on screen after it finishes. */
+.sr-showdemo, .sr-worked { border: 2px solid #9a7000; border-radius: 12px; padding: 0.6rem; margin: 0.75rem 0; }
+.sr-showdemo-h, .sr-shown-h { margin: 0 0 0.5rem; }
+.sr-showdemo-h:focus, .sr-shown-h:focus, .sr-shown-done:focus { outline: 3px solid #5236c9; outline-offset: 2px; }
+.sr-shown-end:empty { display: none; }

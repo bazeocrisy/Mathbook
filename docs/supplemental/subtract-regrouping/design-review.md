@@ -678,3 +678,89 @@ Design agent's notes. Section 1 is written before the build; later sections revi
 - **On phones** the heading sits flush with the bottom edge. That's enough to show that help appeared, and the child's work stays in view. Tablet and desktop don't scroll at all.
 
 **Status:** SR-D28 is closed. All design findings SR-D01 to SR-D28 are closed.
+
+## 7. Show me player review (ee798a4)
+
+### How it was inspected
+
+- **Real headless Chrome**, one instance (closed afterwards), with real CDP clicks and keys.
+- **Viewports:** 320×640, 360×740, 390×844, 768×1024, 1024×768, 1366×768 and 683×384.
+- **Scripts:** `scenes-show.mjs` and `scenes-show2.mjs`. Screenshots are in the scratchpad `shots/show-*`.
+- **What I stepped through, every part, recording each time** the focus, the live text, the player's marks and answer row, the child's own boxes and radios, and the Continue state:
+  - Step 1 Your Turn;
+  - Learn 7, 8 and 9 (decide, mistake, check) at 320, 390 and 1366;
+  - independent practice on `#practice/skill-zeros2` (four-digit, consecutive zeros) at all 7 sizes;
+  - guided Learn 6;
+  - the test.
+- **Refresh:** I reloaded mid-play and after completion.
+
+### What passes
+
+- **Every exchange is visible before any answer appears.** Example: 9,004 − 8,117 at 320.
+  - The player shows the thousands → hundreds → tens → ones exchanges one per part ("8, 10", then "8, 9, 10" with a struck 10, then "8, 9, 9, 14" with two struck 10s).
+  - Only then does it show the column digits.
+  - The **child's own grid stays empty**: no marks, no crossed digits and no answers through all 11 intermediate parts, at every size.
+  - The child's grid fills (answers, regroup marks and ✓) only at the last part.
+  - Learn forms behave the same: the child's answers and radios stay empty or unchecked until the last part.
+  - Step 1 hides the question inputs while playing and fills both answers only at Part 4.
+- **The model stays on screen.** After the last part, the player stays at its final part. The written steps (6–8 lines) and the "Completed with help" note are added below, and a refresh after completion restores all of it.
+- **Continue and "Completed with help":**
+  - Next Step / Finish stays disabled during play and enables at the last part.
+  - Focus goes to the completion note: `.sr-complete` in Step 1, `.sr-shown-done` in forms, `.sk-shown-done` in independent practice.
+  - Wording: "Completed with help: 9,004 − 8,117 = 887. Your answer boxes are filled in." Guided Learn 6 also ends "Completed with help: …".
+- **Focus and announcements while playing:**
+  - Next keeps focus on Next (on Back when the end is reached).
+  - Each part's sentence reaches a persistent polite live region. Examples: "Exchange 1 hundred for 10 tens: the hundreds go from 10 to 9, and the tens from 0 to 10. Now 8 thousands, 9 hundreds, 10 tens, 4 ones. 8,000 + 900 + 100 + 4 = 9,004: the value is the same." and, in Step 1, "The tens go from 2 to 1. The ones go from 9 to 19…".
+- **Nested player layout:**
+  - No sideways scroll and no element outside the player at any size.
+  - No player button under 44 px.
+  - The mini grid is 198 px wide (40 px columns), with digits and struck 10s legible (`show2-zeros2-mid-390.png`).
+  - At 1024 and wider the coach is two-pane, so Next sits beside the mini grid (y=436 at 1366).
+  - On phones the player stacks: mini grid, then controls, then the sentence. The grid, Next and sentence together span 373 px, which fits one screen at 320×640.
+- **Refresh mid-play in independent practice:** resumes at the same part ("Part 4 of 13"), and the child's grid stays empty.
+- **The test stays free of help:** none of the 15 questions has a help control (Hint, Show me, Check or g-show).
+
+### Findings
+
+**SR-D29 · minor: on phones the player's sentence sits below its controls.**
+- **Evidence:** `show2-zeros2-mid-390.png`. At 390 the mini grid is at y=508–723, Next at 794–844 (two rows: Back / Part, then Next / Start over) and the sentence at 855–881. At 320: grid 304–519, Next 591–640, sentence 651–677.
+- **Failure scenario:** a child keeps tapping Next where it sits at the bottom of the screen. The grid changes in view, but the explanation for that change sits just below the fold. The owner asked for each exchange to be explained, not only shown. A screen reader still hears it through the live region.
+- **Fix:** for the nested player (`.sk-mini` with the demo coach), put the part sentence directly under the mini grid and the controls after it. Grid + sentence + controls is about 380 px and still fits 640. Alternatively, scroll the sentence into view (`block: 'nearest'`) after each Next on narrow widths.
+
+**SR-D30 · minor: refresh mid-play in Step 1 and Learn forms drops the player.**
+- **Evidence:**
+  - **Step 1:** a reload at Part 2 returns to "How many tens are left?" with Check / Hint / Show me and no player (`show-s1-midrefresh-390`).
+  - **Learn 8:** a reload at Part 3 shows no worked player (`show-l8-midrefresh-390`).
+  - **Independent practice** does resume at the same part, and every player is restored correctly after completion.
+- **Failure scenario:** a child who refreshes or switches apps mid-demo loses their place and has to press Show me again. Help is already recorded, so nothing is wrong in the data. It is just inconsistent with independent practice.
+- **Fix:** save the playing part, as independent practice does with `S.show`: `R0.sp` for Step 1 and `R.sp` for forms. On restore, reopen the player at that part.
+
+### Status
+
+The Show me revision meets the owner's requirements: exchanges before answers, the model stays on screen, Continue unlocks with "Completed with help", it works for four-digit problems across zeros, everything is vertical, and the test has no help. SR-D29 and SR-D30 are minor polish and don't block release.
+
+### SR-D29/D30 re-check at 361e6db: pass
+
+**Method:** checked at HEAD 0ace440, which contains 361e6db. One headless Chrome, closed afterwards. Script: `scenes-d2930.mjs`.
+- For SR-D29, Next was pressed with a real mouse event at the button's on-screen position. The page was scrolled only to bring Next into view, never to reveal the sentence.
+- For SR-D30, I reloaded after 1–3 parts.
+
+**SR-D29: pass.**
+- **Phones:** in both the independent coach player (`skill-zeros2`) and the Learn form player (Learn 8), the order is grid → sentence → Back / Next. After each of 4 Next presses the sentence is fully in view at 320, 360 and 390. Examples:
+  - 320, coach player: grid 110–325, sentence 339–521, Next 590–640;
+  - 390, form player: grid 250–529, sentence 543–699, Next 768–818.
+- **1366 and 768:** the two-pane players put the sentence beside the grid, level with its top, and it stays in view.
+- **One edge case at 768:** after one long sentence (4 lines) in the Learn form, the end of the sentence sat 44 px below the fold. Its first lines stayed visible, and one small scroll shows the rest. Not a finding.
+- No sideways scroll and no JS errors at any size.
+
+**SR-D30: pass.** A reload mid-play resumes the same part with nothing filled in and focus left on the page heading (it isn't moved):
+
+| Where | Part before and after reload | After reload |
+|---|---|---|
+| Step 1 Your Turn | Part 2 of 4 | Same sentence; no answers; Next Step disabled. Playing on to Part 4 completes "with help" and enables Next Step. |
+| Learn 7 (decide) | Part 4 of 9 | No radios or answers filled; Next Step disabled |
+| Learn 8 (mistake) | Part 4 of 13 | No radios or answers filled; Next Step disabled |
+| Learn 9 (check) | Part 4 of 12 | No radios or answers filled; Finish disabled |
+| Independent practice (`skill-zeros2`) | Part 4 of 13 | The child's answer boxes stay empty |
+
+**Status:** SR-D29 and SR-D30 are closed. All design findings SR-D01 to SR-D30 are closed.
