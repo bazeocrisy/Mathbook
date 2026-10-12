@@ -36,6 +36,16 @@
     return `${n} ${word}${n === 1 ? '' : 's'}`;
   }
 
+  /** Help mode's Show Me: the correct answer as a response the question's controls can show ('' when it has none). */
+  function correctResponse(q) {
+    switch (q.type) {
+      case 'mc': case 'select': case 'letter': case 'spell': return String(q.answer);
+      case 'number': return pv.fmt(q.answer);
+      case 'words': return pv.numberToWords(q.answer);
+      default: return undefined;
+    }
+  }
+
   // ---------- Shared pieces ----------
 
   /** Place-value chart. o.highlight: place index; o.values: booleans (show value row per place). */
@@ -76,6 +86,54 @@
   function start(L, opts) {
     opts = opts || {};
     const store = shell.makeStore(L.storageKey);
+    // Help mode (opt-in `help: true`, Number Words Phases 2–3): Check Answer · Hint · Show Me on every Learn and
+    // practice question, "completed with help" tracking, retries without dead ends, and checked saved records.
+    // Lessons without the flag behave exactly as before.
+    const HELP = !!L.help;
+    const tipOf = (q, r) => (L.tip && L.tip(q, r)) || Q.tip(q, r);
+    if (HELP) sanitizeSaved();
+    /**
+     * Help mode checks every saved record on load (shape and values). A malformed record is dropped for that key (or
+     * entry) only, so a damaged save never blanks the screen and other progress is kept.
+     */
+    function sanitizeSaved() {
+      const obj = (x) => !!x && typeof x === 'object' && !Array.isArray(x);
+      const qOK = (q) => obj(q) && typeof q.id === 'string' && typeof q.type === 'string' && typeof q.prompt === 'string' && q.answer !== undefined;
+      const has = (k) => { try { return root.localStorage.getItem(store.prefix + ':' + k) !== null; } catch (e) { return false; } };
+      const keep = (k, ok, repair) => {
+        if (!has(k)) return;
+        const v = store.get(k, undefined);
+        if (v === undefined || !ok(v)) { store.remove(k); return; }
+        if (repair) store.set(k, repair(v));
+      };
+      const stepIds = L.seeIt.steps.map((s) => s.id);
+      keep('see-wizard', (w) => obj(w) && Number.isInteger(w.step) && w.step >= 0 && w.step < stepIds.length && obj(w.done) && obj(w.checks), (w) => {
+        Object.keys(w.done).forEach((k) => { if (!stepIds.includes(k) || w.done[k] !== true) delete w.done[k]; });
+        w.helped = obj(w.helped) ? w.helped : {};
+        Object.keys(w.helped).forEach((k) => { if (!w.done[k] || w.helped[k] !== true) delete w.helped[k]; });
+        Object.keys(w.checks).forEach((k) => { const c = w.checks[k]; if (!stepIds.includes(k) || !obj(c) || !qOK(c.q) || !Number.isInteger(c.tries) || c.tries < 0) delete w.checks[k]; });
+        w.phase = obj(w.phase) ? w.phase : {};
+        Object.keys(w.phase).forEach((k) => { if (!['example', 'try'].includes(w.phase[k])) delete w.phase[k]; });
+        w.slide = obj(w.slide) ? w.slide : {};
+        Object.keys(w.slide).forEach((k) => { if (!Number.isInteger(w.slide[k]) || w.slide[k] < 0) delete w.slide[k]; });
+        return w;
+      });
+      keep('guided', (g) => obj(g) && Number.isInteger(g.i) && g.i >= 0 && obj(g.states), (g) => {
+        Object.keys(g.states).forEach((k) => { if (!L.guided.some((q) => q.id === k) || !obj(g.states[k])) delete g.states[k]; });
+        return g;
+      });
+      const known = (id) => L.bank.some((q) => q.id === id);
+      const recOK = (r) => obj(r) && Array.isArray(r.order) && r.order.every(known) && Array.isArray(r.correct) && r.correct.length === r.order.length && Number.isInteger(r.score) && Number.isInteger(r.total);
+      const activeOK = (a) => a === null || a === undefined || (obj(a) && Array.isArray(a.order) && a.order.length > 0 && a.order.every(known) && obj(a.responses) && (a.help === undefined || obj(a.help)));
+      const setOK = (s) => obj(s) && Array.isArray(s.attempts) && s.attempts.every(recOK) && Array.isArray(s.retries) && s.retries.every(recOK) && activeOK(s.active);
+      const sets = (B) => { Object.keys(B).forEach((k) => { if (!setOK(B[k])) delete B[k]; }); return B; };
+      keep('bank-sets', obj, sets);
+      keep('skill-practice', obj, sets);
+      keep('bank-open', (v) => v === null || typeof v === 'string');
+      keep('attempts', Array.isArray, (a) => a.filter((x) => obj(x) && !!L.tests[x.testId] && Array.isArray(x.questions) && x.questions.every(qOK) && obj(x.responses) &&
+        Array.isArray(x.correct) && x.correct.length === x.questions.length && Number.isInteger(x.score) && Number.isInteger(x.total) && typeof x.pct === 'number'));
+      Object.keys(L.tests).forEach((id) => keep('draft-' + id, (d) => obj(d) && d.testId === id && Array.isArray(d.questions) && d.questions.length > 0 && d.questions.every(qOK) && obj(d.responses)));
+    }
     /** Saved skill practice, keeping only well-formed records (a damaged one is dropped, never breaking the full sets). */
     function loadSkillBank() {
       const v = store.get('skill-practice', {});
@@ -317,6 +375,41 @@
         return W.checks[step.id];
       }
 
+      /**
+       * Help mode's Your Turn: Check Answer · 💡 Hint · Show Me beside the answer. A miss gives specific feedback and
+       * Try Again · Get a Hint · Show Me How (the answer is never revealed on its own). Show Me fills in and explains
+       * the answer; the step is then done "with help" (W.helped) and Next unlocks.
+       */
+      function helpCheckHTML(step) {
+        const c = checkState(step);
+        const q = c.q;
+        let msg = '';
+        if (c.solved) {
+          msg = `<div class="feedback feedback-ok"><p><b>✓ ${c.tries <= 1 ? 'Correct!' : 'You got it!'}</b> ${esc(q.explanation)}</p></div>`;
+        } else if (c.shown) {
+          msg = `<div class="feedback feedback-info help-shown" tabindex="-1"><p><b>Show Me:</b> the answer is <b>${esc(Q.correctText(q))}</b>.</p><p>${esc(q.explanation)}</p>` +
+            `<p class="help-done"><b>Completed with help.</b> Go on to the next step, or try a similar one on your own.</p></div>`;
+        } else if (c.retry) {
+          msg = `<div class="feedback feedback-no"><p><b>Not quite.</b> ${esc(tipOf(q, c.response) || 'Look at it again.')}</p></div>`;
+        }
+        if (c.hint && !c.solved && !c.shown) msg += `<div class="feedback feedback-info hint-note"><p><b><span aria-hidden="true">💡 </span>Hint:</b> ${esc(q.hint || '')}</p></div>`;
+        let action;
+        if (c.solved) action = `<button type="button" class="btn btn-ghost" data-wiz="another">Try another one</button>`;
+        else if (c.shown) action = `<button type="button" class="btn btn-ghost" data-wiz="new">Try a similar one</button>`;
+        else if (c.retry) {
+          action = `<button type="button" class="btn btn-primary" data-wiz="again">Try Again</button>` +
+            (q.hint ? `<button type="button" class="btn btn-ghost" data-wiz="hint">Get a Hint</button>` : '') +
+            `<button type="button" class="btn btn-ghost" data-wiz="show">Show Me How</button>`;
+        } else {
+          action = `<button type="button" class="btn btn-primary" data-wiz="check">Check Answer</button>` +
+            (q.hint && !c.hint ? `<button type="button" class="btn btn-ghost" data-wiz="hint"><span aria-hidden="true">💡 </span>Hint</button>` : '') +
+            `<button type="button" class="btn btn-ghost" data-wiz="show">Show Me</button>`;
+        }
+        return `<div class="wiz-check">` + Q.render(q, 'wiz-' + step.id, { response: c.shown ? correctResponse(q) : c.response, mode: 'guided' }) +
+          `<div class="actions wiz-check-actions help-row">${action}</div>` +
+          `<div aria-live="polite">${msg}<p class="feedback feedback-info" data-empty hidden>Type or choose an answer first.</p></div></div>`;
+      }
+
       function demoHTML(step) {
         if (step.kind === 'slides') {
           const n = step.slides.length;
@@ -480,6 +573,7 @@
 
       /** Your Turn: the check question, Check Answer right under it, then feedback beside the answer. */
       function checkHTML(step) {
+        if (HELP) return helpCheckHTML(step);
         const c = checkState(step);
         const q = c.q;
         let msg = '';
@@ -532,7 +626,7 @@
             (!last
               ? `<button type="button" class="btn btn-primary btn-big" data-wiz="next" ${done ? '' : 'disabled'}>Next Step →</button>`
               : `<a class="btn btn-primary btn-big${done ? '' : ' is-disabled'}" href="#see/done" ${done ? '' : 'aria-disabled="true" tabindex="-1"'} data-wiz="finish">Finish →</a>`) +
-            `</div>` + (done ? '' : `<p class="wiz-locked-note" id="wiz-locked">Answer correctly to unlock ${last ? 'Finish' : 'the next step'}.</p>`);
+            `</div>` + (done ? '' : `<p class="wiz-locked-note" id="wiz-locked">Answer correctly${HELP ? ', or use Show Me,' : ''} to unlock ${last ? 'Finish' : 'the next step'}.</p>`);
         main.innerHTML =
           `<section class="hero act-hero"><p class="eyebrow">${lessonEyebrow()}</p>` +
           `<div class="act-title"><h1 tabindex="-1">Learn</h1><p class="wiz-count">Step ${i + 1} of ${steps.length}</p></div></section>` +
@@ -551,10 +645,11 @@
             }
             save();
           });
-        } else if (c.solved || c.revealed || c.retry) {
+        } else if (c.solved || c.revealed || c.retry || c.shown) {
           qEl.querySelectorAll('input, select, button').forEach((x) => { x.disabled = true; });
           // Chapter 2 controls: ✓ on every box when right, ✗ on the wrong boxes after a miss (Try Again clears them).
-          if (c.response !== undefined) Q.applyMarks(qEl, c.q, c.response);
+          const marked = c.shown ? correctResponse(c.q) : c.response;
+          if (marked !== undefined) Q.applyMarks(qEl, c.q, marked);
         // Focus stays on the step heading (the answer-row control would otherwise jump to its ones box, review L214-01).
         } else Q.bind(qEl, c.q, (r) => { c.response = r; save(); }, { autofocus: false });
         main.querySelectorAll('[data-wiz]').forEach((b) => b.addEventListener('click', (e) => {
@@ -565,7 +660,22 @@
             if (!Q.isAnswered(c.q, r)) { const e = main.querySelector('[data-empty]'); e.textContent = Q.emptyTip(c.q, r) || 'Type or choose an answer first.'; e.hidden = false; return; }
             c.response = r;
             c.tries += 1;
-            if (Q.grade(c.q, r)) { c.solved = true; c.retry = false; W.done[step.id] = true; } else if (c.tries >= 2) { c.revealed = true; c.retry = false; } else { c.retry = true; }
+            if (Q.grade(c.q, r)) {
+              c.solved = true; c.retry = false; W.done[step.id] = true;
+              if (HELP && W.helped) delete W.helped[step.id]; // solved on their own: no longer "with help"
+            } else if (!HELP && c.tries >= 2) { c.revealed = true; c.retry = false; } else { c.retry = true; }
+          }
+          if (act === 'hint') {
+            if (qEl && !c.retry) c.response = Q.read(qEl, c.q);
+            c.hint = true; c.retry = false;
+          }
+          if (act === 'show') {
+            if (qEl && !c.retry) c.response = Q.read(qEl, c.q);
+            c.shown = true; c.retry = false;
+            W.helped = W.helped || {};
+            // An earlier independent completion of this step is kept; otherwise the step is done with help.
+            if (!W.done[step.id] || W.helped[step.id]) W.helped[step.id] = true;
+            W.done[step.id] = true;
           }
           if (act === 'again') c.retry = false;
           if (act === 'new' || act === 'another') W.checks[step.id] = { q: step.check(pv.rng(shell.newSeed())), tries: 0, retry: false, solved: false, revealed: false };
@@ -586,6 +696,13 @@
             const chk = main.querySelector('[data-wiz="check"]');
             if (card && chk && root.innerHeight >= 560 && root.innerWidth >= 768 && chk.getBoundingClientRect().bottom > root.innerHeight) card.scrollIntoView({ block: 'start' });
             main.querySelector('.wiz-h').focus({ preventScroll: true }); return;
+          }
+          if (HELP) {
+            // Show Me: read the shown answer and its explanation. Hint / Try Again: back to the answer to type.
+            const shownBox = act === 'show' && main.querySelector('.help-shown');
+            if (shownBox) { shownBox.focus(); return; }
+            const field = (act === 'hint' || act === 'again') && main.querySelector('.wiz-check .q input:not([disabled]):not([type=radio]), .wiz-check .q input[type=radio]:checked:not([disabled]), .wiz-check .q input:not([disabled]), .wiz-check .q select:not([disabled])');
+            if (field) { field.focus(); return; }
           }
           const focusTarget = main.querySelector('[data-wiz="next"]:not([disabled]), a[data-wiz="finish"]:not(.is-disabled), [data-wiz="again"], [data-wiz="new"], .wiz-check input:not([disabled]), .wiz-check button:not([disabled])');
           if (focusTarget) focusTarget.focus();
@@ -651,17 +768,24 @@
       activity(true);
       main.innerHTML = ctx.hero(lessonEyebrow(), 'Practice Together', 'Work with a grown-up. Check each answer, use hints, and fix mistakes.') +
         `<section class="card activity-card"><div id="guided-runner"></div></section>` + menuNav('#practice', 'Practice choices');
+      // Help mode: how many were solved on their own and how many were completed with help (Show Me).
+      const tally = () => {
+        const st = L.guided.map((q) => S.guidedStates[q.id] || {});
+        const own = st.filter((x) => x.result === true && !x.helped).length, helped = st.filter((x) => x.helped).length;
+        return `You finished Practice Together! ${own} on your own · ${helped} completed with help.`;
+      };
       shell.guidedRunner(main.querySelector('#guided-runner'), {
         items: L.guided, states: S.guidedStates, pos: S.guidedPos, keyPrefix: 'g', lastLabel: 'Finish', onChange: saveGuided,
+        help: HELP, tip: tipOf, correctResponse,
         context: L.guidedContext || (L.guided && L.guided.context) || null,
-        onLast: () => doneCard('You finished Practice Together!', `<button type="button" class="btn btn-primary" id="together-again">Practice together again</button><a class="btn btn-ghost" href="#practice/own">Go to On My Own</a>`, () => {
+        onLast: () => doneCard(HELP ? tally() : 'You finished Practice Together!', `<button type="button" class="btn btn-primary" id="together-again">Practice together again</button><a class="btn btn-ghost" href="#practice/own">Go to On My Own</a>`, () => {
           main.querySelector('#together-again').addEventListener('click', () => { S.guidedStates = {}; S.guidedPos.i = 0; saveGuided(); togetherView(); });
         })
       });
     }
 
     function ownView() {
-      main.innerHTML = ctx.hero(lessonEyebrow(), 'On My Own', `Choose a set. Answer every question, then check your work. No hints until you check.`) +
+      main.innerHTML = ctx.hero(lessonEyebrow(), 'On My Own', HELP ? 'Choose a set. Check Answer, Hint and Show Me are under each question. Then check your work.' : `Choose a set. Answer every question, then check your work. No hints until you check.`) +
         `<div class="set-grid" id="set-grid"></div>` + menuNav('#practice', 'Practice choices');
       drawSets();
     }
@@ -727,7 +851,7 @@
       const ids = skillIds(skill);
       if (!ids.length || !L.skills[skill]) return null;
       return { id, skill, skillOnly: true, ids, title: L.skills[skill],
-        blurb: `${ids.length === 1 ? 'Just 1 question' : `${ids.length} questions`} on this skill. Answer, then check your work. No hints until you check.` };
+        blurb: `${ids.length === 1 ? 'Just 1 question' : `${ids.length} questions`} on this skill. ${HELP ? 'Check Answer, Hint and Show Me are under each question.' : 'Answer, then check your work. No hints until you check.'}` };
     }
 
     /** Start a new attempt at a whole set, in a new random order (each question once). */
@@ -742,11 +866,16 @@
     function startMisses(id) {
       const st = setState(id);
       const a = st.active;
-      const missed = a.order.filter((qid) => !Q.grade(bankQ(qid), a.responses[qid]));
+      const missed = a.order.filter((qid) => !ownRight(a, bankQ(qid)));
       st.active = { kind: 'retry', order: pv.shuffle(pv.rng(shell.newSeed()), missed), responses: {}, checked: false,
         parentId: a.kind === 'set' ? a.attemptId : a.parentId, started: new Date().toISOString() };
       saveBank();
     }
+
+    /** Help mode: was this question's answer shown with Show Me in this attempt? (then it is not the child's own answer) */
+    const shownIn = (a, qid) => HELP && !!a.help && !!a.help[qid] && !!a.help[qid].shown;
+    /** Right on their own: graded correct and not shown with Show Me. */
+    const ownRight = (a, q) => Q.grade(q, a.responses[q.id]) && !shownIn(a, q.id);
 
     /** Which original misses have since been answered correctly in a "Practice My Misses" retry. */
     function improvement(st, attempt) {
@@ -798,11 +927,12 @@
       const attemptNo = isRetry ? null : (checked ? st.attempts.findIndex((a) => a.id === A.attemptId) + 1 : st.attempts.length + 1);
       let title = isRetry ? `${name} — Practice My Misses (${plural(qs.length, 'question')})` : `${name} — attempt ${attemptNo}`;
       let intro = (isRetry
-        ? `<p class="parent-tip"><b>On your own:</b> these are the questions missed before. Answer them again without help. Explanations appear after you check.</p>`
+        ? (HELP ? `<p class="parent-tip"><b>Practice My Misses:</b> these are the questions missed or shown before. Hint and Show Me are there if you need them.</p>`
+          : `<p class="parent-tip"><b>On your own:</b> these are the questions missed before. Answer them again without help. Explanations appear after you check.</p>`)
         : '');
       let score = '';
       if (checked) {
-        const right = qs.filter((q) => Q.grade(q, A.responses[q.id])).length;
+        const right = qs.filter((q) => ownRight(A, q)).length;
         if (isRetry && parent) {
           const imp = improvement(st, parent);
           score = `<div class="set-score" role="status"><b>Practice My Misses: ${right} of ${qs.length} now correct.</b> ` +
@@ -812,12 +942,14 @@
             (right < qs.length ? 'Read the explanations together for any ✗, then press Practice My Misses.' : 'Every question correct!') + `</div>`;
         }
       }
-      const missesLeft = checked ? qs.filter((q) => !Q.grade(q, A.responses[q.id])).length : 0;
+      const missesLeft = checked ? qs.filter((q) => !ownRight(A, q)).length : 0;
       if (!checked) return drawOneQuestion(box, st, A, qs, isRetry, intro);
       // After checking: the whole set with feedback for every question (unchanged from before).
       box.innerHTML = `<h3 class="set-title" tabindex="-1">${title}</h3>${intro}${score}<ol class="q-list">` + qs.map((q, i) => {
         const r = A.responses[q.id];
-        const fb = Q.grade(q, r)
+        const fb = shownIn(A, q.id)
+          ? `<div class="feedback feedback-info"><p><b>Completed with help (Show Me).</b> It does not count as correct on your own.</p><p><b>Answer:</b> ${esc(Q.correctText(q))}</p><p><b>Why:</b> ${esc(q.explanation)}</p></div>`
+          : Q.grade(q, r)
           ? `<div class="feedback feedback-ok"><p><b>✓ Correct.</b> ${esc(q.explanation)}</p></div>`
           : `<div class="feedback feedback-no"><p><b>✗ Your answer:</b> ${esc(Q.describe(q, r))}</p><p><b>Correct answer:</b> ${esc(Q.correctText(q))}</p><p><b>Why:</b> ${esc(q.explanation)}</p></div>`;
         return `<li class="q-item is-checked">${Q.render(q, 'p-' + q.id, { number: i + 1, response: r, review: true })}${fb}</li>`;
@@ -850,16 +982,53 @@
       A.pos = Math.min(Math.max(0, A.pos || 0), n - 1);
       const i = A.pos;
       const q = qs[i];
+      // Help mode: this question's Check / Hint / Show Me state, saved with the attempt (A.help[qid]).
+      const hs = HELP ? ((A.help = A.help || {})[q.id] = (A.help[q.id] || {})) : null;
+      let helpHTML = '';
+      if (hs) {
+        let msg = '';
+        if (hs.shown) {
+          msg = `<div class="feedback feedback-info help-shown" tabindex="-1"><p><b>Show Me:</b> the answer is <b>${esc(Q.correctText(q))}</b>.</p><p>${esc(q.explanation)}</p>` +
+            `<p class="help-done"><b>Completed with help.</b> It will not count as correct on your own. Go on to the next question.</p></div>`;
+        } else if (hs.r === 'ok') msg = `<div class="feedback feedback-ok"><p><b>✓ Correct!</b> ${esc(q.explanation)}</p></div>`;
+        else if (hs.r === 'no') {
+          const t = tipOf(q, A.responses[q.id]);
+          msg = `<div class="feedback feedback-no"><p><b>Not quite.</b> ${esc(t ? t + ' ' : '')}Change your answer and check again, or use ${q.hint && !hs.hint ? '💡 Hint or ' : ''}Show Me.</p></div>`;
+        } else if (hs.r === 'empty') msg = `<div class="feedback feedback-info"><p>${esc(Q.emptyTip(q, A.responses[q.id]) || 'Type or choose an answer first.')}</p></div>`;
+        if (hs.hint && !hs.shown) msg += `<div class="feedback feedback-info hint-note"><p><b><span aria-hidden="true">💡 </span>Hint:</b> ${esc(q.hint || '')}</p></div>`;
+        helpHTML = (hs.shown ? '' : `<div class="actions help-row"><button type="button" class="btn btn-primary" data-help="check">Check Answer</button>` +
+          (q.hint && !hs.hint ? `<button type="button" class="btn btn-ghost" data-help="hint"><span aria-hidden="true">💡 </span>Hint</button>` : '') +
+          (hs.r === 'ok' ? '' : `<button type="button" class="btn btn-ghost" data-help="show">Show Me</button>`) + `</div>`) +
+          `<div aria-live="polite">${msg}</div>`;
+      }
       box.innerHTML = `${intro}<p class="q-count" aria-live="polite">Question ${i + 1} of ${n}</p>` +
-        `<div class="one-q">${Q.render(q, 'p-' + q.id, { response: A.responses[q.id] })}</div>` +
+        `<div class="one-q">${Q.render(q, 'p-' + q.id, { response: hs && hs.shown ? correctResponse(q) : A.responses[q.id] })}${helpHTML}</div>` +
         `<div class="error-box" role="alert" hidden></div>` +
         `<div class="stage-nav one-q-nav">` +
         (i > 0 ? `<button type="button" class="btn btn-ghost" data-q="prev">← Previous</button>` : '<span></span>') +
         (i < n - 1 ? `<button type="button" class="btn btn-primary" data-q="next">Next →</button>`
           : `<button type="button" class="btn btn-primary" id="check-set">Check my work</button>`) + `</div>`;
       const el = box.querySelector('.q[data-qkey]');
-      Q.bind(el, q, (r) => { A.responses[q.id] = r; saveBank(); });
-      const keep = () => { A.responses[q.id] = Q.read(el, q); saveBank(); };
+      if (hs && hs.shown) el.querySelectorAll('input, select, button').forEach((x) => { x.disabled = true; });
+      else Q.bind(el, q, (r) => { A.responses[q.id] = r; if (hs && hs.r) hs.r = null; saveBank(); });
+      const keep = () => { if (!(hs && hs.shown)) A.responses[q.id] = Q.read(el, q); saveBank(); };
+      box.querySelectorAll('[data-help]').forEach((b) => b.addEventListener('click', () => {
+        const act = b.dataset.help;
+        keep();
+        if (act === 'check') {
+          const r = A.responses[q.id];
+          hs.r = !Q.isAnswered(q, r) ? 'empty' : Q.grade(q, r) ? 'ok' : 'no';
+          hs.tries = (hs.tries || 0) + 1;
+        }
+        if (act === 'hint') hs.hint = true;
+        if (act === 'show') { hs.shown = true; A.responses[q.id] = correctResponse(q); }
+        saveBank();
+        drawIndep();
+        const f = act === 'show' ? box.querySelector('.help-shown')
+          : act === 'hint' || hs.r === 'no' ? box.querySelector('.one-q .q input:not([disabled]), .one-q .q select:not([disabled])')
+          : box.querySelector('[data-help="check"]');
+        if (f) f.focus();
+      }));
       const moveTo = (k) => {
         keep();
         A.pos = k;
@@ -883,9 +1052,11 @@
           err.querySelector('[data-goto]').focus();
           return;
         }
-        const correct = qs.map((x) => Q.grade(x, A.responses[x.id]));
+        // Help mode: an answer shown with Show Me is never counted as correct on the child's own.
+        const correct = qs.map((x) => ownRight(A, x));
         const record = { id: Date.now(), date: new Date().toISOString(), order: A.order.slice(), responses: Object.assign({}, A.responses),
           correct, score: correct.filter(Boolean).length, total: n };
+        if (HELP) record.helped = qs.filter((x) => shownIn(A, x.id)).map((x) => x.id);
         if (isRetry) { record.parentId = A.parentId; st.retries.push(record); A.retryId = record.id; } else { st.attempts.push(record); A.attemptId = record.id; }
         A.checked = true;
         delete A.pos;
@@ -981,9 +1152,21 @@
         (store.works() ? '' : `<p class="warn-text">This browser is not allowing saved data right now (for example, a private window). Results will disappear when the page closes.</p>`) +
         (attempts.length ? `<div id="clear-area"><button type="button" class="btn btn-ghost" id="clear">Clear saved progress for this ${esc(THING)}…</button></div>` : '') + `</details>`;
 
+      // Help mode: Learn and Practice Together progress, kept apart from test scores, with help counted separately.
+      let helpLine = '';
+      if (HELP) {
+        const W = store.get('see-wizard', null) || {};
+        const done = W.done || {}, helped = Object.keys(W.helped || {}).filter((k) => done[k]).length;
+        const gs = S.guidedStates || {};
+        const gOwn = L.guided.filter((q) => gs[q.id] && gs[q.id].result === true && !gs[q.id].helped).length;
+        const gHelp = L.guided.filter((q) => gs[q.id] && gs[q.id].helped).length;
+        helpLine = `<section class="card help-progress">${head('', 'Learn and practice', '')}<p class="muted">Not part of any test score.</p><ul class="rules">` +
+          `<li>Learn: ${Object.keys(done).length} of ${L.seeIt.steps.length} steps done${helped ? ` (${helped} completed with help)` : ''}.</li>` +
+          `<li>Practice Together: ${gOwn} of ${L.guided.length} on your own${gHelp ? ` · ${gHelp} completed with help` : ''}.</li></ul></section>`;
+      }
       if (!attempts.length) {
         main.innerHTML = top + `<section class="card done-card"><p class="done-title">You haven't taken a test yet.</p>` +
-          `<div class="actions"><a class="btn btn-primary btn-big" href="#test">Take a Test</a><a class="btn btn-ghost btn-big" href="#menu">${esc(MENU)}</a></div></section>` + notice;
+          `<div class="actions"><a class="btn btn-primary btn-big" href="#test">Take a Test</a><a class="btn btn-ghost btn-big" href="#menu">${esc(MENU)}</a></div></section>` + helpLine + notice;
         shell.bindClear(main, store, `results, practice, and unfinished tests for this ${THING}`, cleared);
         return;
       }
@@ -1022,6 +1205,18 @@
           return `<li><span>${esc(L.skills[s] || s)}</span>${action}</li>`;
         }).join('') + `</ul>`
         : '<p>No skills to review. Every question was correct.</p>';
+      // Help mode with skill groups: the test's results by skill (e.g. Number recognition · Spelling), each skill under its group.
+      const qsIdx = qs.map((q, i) => ({ q, i }));
+      const bySkill = HELP && L.skillGroups ? `<h3>Results by skill</h3><div class="table-wrap"><table class="history skill-table"><thead><tr><th scope="col">Skill</th><th scope="col">Correct</th></tr></thead><tbody>` +
+        L.skillGroups.map((g) => {
+          const items = qsIdx.filter((x) => g.skills.includes(x.q.skill));
+          if (!items.length) return '';
+          const ok = items.filter((x) => selected.correct[x.i]).length;
+          return `<tr class="skill-group"><th scope="row">${esc(g.title)}</th><td><b>${ok} of ${items.length}</b></td></tr>` + g.skills.map((s) => {
+            const it = items.filter((x) => x.q.skill === s);
+            return it.length ? `<tr><td class="skill-sub">${esc(L.skills[s] || s)}</td><td>${it.filter((x) => selected.correct[x.i]).length} of ${it.length}</td></tr>` : '';
+          }).join('');
+        }).join('') + `</tbody></table></div>` : '';
       const fullSet = L.skillPractice && L.bankSets
         ? `<p class="full-set-line"><button type="button" class="btn btn-ghost" data-fullset="1">${fullSetLabel()}</button> <span class="muted">The full practice set, every skill.</span></p>` : '';
 
@@ -1050,12 +1245,12 @@
         `<p class="advice"><b>Next step:</b> ${esc(m.advice.replace('the next lesson', `the next ${THING}`))}</p>` +
         `<p class="muted">Mastered: 90–100% · Review missed skills: 70–89% · Reteach and reassess: below 70%` +
         (selected.pauses ? ` · This test was paused and resumed ${plural(selected.pauses, 'time')}.` : '') + `</p>` +
-        `<h3>Skills to review</h3>${skillHTML}${fullSet}` +
+        bySkill + `<h3>Skills to review</h3>${skillHTML}${fullSet}` +
         (missed.length ? `<h3>Mistakes to review (${missed.length})</h3><ol class="rq-list">${missed.map((x) => qBlock(x, false)).join('')}</ol>` : '') +
         (right.length ? `<details class="rq-right"><summary>Correct answers (${right.length})</summary><ol class="rq-list">${right.map((x) => qBlock(x, true)).join('')}</ol></details>` : '') +
         `<div class="actions"><button type="button" class="btn btn-primary" data-retake="${selected.testId}">Take a new ${esc(testTitle(selected))}</button></div></section>` +
         `<section class="card">${head('', 'Attempt history', '')}<div class="table-wrap"><table class="history"><thead><tr><th>Date</th><th>Test</th><th>Score</th><th>%</th><th>Result</th><th><span class="sr-only">View</span></th></tr></thead><tbody>${history}</tbody></table></div></section>` +
-        menuNav() + notice;
+        helpLine + menuNav() + notice;
 
       main.querySelectorAll('[data-view]').forEach((b) => b.addEventListener('click', () => {
         S.view = Number(b.dataset.view);
