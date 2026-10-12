@@ -36,16 +36,6 @@
     return `${n} ${word}${n === 1 ? '' : 's'}`;
   }
 
-  /** Help mode's Show Me: the correct answer as a response the question's controls can show ('' when it has none). */
-  function correctResponse(q) {
-    switch (q.type) {
-      case 'mc': case 'select': case 'letter': case 'spell': return String(q.answer);
-      case 'number': return pv.fmt(q.answer);
-      case 'words': return pv.numberToWords(q.answer);
-      default: return undefined;
-    }
-  }
-
   // ---------- Shared pieces ----------
 
   /** Place-value chart. o.highlight: place index; o.values: booleans (show value row per place). */
@@ -363,7 +353,11 @@
     function seeView(c, arg) {
       activity(true, true);
       const steps = L.seeIt.steps;
-      const W = store.get('see-wizard', null) || { step: 0, done: {}, checks: {}, ex: 0, sub: 0 };
+      // A saved record of the wrong shape (e.g. changed in another tab) starts Learn fresh instead of breaking the page.
+      const saved = store.get('see-wizard', null);
+      const W = saved && typeof saved === 'object' && saved.done && typeof saved.done === 'object' && saved.checks && typeof saved.checks === 'object'
+        ? saved : { step: 0, done: {}, checks: {}, ex: 0, sub: 0 };
+      if (!Number.isInteger(W.step) || W.step < 0 || W.step >= steps.length) W.step = 0;
       const save = () => store.set('see-wizard', W);
       const reachable = (i) => i === 0 || steps.slice(0, i).every((s) => W.done[s.id]);
       if (!reachable(W.step)) W.step = 0;
@@ -405,7 +399,7 @@
             (q.hint && !c.hint ? `<button type="button" class="btn btn-ghost" data-wiz="hint"><span aria-hidden="true">💡 </span>Hint</button>` : '') +
             `<button type="button" class="btn btn-ghost" data-wiz="show">Show Me</button>`;
         }
-        return `<div class="wiz-check">` + Q.render(q, 'wiz-' + step.id, { response: c.shown ? correctResponse(q) : c.response, mode: 'guided' }) +
+        return `<div class="wiz-check">` + Q.render(q, 'wiz-' + step.id, { response: c.shown ? Q.correctResponse(q) : c.response, mode: 'guided' }) +
           `<div class="actions wiz-check-actions help-row">${action}</div>` +
           `<div aria-live="polite">${msg}<p class="feedback feedback-info" data-empty hidden>Type or choose an answer first.</p></div></div>`;
       }
@@ -648,7 +642,7 @@
         } else if (c.solved || c.revealed || c.retry || c.shown) {
           qEl.querySelectorAll('input, select, button').forEach((x) => { x.disabled = true; });
           // Chapter 2 controls: ✓ on every box when right, ✗ on the wrong boxes after a miss (Try Again clears them).
-          const marked = c.shown ? correctResponse(c.q) : c.response;
+          const marked = c.shown ? Q.correctResponse(c.q) : c.response;
           if (marked !== undefined) Q.applyMarks(qEl, c.q, marked);
         // Focus stays on the step heading (the answer-row control would otherwise jump to its ones box, review L214-01).
         } else Q.bind(qEl, c.q, (r) => { c.response = r; save(); }, { autofocus: false });
@@ -776,7 +770,7 @@
       };
       shell.guidedRunner(main.querySelector('#guided-runner'), {
         items: L.guided, states: S.guidedStates, pos: S.guidedPos, keyPrefix: 'g', lastLabel: 'Finish', onChange: saveGuided,
-        help: HELP, tip: tipOf, correctResponse,
+        help: HELP, tip: tipOf, correctResponse: Q.correctResponse,
         context: L.guidedContext || (L.guided && L.guided.context) || null,
         onLast: () => doneCard(HELP ? tally() : 'You finished Practice Together!', `<button type="button" class="btn btn-primary" id="together-again">Practice together again</button><a class="btn btn-ghost" href="#practice/own">Go to On My Own</a>`, () => {
           main.querySelector('#together-again').addEventListener('click', () => { S.guidedStates = {}; S.guidedPos.i = 0; saveGuided(); togetherView(); });
@@ -1002,7 +996,7 @@
           `<div aria-live="polite">${msg}</div>`;
       }
       box.innerHTML = `${intro}<p class="q-count" aria-live="polite">Question ${i + 1} of ${n}</p>` +
-        `<div class="one-q">${Q.render(q, 'p-' + q.id, { response: hs && hs.shown ? correctResponse(q) : A.responses[q.id] })}${helpHTML}</div>` +
+        `<div class="one-q">${Q.render(q, 'p-' + q.id, { response: hs && hs.shown ? Q.correctResponse(q) : A.responses[q.id] })}${helpHTML}</div>` +
         `<div class="error-box" role="alert" hidden></div>` +
         `<div class="stage-nav one-q-nav">` +
         (i > 0 ? `<button type="button" class="btn btn-ghost" data-q="prev">← Previous</button>` : '<span></span>') +
@@ -1021,7 +1015,7 @@
           hs.tries = (hs.tries || 0) + 1;
         }
         if (act === 'hint') hs.hint = true;
-        if (act === 'show') { hs.shown = true; A.responses[q.id] = correctResponse(q); }
+        if (act === 'show') { hs.shown = true; A.responses[q.id] = Q.correctResponse(q); }
         saveBank();
         drawIndep();
         const f = act === 'show' ? box.querySelector('.help-shown')

@@ -223,7 +223,7 @@ try {
   const homeNow = await homeText();
   check('Home Continue names the activity "Number Words · Phase 4" (not "Lesson nw-4")', /^Number Words · Phase 4 · /.test(homeNow) && !/Lesson nw/.test(homeNow), homeNow);
   await b.load(server.origin + BASE + 'number-words/'); await wait(150);
-  await b.navigate(`document.querySelector('a.lesson-row[href="phase-4/"]').click();`); await wait(250);
+  await b.navigate(`document.querySelector('.nw-phase a.btn[href="phase-4/"]').click();`); await wait(250);
   const brand = await js(`return { path: location.pathname, title: document.title, eyebrow: (document.querySelector('.eyebrow') || {}).textContent, h1: document.querySelector('h1').textContent,
     text: document.body.innerText, menu: Array.from(document.querySelectorAll('a[href="#menu"]')).map((a) => a.textContent.trim()) };`);
   check('Number Words page opens Phase 4 at its menu', brand.path === '/Mathbook/number-words/phase-4/' && brand.h1 === 'Hundreds and Thousands' && brand.eyebrow === 'Number Words Phase 4', brand);

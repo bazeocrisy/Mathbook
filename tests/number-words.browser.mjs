@@ -54,11 +54,10 @@ try {
 
   // ----- Entry points -----
   await b.load(O + BASE + 'number-words/');
-  const overview = await js(`return { h1: document.querySelector('h1').textContent, open: !!document.querySelector('a.lesson-row[href="phase-1/"]'),
-    p4open: !!document.querySelector('a.lesson-row[href="phase-4/"]'), locked: document.querySelectorAll('.lesson-row.is-locked').length, lockedLinks: document.querySelectorAll('a.lesson-row.is-locked').length,
-    p4: /2,137 — two thousand, one hundred thirty-seven/.test(document.body.innerText) };`);
-  check('Program page: Phases 1 and 4 open; Phases 2–3 shown as locked outlines (not links)', overview.open && overview.p4open && overview.locked === 2 && overview.lockedLinks === 0 && overview.p4, overview);
-  await b.navigate(`document.querySelector('a.lesson-row[href="phase-1/"]').click();`);
+  const overview = await js(`return { h1: document.querySelector('h1').textContent, hrefs: Array.from(document.querySelectorAll('.nw-phase a.btn')).map((x) => x.getAttribute('href')),
+    locked: document.querySelectorAll('.lesson-row.is-locked, .is-locked').length };`);
+  check('Program page: all four phases open from their cards (no locked outlines)', JSON.stringify(overview.hrefs) === JSON.stringify(['phase-1/', 'phase-2/', 'phase-3/', 'phase-4/']) && overview.locked === 0, overview);
+  await b.navigate(`document.querySelector('.nw-phase a.btn[href="phase-1/"]').click();`);
   check('Phase 1 opens at Learn under /Mathbook/', await js(`return location.pathname === '/Mathbook/number-words/phase-1/' && document.querySelector('[aria-current=step]').dataset.stage === 'learn'`));
 
   // ----- Learn -----
